@@ -59,12 +59,6 @@ export function Hero({ title, description, primaryAction, secondaryAction }: Her
                 priority
               />
             </div>
-            <div className="float-loop absolute -bottom-6 -left-6 hidden w-56 rounded-3xl bg-white p-4 text-xs font-semibold uppercase tracking-[0.3em] text-ink shadow-[0_25px_80px_rgba(0,0,0,0.15)] sm:block">
-              <p className="text-primary">Onboarding</p>
-              <p className="mt-2 text-base normal-case text-muted">
-                Interviews every quarter + institutional service units for 15+ volunteers.
-              </p>
-            </div>
             <div className="pulse-soft absolute -top-5 -right-5 hidden rounded-full border border-primary px-5 py-3 text-xs font-semibold uppercase tracking-[0.3em] text-primary lg:block">
               Youth First
             </div>
