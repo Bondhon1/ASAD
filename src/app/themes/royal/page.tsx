@@ -1,4 +1,7 @@
 /* Theme 4: Royal Purple - Distinguished, elegant, prestigious */
+"use client";
+
+import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -15,6 +18,8 @@ import {
 } from '@/content/homepage';
 
 export default function RoyalTheme() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-[#FAF9FC]" style={{ fontFamily: 'var(--font-playfair), Georgia, serif' }}>
       {/* Themed Navbar */}
@@ -33,8 +38,29 @@ export default function RoyalTheme() {
               ))}
               <Link href="#join" className="bg-[#D4AF37] px-8 py-3 text-sm font-bold text-[#2D1B4E] hover:bg-[#E5C349] transition" style={{ fontFamily: 'var(--font-inter), sans-serif' }}>Join Us</Link>
             </div>
+            {/* Mobile burger button */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden flex flex-col gap-1.5 p-2"
+              aria-label="Toggle menu"
+            >
+              <span className={`block h-0.5 w-6 bg-white transition-all ${mobileMenuOpen ? 'rotate-45 translate-y-2' : ''}`} />
+              <span className={`block h-0.5 w-6 bg-white transition-all ${mobileMenuOpen ? 'opacity-0' : ''}`} />
+              <span className={`block h-0.5 w-6 bg-white transition-all ${mobileMenuOpen ? '-rotate-45 -translate-y-2' : ''}`} />
+            </button>
           </div>
         </div>
+        {/* Mobile menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden bg-[#2D1B4E] border-t border-white/10 px-6 py-4">
+            <div className="flex flex-col gap-4">
+              {['Home', 'About', 'Sectors', 'Activities', 'Contact'].map((item) => (
+                <Link key={item} href="#" onClick={() => setMobileMenuOpen(false)} className="text-base font-medium text-white/70 hover:text-[#D4AF37] transition" style={{ fontFamily: 'var(--font-inter), sans-serif' }}>{item}</Link>
+              ))}
+              <Link href="#join" onClick={() => setMobileMenuOpen(false)} className="bg-[#D4AF37] px-8 py-3 text-center text-sm font-bold text-[#2D1B4E] hover:bg-[#E5C349] transition" style={{ fontFamily: 'var(--font-inter), sans-serif' }}>Join Us</Link>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Hero with Full Banner Background */}

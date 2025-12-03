@@ -1,4 +1,7 @@
 /* Theme 3: Trust Green - Fresh, growth-oriented, sustainability */
+"use client";
+
+import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -15,6 +18,8 @@ import {
 } from '@/content/homepage';
 
 export default function TrustTheme() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-[#FAFDF7]" style={{ fontFamily: 'var(--font-dm-sans), system-ui, sans-serif' }}>
       {/* Themed Navbar */}
@@ -33,8 +38,29 @@ export default function TrustTheme() {
               ))}
               <Link href="#join" className="rounded-2xl bg-[#00A651] px-6 py-2.5 text-sm font-bold text-white hover:bg-[#008B45] transition">Join Movement</Link>
             </div>
+            {/* Mobile burger button */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden flex flex-col gap-1.5 p-2"
+              aria-label="Toggle menu"
+            >
+              <span className={`block h-0.5 w-6 bg-gray-900 transition-all ${mobileMenuOpen ? 'rotate-45 translate-y-2' : ''}`} />
+              <span className={`block h-0.5 w-6 bg-gray-900 transition-all ${mobileMenuOpen ? 'opacity-0' : ''}`} />
+              <span className={`block h-0.5 w-6 bg-gray-900 transition-all ${mobileMenuOpen ? '-rotate-45 -translate-y-2' : ''}`} />
+            </button>
           </div>
         </div>
+        {/* Mobile menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden bg-white border-t border-[#00A651]/10 px-6 py-4">
+            <div className="flex flex-col gap-4">
+              {['Home', 'About', 'Sectors', 'Activities', 'Contact'].map((item) => (
+                <Link key={item} href="#" onClick={() => setMobileMenuOpen(false)} className="text-base font-semibold text-gray-600 hover:text-[#00A651] transition">{item}</Link>
+              ))}
+              <Link href="#join" onClick={() => setMobileMenuOpen(false)} className="rounded-2xl bg-[#00A651] px-6 py-3 text-center text-sm font-bold text-white hover:bg-[#008B45] transition">Join Movement</Link>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Hero with Full Banner Background */}

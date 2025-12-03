@@ -1,4 +1,7 @@
 /* Theme 2: BRAC Warm - Bold red, professional NGO aesthetic */
+"use client";
+
+import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -15,6 +18,8 @@ import {
 } from '@/content/homepage';
 
 export default function BracTheme() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-white" style={{ fontFamily: 'var(--font-poppins), system-ui, sans-serif' }}>
       {/* Themed Navbar */}
@@ -36,8 +41,29 @@ export default function BracTheme() {
               ))}
               <Link href="#join" className="rounded-full bg-[#E31B23] px-7 py-3 text-sm font-bold text-white hover:bg-[#c4161f] transition shadow-lg shadow-red-500/20">Become a Volunteer</Link>
             </div>
+            {/* Mobile burger button */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden flex flex-col gap-1.5 p-2"
+              aria-label="Toggle menu"
+            >
+              <span className={`block h-0.5 w-6 bg-gray-900 transition-all ${mobileMenuOpen ? 'rotate-45 translate-y-2' : ''}`} />
+              <span className={`block h-0.5 w-6 bg-gray-900 transition-all ${mobileMenuOpen ? 'opacity-0' : ''}`} />
+              <span className={`block h-0.5 w-6 bg-gray-900 transition-all ${mobileMenuOpen ? '-rotate-45 -translate-y-2' : ''}`} />
+            </button>
           </div>
         </div>
+        {/* Mobile menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden bg-white border-t border-gray-100 px-6 py-4">
+            <div className="flex flex-col gap-4">
+              {['Home', 'About', 'Sectors', 'Activities', 'Contact'].map((item) => (
+                <Link key={item} href="#" onClick={() => setMobileMenuOpen(false)} className="text-base font-bold text-gray-700 hover:text-[#E31B23] transition">{item}</Link>
+              ))}
+              <Link href="#join" onClick={() => setMobileMenuOpen(false)} className="rounded-full bg-[#E31B23] px-7 py-3 text-center text-sm font-bold text-white hover:bg-[#c4161f] transition">Become a Volunteer</Link>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Hero with Full Banner Background */}
