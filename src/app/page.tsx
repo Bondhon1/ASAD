@@ -9,6 +9,9 @@ import { JoinUs } from '@/components/sections/JoinUs';
 import { Partners } from '@/components/sections/Partners';
 import { NoticeBoard } from '@/components/sections/NoticeBoard';
 import { VolunteerDirectory } from '@/components/sections/VolunteerDirectory';
+import { Header } from '@/components/layout/Header';
+import { Footer } from '@/components/layout/Footer';
+import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 import {
   heroContent,
   stats,
@@ -25,18 +28,23 @@ import {
 
 export default function Home() {
   return (
-    <main>
-      <Hero {...heroContent} />
-      <StatsStrip items={stats} />
-      <AboutSection content={aboutContent} />
-      <SectorGrid sectors={sectors} />
-      <VolunteerJourney steps={journeySteps} />
-      <ActivitiesShowcase cards={activities} />
-      <ProjectHighlight project={projectAlokdhara} />
-      <NoticeBoard notices={notices} />
-      <VolunteerDirectory content={volunteerDirectory} />
-      <JoinUs options={joinOptions} />
-      <Partners items={partners} />
-    </main>
+    <>
+      <Header />
+      <main className="pt-24 lg:pt-28">
+        <Hero {...heroContent} />
+        <StatsStrip items={stats} />
+        <AboutSection content={aboutContent} />
+        <SectorGrid sectors={sectors} />
+        <VolunteerJourney steps={journeySteps} />
+        <ActivitiesShowcase cards={activities} />
+        <ProjectHighlight project={projectAlokdhara} />
+        <NoticeBoard notices={notices} />
+        <VolunteerDirectory content={volunteerDirectory} />
+        <JoinUs options={joinOptions} />
+        <Partners items={partners} />
+      </main>
+      <Footer />
+      <ThemeSwitcher />
+    </>
   );
 }
