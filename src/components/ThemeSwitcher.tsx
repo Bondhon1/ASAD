@@ -12,6 +12,8 @@ const themes = [
   { name: 'Royal Purple', path: '/themes/royal', color: '#6B4C9A' },
   { name: 'Sunrise Gold', path: '/themes/sunrise', color: '#F7941D' },
   { name: 'Navy Classic', path: '/themes/navy', color: '#1E3A5F' },
+  { name: 'Ocean Blue', path: '/themes/ocean', color: '#0A2463' },
+  { name: 'Ember Orange', path: '/themes/ember', color: '#f97316' },
 ];
 
 export function ThemeSwitcher() {
