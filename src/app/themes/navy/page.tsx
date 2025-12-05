@@ -45,6 +45,7 @@ function useInView(threshold = 0.1) {
 
 export default function NavyTheme() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [activeSector, setActiveSector] = useState<{name: string; icon: string; summary: string; color: string; textDark?: boolean} | null>(null);
 
   // Animation refs
   const heroAnim = useInView(0.1);
@@ -70,7 +71,7 @@ export default function NavyTheme() {
               <span className="text-lg font-bold text-[#1E3A5F]">ASAD</span>
             </Link>
             <div className="hidden md:flex items-center gap-8">
-              {['Home', 'About', 'Sectors', 'Activities', 'Contact'].map((item) => (
+              {['Home', 'About', 'Sectors', 'Activities'].map((item) => (
                 <Link key={item} href="#" className="text-sm font-semibold text-gray-600 hover:text-[#1E3A5F] transition-colors duration-300">{item}</Link>
               ))}
               <Link href="#join" className="rounded-lg bg-[#1E3A5F] px-7 py-3 text-sm font-semibold text-white hover:bg-[#2a4d75] transition-all duration-300">Join Now</Link>
@@ -90,7 +91,7 @@ export default function NavyTheme() {
         {/* Mobile menu */}
         <div className={`md:hidden bg-white border-t border-gray-100 overflow-hidden transition-all duration-300 ${mobileMenuOpen ? 'max-h-96 py-4' : 'max-h-0'}`}>
           <div className="flex flex-col gap-4 px-6">
-            {['Home', 'About', 'Sectors', 'Activities', 'Contact'].map((item) => (
+            {['Home', 'About', 'Sectors', 'Activities'].map((item) => (
               <Link key={item} href="#" onClick={() => setMobileMenuOpen(false)} className="text-base font-semibold text-gray-600 hover:text-[#1E3A5F] transition-colors duration-300">{item}</Link>
             ))}
             <Link href="#join" onClick={() => setMobileMenuOpen(false)} className="rounded-lg bg-[#1E3A5F] px-7 py-3 text-center text-sm font-semibold text-white transition-all duration-300">Join Now</Link>
@@ -231,8 +232,8 @@ export default function NavyTheme() {
         </div>
       </section>
 
-      {/* Sectors */}
-      <section ref={sectorsAnim.ref} className="bg-gray-50 px-6 py-24">
+      {/* Sectors - Expandable Cards */}
+      <section ref={sectorsAnim.ref} className="bg-gray-50 px-6 py-24 overflow-hidden">
         <div className="mx-auto max-w-7xl">
           <div className={`text-center transition-all duration-700 ${sectorsAnim.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
             <span className="inline-flex items-center gap-3 text-xs font-bold uppercase tracking-[0.2em] text-[#4A90D9]">
@@ -240,57 +241,102 @@ export default function NavyTheme() {
               Impact Areas
               <span className="h-px w-8 bg-[#4A90D9]" />
             </span>
-            <h2 className="mt-6 text-4xl font-bold text-[#1E3A5F]">Our Core Sectors</h2>
+            <h2 className="mt-6 text-4xl font-bold text-[#1E3A5F]">Our 7 Core Sectors</h2>
+            <p className="mt-4 text-gray-600">Hover over each sector to learn more</p>
           </div>
-          <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {sectors.map((sector, i) => (
+          
+          {/* Desktop: 7 cards in a row */}
+          <div className="mt-16 hidden lg:flex justify-center items-center gap-3 px-4">
+            {[
+              { name: 'Education', icon: '📚', summary: 'Workshops, rural outreach, free classes, and study resources for under-resourced learners.', color: 'rgb(22, 52, 182)' },
+              { name: 'Cultural', icon: '🎭', summary: 'Talent showcases, monthly live shows, Artistic Carnival, and creative mentorship.', color: 'rgb(255, 97, 0)' },
+              { name: 'Photography', icon: '📷', summary: 'Weekly tutorials, exhibitions, event coverage, and Photo of the Week challenges.', color: 'rgb(0, 57, 112)' },
+              { name: 'Charity', icon: '🤝', summary: 'Fundraisers, relief responses, and festival programs delivering healthcare, food, and clothing.', color: 'rgb(150, 45, 0)' },
+              { name: 'Medical', icon: '⚕️', summary: 'Health camps, seminars, consultations, and essential medical supply distribution.', color: 'rgb(13, 207, 242)' },
+              { name: 'Blood Bank', icon: '🩸', summary: 'Donor network, awareness drives, fulfillment reports, and Life Drop collaborations.', color: 'rgb(242, 43, 12)' },
+              { name: 'Environment', icon: '🌱', summary: 'Tree planting, waste reduction, cleanliness campaigns, and eco workshops.', color: 'rgb(228, 255, 248)', textDark: true },
+            ].map((sector, i) => (
               <div 
-                key={i} 
-                className={`group rounded-2xl bg-white p-8 border border-gray-200 transition-all duration-500 hover:-translate-y-2 hover:border-[#1E3A5F] hover:shadow-xl ${sectorsAnim.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
-                style={{ transitionDelay: `${i * 100}ms` }}
+                key={i}
+                className={`group relative flex-shrink-0 w-28 h-28 rounded-2xl shadow-lg cursor-pointer transition-all duration-500 ease-out hover:w-96 hover:shadow-2xl hover:z-10 overflow-hidden ${sectorsAnim.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
+                style={{ transitionDelay: `${i * 80}ms`, backgroundColor: sector.color }}
               >
-                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#1E3A5F] text-lg font-bold text-white transition-all duration-300 group-hover:bg-[#4A90D9]">
-                  {sector.name.charAt(0)}
+                {/* Square icon state */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-4 transition-all duration-300 group-hover:opacity-0">
+                  <span className="text-4xl mb-2 drop-shadow-lg">{sector.icon}</span>
+                  <span className={`text-xs font-bold text-center leading-tight drop-shadow-md ${sector.textDark ? 'text-[#1E3A5F]' : 'text-white'}`}>{sector.name}</span>
                 </div>
-                <h3 className="mt-6 text-xl font-bold text-[#1E3A5F]">{sector.name}</h3>
-                <p className="mt-3 text-gray-600 leading-relaxed">{sector.summary}</p>
+                
+                {/* Expanded state */}
+                <div className="absolute inset-0 flex items-center px-6 py-4 opacity-0 group-hover:opacity-100 transition-all duration-300 delay-150">
+                  <div className="flex items-start gap-4 w-full">
+                    <div className="flex-shrink-0 w-16 h-16 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                      <span className="text-3xl">{sector.icon}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className={`text-xl font-bold ${sector.textDark ? 'text-[#1E3A5F]' : 'text-white'}`}>{sector.name}</h3>
+                      <p className={`mt-2 text-sm leading-relaxed ${sector.textDark ? 'text-gray-700' : 'text-white/90'}`}>{sector.summary}</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
-        </div>
-      </section>
 
-      {/* Journey */}
-      <section ref={journeyAnim.ref} className="bg-white px-6 py-24 overflow-hidden">
-        <div className="mx-auto max-w-7xl">
-          <div className={`text-center transition-all duration-700 ${journeyAnim.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-            <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#4A90D9]">Get Started</span>
-            <h2 className="mt-4 text-4xl font-bold text-[#1E3A5F]">Your Volunteer Journey</h2>
+          {/* Mobile: Grid layout with modal on tap */}
+          <div className="mt-16 flex flex-wrap justify-center gap-4 lg:hidden">
+            {[
+              { name: 'Education', icon: '📚', summary: 'Workshops, rural outreach, free classes, and study resources for under-resourced learners.', color: 'rgb(22, 52, 182)' },
+              { name: 'Cultural', icon: '🎭', summary: 'Talent showcases, monthly live shows, Artistic Carnival, and creative mentorship.', color: 'rgb(255, 97, 0)' },
+              { name: 'Photography', icon: '📷', summary: 'Weekly tutorials, exhibitions, event coverage, and Photo of the Week challenges.', color: 'rgb(0, 57, 112)' },
+              { name: 'Charity', icon: '🤝', summary: 'Fundraisers, relief responses, and festival programs delivering healthcare, food, and clothing.', color: 'rgb(150, 45, 0)' },
+              { name: 'Medical', icon: '⚕️', summary: 'Health camps, seminars, consultations, and essential medical supply distribution.', color: 'rgb(13, 207, 242)' },
+              { name: 'Blood Bank', icon: '🩸', summary: 'Donor network, awareness drives, fulfillment reports, and Life Drop collaborations.', color: 'rgb(242, 43, 12)' },
+              { name: 'Environment', icon: '🌱', summary: 'Tree planting, waste reduction, cleanliness campaigns, and eco workshops.', color: 'rgb(228, 255, 248)', textDark: true },
+            ].map((sector, i) => (
+              <button 
+                key={i}
+                onClick={() => setActiveSector(sector)}
+                className={`w-24 h-24 sm:w-28 sm:h-28 rounded-2xl shadow-lg flex flex-col items-center justify-center p-3 transition-all duration-300 active:scale-95 ${sectorsAnim.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
+                style={{ transitionDelay: `${i * 80}ms`, backgroundColor: sector.color }}
+              >
+                <span className="text-3xl mb-2 drop-shadow-lg">{sector.icon}</span>
+                <span className={`text-xs font-bold text-center leading-tight drop-shadow-md ${sector.textDark ? 'text-[#1E3A5F]' : 'text-white'}`}>{sector.name}</span>
+              </button>
+            ))}
           </div>
-          <div className="mt-16 relative">
-            <div className="absolute top-24 left-0 right-0 h-0.5 bg-gradient-to-r from-[#1E3A5F] to-[#4A90D9] hidden lg:block" />
-            <div className="grid gap-8 lg:grid-cols-4">
-              {journeySteps.map((step, i) => (
-                <div 
-                  key={i} 
-                  className={`relative text-center transition-all duration-500 hover:scale-105 ${journeyAnim.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
-                  style={{ transitionDelay: `${i * 150}ms` }}
-                >
-                  <div className="relative z-10 mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[#1E3A5F] text-xl font-bold text-white shadow-lg">
-                    {i + 1}
-                  </div>
-                  <div className="mt-8 rounded-2xl bg-gray-50 p-6 border border-gray-200">
-                    <h3 className="text-lg font-bold text-[#1E3A5F]">{step.title}</h3>
-                    <p className="mt-3 text-sm text-gray-600">{step.detail}</p>
-                  </div>
+        </div>
+
+        {/* Mobile Modal */}
+        {activeSector && (
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/50 backdrop-blur-sm lg:hidden"
+            onClick={() => setActiveSector(null)}
+          >
+            <div 
+              className="relative w-full max-w-sm rounded-3xl p-8 shadow-2xl animate-in fade-in zoom-in duration-200"
+              style={{ backgroundColor: activeSector.color }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button 
+                onClick={() => setActiveSector(null)}
+                className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-colors ${activeSector.textDark ? 'bg-gray-200 text-gray-800' : 'bg-white/20 text-white'}`}
+              >
+                ✕
+              </button>
+              <div className="flex flex-col items-center text-center">
+                <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-6">
+                  <span className="text-5xl">{activeSector.icon}</span>
                 </div>
-              ))}
+                <h3 className={`text-2xl font-bold ${activeSector.textDark ? 'text-[#1E3A5F]' : 'text-white'}`}>{activeSector.name}</h3>
+                <p className={`mt-4 text-base leading-relaxed ${activeSector.textDark ? 'text-gray-700' : 'text-white/90'}`}>{activeSector.summary}</p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </section>
 
-      {/* Activities */}
+      {/* Activities - What We Do Together */}
       <section ref={activitiesAnim.ref} className="bg-[#1E3A5F] px-6 py-24">
         <div className="mx-auto max-w-7xl">
           <div className={`text-center mb-16 transition-all duration-700 ${activitiesAnim.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
@@ -319,46 +365,95 @@ export default function NavyTheme() {
         </div>
       </section>
 
+      {/* Journey - Your Volunteer Journey */}
+      <section ref={journeyAnim.ref} className="bg-white px-6 py-24 overflow-hidden">
+        <div className="mx-auto max-w-7xl">
+          <div className={`text-center transition-all duration-700 ${journeyAnim.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+            <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#4A90D9]">Get Started</span>
+            <h2 className="mt-4 text-4xl font-bold text-[#1E3A5F]">Your Volunteer Journey</h2>
+          </div>
+          <div className="mt-16 relative">
+            {/* Curved animated path - Desktop */}
+            <svg className="absolute top-20 left-0 right-0 w-full h-32 hidden lg:block" viewBox="0 0 1200 120" fill="none" preserveAspectRatio="none">
+              <path 
+                d="M0,60 C150,120 300,0 450,60 C600,120 750,0 900,60 C1050,120 1200,60 1200,60" 
+                stroke="url(#journeyGradient)" 
+                strokeWidth="3" 
+                fill="none"
+                strokeLinecap="round"
+                className={`${journeyAnim.isInView ? 'animate-draw-path' : ''}`}
+                style={{ 
+                  strokeDasharray: 2000,
+                  strokeDashoffset: journeyAnim.isInView ? 0 : 2000,
+                  transition: 'stroke-dashoffset 2s ease-out'
+                }}
+              />
+              <defs>
+                <linearGradient id="journeyGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#1E3A5F" />
+                  <stop offset="50%" stopColor="#4A90D9" />
+                  <stop offset="100%" stopColor="#1E3A5F" />
+                </linearGradient>
+              </defs>
+            </svg>
+            <div className="grid gap-8 lg:grid-cols-4 relative z-10">
+              {journeySteps.map((step, i) => (
+                <div 
+                  key={i} 
+                  className={`relative text-center transition-all duration-500 hover:scale-105 ${journeyAnim.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
+                  style={{ transitionDelay: `${i * 150}ms` }}
+                >
+                  <div className="relative z-10 mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[#1E3A5F] text-xl font-bold text-white shadow-lg ring-4 ring-white">
+                    {i + 1}
+                  </div>
+                  <div className="mt-8 rounded-2xl bg-gray-50 p-6 border border-gray-200">
+                    <h3 className="text-lg font-bold text-[#1E3A5F]">{step.title}</h3>
+                    <p className="mt-3 text-sm text-gray-600">{step.detail}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Project Alokdhara */}
-      <section ref={projectAnim.ref} className="relative min-h-[80vh] flex items-center px-6 py-24 overflow-hidden">
+      <section ref={projectAnim.ref} className="relative overflow-hidden min-h-[80vh] flex items-center px-6 py-24">
         <div className="absolute inset-0">
           <Image src="/alokdhara.jpg" alt="Project Alokdhara" fill className="object-cover object-center" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#1E3A5F]/95 via-[#1E3A5F]/90 to-[#1E3A5F]/70" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#1E3A5F]/95 via-[#1E3A5F]/85 to-[#1E3A5F]/60" />
         </div>
-        <div className="relative z-10 mx-auto max-w-7xl w-full">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
+        <div className="relative z-10 mx-auto max-w-7xl">
+          <div className="grid gap-12 lg:grid-cols-2 items-center">
             <div className={`transition-all duration-700 ${projectAnim.isInView ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-12'}`}>
-              <div className="inline-flex items-center gap-2 rounded-lg bg-[#4A90D9] px-5 py-2">
-                <span className="h-2 w-2 rounded-full bg-white animate-pulse" />
-                <span className="text-xs font-bold uppercase tracking-[0.2em] text-white">Featured Project</span>
-              </div>
-              <h2 className="mt-8 text-5xl font-bold text-white lg:text-6xl">{projectAlokdhara.title}</h2>
-              <p className="mt-6 text-xl text-white/80 leading-relaxed">{projectAlokdhara.summary}</p>
-              <div className="mt-8 flex flex-wrap gap-3">
+              <span className="text-sm font-bold uppercase tracking-widest text-[#4A90D9]">Featured Project</span>
+              <h2 className="mt-4 text-4xl font-extrabold text-white lg:text-5xl">{projectAlokdhara.title}</h2>
+              <p className="mt-6 text-xl text-gray-300">{projectAlokdhara.summary}</p>
+              <ul className="mt-8 space-y-4">
                 {projectAlokdhara.bullets.map((bullet, i) => (
-                  <span key={i} className="rounded-lg bg-white/10 px-5 py-2.5 text-sm text-white backdrop-blur-sm border border-white/10">
+                  <li key={i} className="flex items-start gap-3 text-gray-300">
+                    <span className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-[#4A90D9]" />
                     {bullet}
-                  </span>
+                  </li>
                 ))}
-              </div>
+              </ul>
               <Link
                 href={projectAlokdhara.ctaHref}
-                className="mt-10 inline-flex rounded-lg bg-white px-10 py-4 text-base font-semibold text-[#1E3A5F] shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-105"
+                className="mt-8 inline-flex rounded-lg bg-[#4A90D9] px-8 py-4 text-lg font-bold text-white shadow-xl transition-all duration-300 hover:bg-[#3a7fc8] hover:scale-105"
               >
                 {projectAlokdhara.ctaLabel}
               </Link>
             </div>
             <div className={`grid grid-cols-2 gap-4 transition-all duration-700 delay-200 ${projectAnim.isInView ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-12'}`}>
               {[
-                { label: 'Children/Week', value: '180+', icon: '👦' },
-                { label: 'Volunteer Squads', value: '4', icon: '👥' },
-                { label: 'Meals Served', value: '2x', icon: '🍱' },
-                { label: 'Learning Hours', value: '12', icon: '📚' },
+                { label: 'Children Served', value: '180+/week' },
+                { label: 'Volunteer Squads', value: '4 Active' },
+                { label: 'Meals Provided', value: '2x Weekly' },
+                { label: 'Learning Hours', value: '12 hrs/week' },
               ].map((item, i) => (
-                <div key={i} className="rounded-2xl bg-white/10 backdrop-blur-md p-6 text-center border border-white/10 hover:bg-white/15 transition-all duration-300">
-                  <span className="text-3xl">{item.icon}</span>
-                  <p className="mt-3 text-3xl font-bold text-white">{item.value}</p>
-                  <p className="mt-2 text-xs text-white/60 uppercase tracking-wider">{item.label}</p>
+                <div key={i} className="rounded-2xl bg-white/10 p-6 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all duration-300">
+                  <p className="text-3xl font-extrabold text-white">{item.value}</p>
+                  <p className="mt-2 text-sm font-medium uppercase tracking-wider text-[#4A90D9]">{item.label}</p>
                 </div>
               ))}
             </div>
@@ -425,6 +520,51 @@ export default function NavyTheme() {
               <div key={i} className="rounded-lg bg-gray-50 px-8 py-4 text-sm font-semibold text-gray-600 border border-gray-200 hover:border-[#1E3A5F] hover:text-[#1E3A5F] transition-all duration-300 hover:scale-105">
                 {partner}
               </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Donation Section */}
+      <section className="bg-gradient-to-br from-[#4A90D9] to-[#1E3A5F] px-6 py-24">
+        <div className="mx-auto max-w-4xl text-center">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm mb-8">
+            <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+          </div>
+          <h2 className="text-4xl font-bold text-white lg:text-5xl">Support Our Mission</h2>
+          <p className="mt-6 text-xl text-white/80 leading-relaxed max-w-2xl mx-auto">
+            Your generous donation helps us continue our work in education, healthcare, and community development across Bangladesh.
+          </p>
+          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link
+              href="#donate"
+              className="group rounded-xl bg-white px-10 py-4 text-lg font-bold text-[#1E3A5F] shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-105"
+            >
+              <span className="flex items-center gap-3">
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Donate Now
+              </span>
+            </Link>
+            <Link
+              href="#monthly"
+              className="rounded-xl border-2 border-white/50 px-10 py-4 text-lg font-bold text-white transition-all duration-300 hover:bg-white/10 hover:border-white"
+            >
+              Become a Monthly Donor
+            </Link>
+          </div>
+          <div className="mt-12 grid grid-cols-3 gap-6 max-w-xl mx-auto">
+            {[{ amount: '৳500', desc: 'Feeds 5 children' }, { amount: '৳1000', desc: 'School supplies' }, { amount: '৳2500', desc: 'Monthly support' }].map((tier, i) => (
+              <button
+                key={i}
+                className="rounded-2xl bg-white/10 backdrop-blur-sm p-6 border border-white/20 hover:bg-white/20 transition-all duration-300 hover:scale-105"
+              >
+                <p className="text-2xl font-bold text-white">{tier.amount}</p>
+                <p className="mt-2 text-sm text-white/70">{tier.desc}</p>
+              </button>
             ))}
           </div>
         </div>
