@@ -1,0 +1,554 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// USER & AUTHENTICATION
+// ============================================================================
+
+model User {
+  id                    String                 @id @default(cuid())
+  fullName              String?
+  email                 String                 @unique
+  phone                 String?                @unique
+  password              String?
+  profilePicUrl         String?
+  institute             Institute?             @relation(fields: [instituteId], references: [id], onDelete: SetNull)
+  instituteId           String?
+  joiningSemester       String?
+  status                UserStatus             @default(APPLICANT)
+  volunteerId           String?                @unique
+  designation           String?
+  emailVerified         Boolean                @default(false)
+  emailVerificationToken String?               @unique
+  emailVerificationExpiry DateTime?
+  
+  // Account linking for OAuth
+  accounts              Account[]
+  sessions              Session[]
+  
+  // Volunteer specific
+  volunteerProfile      VolunteerProfile?
+  application           Application?
+  taskSubmissions       TaskSubmission[]
+  donations             Donation[]
+  createdTasks          Task[]                 @relation("TaskCreator")
+  approvedTaskSubmissions TaskSubmission[]     @relation("ApprovedBy")
+  approvedDonations     Donation[]             @relation("ApprovedBy")
+  pointsHistory         PointsHistory[]
+  auditLogs             AuditLog[]             @relation("ActorUser")
+  
+  // Social features
+  posts                 Post[]
+  sentMessages          Message[]             @relation("FromUser")
+  receivedMessages      Message[]             @relation("ToUser")
+  sentFriendRequests    FriendRequest[]       @relation("Sender")
+  receivedFriendRequests FriendRequest[]      @relation("Receiver")
+  friends               FriendList[]          @relation("User")
+  friendOf              FriendList[]          @relation("Friend")
+  
+  // Committee
+  committeeMemberships  CommitteeMember[]
+  
+  // Payment related
+  initialPayment        InitialPayment?
+  
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  
+  @@index([email])
+  @@index([phone])
+  @@index([instituteId])
+  @@index([status])
+}
+
+enum UserStatus {
+  APPLICANT
+  INTERVIEW_SCHEDULED
+  INTERVIEW_PASSED
+  OFFICIAL
+  INACTIVE
+  BANNED
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?  @db.Text
+  access_token       String?  @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?  @db.Text
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ============================================================================
+// INSTITUTE & COMMITTEE
+// ============================================================================
+
+model Institute {
+  id                    String           @id @default(cuid())
+  name                  String           @unique
+  address               String?
+  totalVolunteersCached Int              @default(0)
+  committeeCreated      Boolean          @default(false)
+  users                 User[]
+  committee             Committee?
+  createdAt             DateTime         @default(now())
+  
+  @@index([name])
+}
+
+model Committee {
+  id                    String           @id @default(cuid())
+  name                  String
+  institute             Institute?       @relation(fields: [instituteId], references: [id], onDelete: SetNull)
+  instituteId           String?          @unique
+  sector                Sector?          @relation(fields: [sectorId], references: [id], onDelete: SetNull)
+  sectorId              String?
+  club                  Club?            @relation(fields: [clubId], references: [id], onDelete: SetNull)
+  clubId                String?
+  department            Department?      @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  departmentId          String?
+  members               CommitteeMember[]
+  volunteers            VolunteerProfile[]
+  createdAt             DateTime         @default(now())
+  
+  @@index([instituteId])
+  @@index([sectorId])
+  @@index([clubId])
+  @@index([departmentId])
+}
+
+model CommitteeMember {
+  id                    String           @id @default(cuid())
+  committee             Committee        @relation(fields: [committeeId], references: [id], onDelete: Cascade)
+  committeeId           String
+  user                  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                String
+  role                  String
+  joinedAt              DateTime         @default(now())
+  
+  @@unique([committeeId, userId])
+}
+
+// ============================================================================
+// APPLICATION & RECRUITMENT
+// ============================================================================
+
+model Application {
+  id                    String           @id @default(cuid())
+  user                  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                String           @unique
+  trxId                 String
+  paymentMethod         String           // bkash, nagad, visa, mastercard
+  paymentScreenshotUrl  String?
+  status                ApplicationStatus @default(PENDING)
+  interviewDate         DateTime?
+  interviewResult       InterviewResult?
+  appliedAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  
+  @@index([status])
+  @@index([interviewDate])
+}
+
+enum ApplicationStatus {
+  PENDING
+  INTERVIEW_SCHEDULED
+  ACCEPTED
+  REJECTED
+}
+
+enum InterviewResult {
+  PASSED
+  FAILED
+}
+
+// ============================================================================
+// VOLUNTEER PROFILE & RANKING
+// ============================================================================
+
+model VolunteerProfile {
+  userId                String           @unique
+  user                  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinDate              DateTime         @default(now())
+  points                Int              @default(0)
+  rank                  Rank?            @relation(fields: [rankId], references: [id])
+  rankId                String?
+  bio                   String?
+  sectors               String[]         // JSON array of sector IDs
+  clubs                 String[]         // JSON array of club IDs
+  committee             Committee?       @relation(fields: [committeeId], references: [id], onDelete: SetNull)
+  committeeId           String?
+  isOfficial            Boolean          @default(false)
+  
+  @@id([userId])
+  @@index([rankId])
+  @@index([committeeId])
+  @@index([isOfficial])
+}
+
+model Rank {
+  id                    String           @id @default(cuid())
+  name                  String           @unique
+  thresholdPoints       Int
+  description           String?
+  volunteerProfiles     VolunteerProfile[]
+  createdAt             DateTime         @default(now())
+  
+  @@index([thresholdPoints])
+}
+
+model PointsHistory {
+  id                    String           @id @default(cuid())
+  user                  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                String
+  change                Int
+  reason                String
+  relatedTask           Task?            @relation(fields: [relatedTaskId], references: [id], onDelete: SetNull)
+  relatedTaskId         String?
+  relatedDonation       Donation?        @relation(fields: [relatedDonationId], references: [id], onDelete: SetNull)
+  relatedDonationId     String?
+  createdAt             DateTime         @default(now())
+  
+  @@index([userId])
+  @@index([relatedTaskId])
+  @@index([relatedDonationId])
+}
+
+// ============================================================================
+// TASKS & SUBMISSIONS
+// ============================================================================
+
+model Task {
+  id                    String           @id @default(cuid())
+  title                 String
+  description           String?
+  createdBy             User             @relation("TaskCreator", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  createdByUserId       String
+  assignedGroupType     GroupType        @default(ALL)
+  assignedGroup         String?          // sector/club/department/committee ID
+  taskType              TaskType
+  mandatory             Boolean          @default(false)
+  pointsPositive        Int              @default(0)
+  pointsNegative        Int              @default(0)
+  startDate             DateTime
+  endDate               DateTime
+  attachments           String[]
+  submissions           TaskSubmission[]
+  pointsHistory         PointsHistory[]
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  
+  @@index([createdByUserId])
+  @@index([endDate])
+  @@index([taskType])
+}
+
+enum GroupType {
+  SECTOR
+  CLUB
+  DEPARTMENT
+  COMMITTEE
+  ALL
+}
+
+enum TaskType {
+  YESNO
+  COMMENT
+  IMAGE
+  DONATION
+}
+
+model TaskSubmission {
+  id                    String           @id @default(cuid())
+  task                  Task             @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId                String
+  user                  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                String
+  submissionData        String?          // JSON for various submission types
+  submissionFiles       String[]
+  status                SubmissionStatus @default(PENDING)
+  approvedBy            User?            @relation("ApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  approvedByUserId      String?
+  approvedAt            DateTime?
+  submittedAt           DateTime         @default(now())
+  
+  @@unique([taskId, userId])
+  @@index([status])
+  @@index([userId])
+}
+
+enum SubmissionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ============================================================================
+// DONATIONS
+// ============================================================================
+
+model DonationCampaign {
+  id                    String           @id @default(cuid())
+  title                 String
+  purpose               String?
+  amountTarget          Float?
+  expiryDate            DateTime
+  status                CampaignStatus   @default(ACTIVE)
+  pointsPerDonation     Int              @default(0)
+  isPublic              Boolean          @default(false)
+  donations             Donation[]
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  
+  @@index([status])
+  @@index([expiryDate])
+}
+
+enum CampaignStatus {
+  ACTIVE
+  CLOSED
+  EXPIRED
+}
+
+model Donation {
+  id                    String           @id @default(cuid())
+  campaign              DonationCampaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  campaignId            String?
+  user                  User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId                String?
+  amount                Float
+  trxId                 String
+  paymentMethod         String           // bkash, nagad, visa, mastercard
+  proofUrl              String?
+  status                DonationStatus   @default(PENDING)
+  approvedBy            User?            @relation("ApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  approvedByUserId      String?
+  approvedAt            DateTime?
+  pointsHistory         PointsHistory[]
+  donatedAt             DateTime         @default(now())
+  
+  @@index([userId])
+  @@index([status])
+  @@index([campaignId])
+}
+
+enum DonationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ============================================================================
+// INITIAL PAYMENT (30 BDT APPLICATION)
+// ============================================================================
+
+model InitialPayment {
+  id                    String           @id @default(cuid())
+  user                  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                String           @unique
+  amount                Float            @default(30)
+  trxId                 String
+  paymentMethod         String           // bkash, nagad, visa, mastercard
+  senderNumber          String
+  paymentDate           DateTime
+  paymentTime           String?
+  proofUrl              String?
+  status                PaymentStatus    @default(PENDING)
+  verifiedAt            DateTime?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  
+  @@index([status])
+}
+
+enum PaymentStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+// ============================================================================
+// SOCIAL FEATURES
+// ============================================================================
+
+model Post {
+  id                    String           @id @default(cuid())
+  author                User             @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId              String
+  content               String
+  postType              PostType
+  metadata              String?          // JSON for gallery, event data
+  likes                 Int              @default(0)
+  comments              PostComment[]
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  
+  @@index([authorId])
+  @@index([createdAt])
+}
+
+enum PostType {
+  TEXT
+  GALLERY
+  EVENT
+}
+
+model PostComment {
+  id                    String           @id @default(cuid())
+  post                  Post             @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId                String
+  content               String
+  createdAt             DateTime         @default(now())
+}
+
+model FriendRequest {
+  id                    String           @id @default(cuid())
+  sender                User             @relation("Sender", fields: [senderId], references: [id], onDelete: Cascade)
+  senderId              String
+  receiver              User             @relation("Receiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  receiverId            String
+  status                FriendRequestStatus @default(PENDING)
+  createdAt             DateTime         @default(now())
+  
+  @@unique([senderId, receiverId])
+  @@index([status])
+}
+
+enum FriendRequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+model FriendList {
+  id                    String           @id @default(cuid())
+  user                  User             @relation("User", fields: [userId], references: [id], onDelete: Cascade)
+  userId                String
+  friend                User             @relation("Friend", fields: [friendId], references: [id], onDelete: Cascade)
+  friendId              String
+  createdAt             DateTime         @default(now())
+  
+  @@unique([userId, friendId])
+}
+
+model Conversation {
+  id                    String           @id @default(cuid())
+  messages              Message[]
+  lastMessageAt         DateTime?
+  createdAt             DateTime         @default(now())
+}
+
+model Message {
+  id                    String           @id @default(cuid())
+  conversation          Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversationId        String
+  fromUser              User             @relation("FromUser", fields: [fromUserId], references: [id], onDelete: Cascade)
+  fromUserId            String
+  toUser                User             @relation("ToUser", fields: [toUserId], references: [id], onDelete: Cascade)
+  toUserId              String
+  body                  String
+  readAt                DateTime?
+  createdAt             DateTime         @default(now())
+  
+  @@index([conversationId])
+  @@index([fromUserId])
+  @@index([toUserId])
+}
+
+// ============================================================================
+// SECTORS, DEPARTMENTS & CLUBS
+// ============================================================================
+
+model Sector {
+  id                    String           @id @default(cuid())
+  name                  String           @unique
+  description           String?
+  imageUrl              String?
+  committees            Committee[]
+  createdAt             DateTime         @default(now())
+}
+
+model Department {
+  id                    String           @id @default(cuid())
+  name                  String           @unique
+  description           String?
+  responsibility        String?
+  imageUrl              String?
+  committees            Committee[]
+  createdAt             DateTime         @default(now())
+}
+
+model Club {
+  id                    String           @id @default(cuid())
+  name                  String           @unique
+  description           String?
+  imageUrl              String?
+  committees            Committee[]
+  createdAt             DateTime         @default(now())
+}
+
+// ============================================================================
+// NOTIFICATIONS & AUDIT
+// ============================================================================
+
+model Notification {
+  id                    String           @id @default(cuid())
+  type                  NotificationType
+  title                 String
+  description           String?
+  relatedUserId         String?
+  relatedPostId         String?
+  relatedTaskId         String?
+  read                  Boolean          @default(false)
+  createdAt             DateTime         @default(now())
+}
+
+enum NotificationType {
+  NEW_TASK
+  TASK_APPROVED
+  TASK_REJECTED
+  NEW_EVENT
+  DONATION_REQUIRED
+  RANK_UPDATE
+  FRIEND_REQUEST
+  APPLICATION_UPDATE
+}
+
+model AuditLog {
+  id                    String           @id @default(cuid())
+  actor                 User             @relation("ActorUser", fields: [actorUserId], references: [id], onDelete: Cascade)
+  actorUserId           String
+  action                String
+  meta                  String?          // JSON for additional info
+  createdAt             DateTime         @default(now())
+  
+  @@index([actorUserId])
+  @@index([createdAt])
+}
