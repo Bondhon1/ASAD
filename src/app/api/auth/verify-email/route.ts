@@ -19,10 +19,14 @@ export async function POST(request: NextRequest) {
 
     const { token } = validation.data;
 
+    console.log("Verifying token:", token);
+
     // Find user with this token
     const user = await prisma.user.findUnique({
       where: { emailVerificationToken: token },
     });
+
+    console.log("User found:", user ? `Yes (ID: ${user.id})` : "No");
 
     if (!user) {
       return NextResponse.json(

@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { paymentMethod, senderNumber, trxId, paymentDate, paymentTime, email } =
+    const { paymentMethod, senderNumber, trxId, paymentDate, paymentTime, email, fullName, phone, instituteName, educationLevel } =
       validation.data;
 
     // Find user by email (email should be provided in the request)
@@ -61,6 +61,28 @@ export async function POST(request: NextRequest) {
         { status: 409 }
       );
     }
+
+    // Find or create institute by name
+    let institute = await prisma.institute.findUnique({
+      where: { name: instituteName },
+    });
+
+    if (!institute) {
+      institute = await prisma.institute.create({
+        data: { name: instituteName },
+      });
+    }
+
+    // Update user with basic info
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        fullName,
+        phone,
+        instituteId: institute.id,
+        joiningSemester: educationLevel === "university" ? "University" : `Class ${educationLevel}`,
+      },
+    });
 
     // Create payment record
     const paymentDateTime = new Date(`${paymentDate}T${paymentTime}`);

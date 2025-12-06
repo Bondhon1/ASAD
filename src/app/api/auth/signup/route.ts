@@ -45,6 +45,8 @@ export async function POST(request: NextRequest) {
     const verificationToken = generateEmailVerificationToken();
     const verificationExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
+    console.log("Generated verification token:", verificationToken);
+
     // Create user
     const user = await prisma.user.create({
       data: {
@@ -57,6 +59,8 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    console.log("User created with ID:", user.id, "Token:", user.emailVerificationToken);
+
     // Create application record
     await prisma.application.create({
       data: {
@@ -68,7 +72,11 @@ export async function POST(request: NextRequest) {
     });
 
     // Send verification email
-    const verificationLink = `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/verify-email?token=${verificationToken}`;
+    const host = request.headers.get('host');
+    const protocol = host?.includes('localhost') ? 'http' : 'https';
+    const baseUrl = process.env.NEXTAUTH_URL || 
+                    (host ? `${protocol}://${host}` : 'http://localhost:3000');
+    const verificationLink = `${baseUrl}/verify-email?token=${verificationToken}`;
 
     try {
       await sendVerificationEmail({

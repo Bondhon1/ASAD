@@ -20,6 +20,12 @@ export const EmailVerificationSchema = z.object({
 
 export const InitialPaymentSchema = z.object({
   email: z.string().email("Invalid email address"),
+  fullName: z.string().min(2, "Full name is required"),
+  phone: z.string().regex(/^01[0-9]{9}$/, "Invalid phone number (must be 11 digits starting with 01)"),
+  instituteName: z.string().min(1, "Please select your institution"),
+  educationLevel: z.enum(["7", "8", "9", "10", "11", "12", "university"], {
+    message: "Please select your class/level",
+  }),
   paymentMethod: z
     .enum(["bkash", "nagad", "visa", "mastercard"])
     .refine((val) => val, { message: "Invalid payment method" }),

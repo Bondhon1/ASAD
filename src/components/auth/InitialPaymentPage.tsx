@@ -83,6 +83,12 @@ export default function InitialPaymentPage() {
   const [success, setSuccess] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userEmail, setUserEmail] = useState("");
+  
+  // User basic info
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [instituteName, setInstituteName] = useState("");
+  const [educationLevel, setEducationLevel] = useState("");
 
   // Get user email from URL params or localStorage
   React.useEffect(() => {
@@ -110,7 +116,7 @@ export default function InitialPaymentPage() {
     setError("");
     setLoading(true);
 
-    if (!senderNumber || !trxId || !paymentDate || !paymentTime) {
+    if (!fullName || !phone || !instituteName || !educationLevel || !senderNumber || !trxId || !paymentDate || !paymentTime) {
       setError("Please fill in all fields");
       setLoading(false);
       return;
@@ -122,6 +128,10 @@ export default function InitialPaymentPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: userEmail,
+          fullName,
+          phone,
+          instituteName,
+          educationLevel,
           paymentMethod: selectedMethod,
           senderNumber,
           trxId,
@@ -292,9 +302,81 @@ export default function InitialPaymentPage() {
               )}
             </AnimatePresence>
 
+            {/* Basic Information Section */}
+            <div className="mb-8 pb-8 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-ink mb-6">Personal Information</h3>
+              
+              <motion.div variants={itemVariants} className="mb-6">
+                <label className="block text-sm font-semibold text-ink mb-2">
+                  Full Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Enter your full name"
+                  className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/50 focus:border-[#1E3A5F] transition-all"
+                  required
+                />
+              </motion.div>
+
+              <motion.div variants={itemVariants} className="mb-6">
+                <label className="block text-sm font-semibold text-ink mb-2">
+                  Phone Number <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="01XXXXXXXXX"
+                  className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/50 focus:border-[#1E3A5F] transition-all"
+                  required
+                />
+                <p className="text-xs text-muted mt-1">11 digits starting with 01</p>
+              </motion.div>
+
+              <motion.div variants={itemVariants} className="mb-6">
+                <label className="block text-sm font-semibold text-ink mb-2">
+                  School/Institute <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={instituteName}
+                  onChange={(e) => setInstituteName(e.target.value)}
+                  placeholder="Enter your school/institute name"
+                  className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/50 focus:border-[#1E3A5F] transition-all"
+                  required
+                />
+              </motion.div>
+
+              <motion.div variants={itemVariants} className="mb-6">
+                <label className="block text-sm font-semibold text-ink mb-2">
+                  Class/Education Level <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={educationLevel}
+                  onChange={(e) => setEducationLevel(e.target.value)}
+                  className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/50 focus:border-[#1E3A5F] transition-all"
+                  required
+                >
+                  <option value="">Select your class</option>
+                  <option value="7">Class 7</option>
+                  <option value="8">Class 8</option>
+                  <option value="9">Class 9</option>
+                  <option value="10">Class 10</option>
+                  <option value="11">Class 11</option>
+                  <option value="12">Class 12</option>
+                  <option value="university">University</option>
+                </select>
+              </motion.div>
+            </div>
+
+            {/* Payment Information Section */}
+            <h3 className="text-lg font-semibold text-ink mb-6">Payment Details</h3>
+
             {/* Payment Method Selection */}
             <motion.div variants={itemVariants} className="mb-8">
-              <label className="block text-lg font-semibold text-ink mb-4">
+              <label className="block text-sm font-semibold text-ink mb-4">
                 Select Payment Method
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
