@@ -65,12 +65,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if initial payment exists
+    if (!user.initialPayment) {
+      return NextResponse.json(
+        {
+          error: "Please complete your payment to continue",
+          requiresPayment: true,
+          redirectTo: "/payment",
+        },
+        { status: 403 }
+      );
+    }
+
     // Check if initial payment is verified
-    if (user.initialPayment?.status !== "VERIFIED") {
+    if (user.initialPayment.status === "PENDING") {
       return NextResponse.json(
         {
           error: "Your payment is pending verification. Please wait or contact support.",
           paymentPending: true,
+        },
+        { status: 403 }
+      );
+    }
+
+    if (user.initialPayment.status === "REJECTED") {
+      return NextResponse.json(
+        {
+          error: "Your payment was rejected. Please submit a new payment.",
+          requiresPayment: true,
+          redirectTo: "/payment",
         },
         { status: 403 }
       );

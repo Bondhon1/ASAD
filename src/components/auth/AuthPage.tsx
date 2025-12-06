@@ -68,6 +68,15 @@ export default function AuthPage() {
       const data = await response.json();
 
       if (!response.ok) {
+        // Check if user needs to complete payment
+        if (data.requiresPayment && data.redirectTo) {
+          setError(data.error || "Payment required");
+          setTimeout(() => {
+            window.location.href = data.redirectTo;
+          }, 2000);
+          return;
+        }
+        
         setError(data.error || "Login failed");
         return;
       }
@@ -108,9 +117,6 @@ export default function AuthPage() {
       setSuccess(
         "Signup successful! Please check your email for verification link."
       );
-      setTimeout(() => {
-        window.location.href = "/verify-email";
-      }, 2000);
     } catch (err) {
       setError("Signup failed. Please try again.");
     } finally {

@@ -2,6 +2,8 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
+import Image from "next/image";
 import clsx from "clsx";
 
 type PaymentMethod = "bkash" | "nagad" | "visa" | "mastercard";
@@ -79,6 +81,7 @@ export default function InitialPaymentPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const currentMethod = paymentMethods.find((m) => m.id === selectedMethod)!;
 
@@ -127,12 +130,12 @@ export default function InitialPaymentPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 flex items-center justify-center p-4 relative overflow-hidden">
         <motion.div
-          className="absolute top-0 left-0 w-80 h-80 bg-primary/5 rounded-full blur-3xl"
+          className="absolute top-0 left-0 w-80 h-80 bg-[#1E3A5F]/5 rounded-full blur-3xl"
           animate={{ y: [0, 30, 0] }}
           transition={{ duration: 8, repeat: Infinity }}
         />
         <motion.div
-          className="absolute bottom-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl"
+          className="absolute bottom-0 right-0 w-96 h-96 bg-[#1E3A5F]/5 rounded-full blur-3xl"
           animate={{ y: [0, -30, 0] }}
           transition={{ duration: 8, repeat: Infinity }}
         />
@@ -182,15 +185,53 @@ export default function InitialPaymentPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 p-4 md:p-8 relative overflow-hidden">
+    <div className="min-h-screen bg-white" style={{ fontFamily: 'var(--font-dm-sans), system-ui, sans-serif' }}>
+      {/* Themed Navbar */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-md transition-all duration-300">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="flex h-20 items-center justify-between">
+            <Link href="/" className="flex items-center gap-3 group">
+              <div className="relative h-11 w-11 overflow-hidden rounded-xl shadow-md transition-transform duration-300 group-hover:scale-110">
+                <Image src="/logo.jpg" alt="ASAD Logo" fill className="object-cover" />
+              </div>
+              <span className="text-lg font-bold text-[#1E3A5F]">ASAD</span>
+            </Link>
+            <div className="hidden md:flex items-center gap-8">
+              {['Home', 'About', 'Sectors', 'Activities'].map((item) => (
+                <Link key={item} href="/" className="text-sm font-semibold text-gray-600 hover:text-[#1E3A5F] transition-colors duration-300">{item}</Link>
+              ))}
+              <Link href="/auth" className="rounded-lg bg-[#1E3A5F] px-7 py-3 text-sm font-semibold text-white hover:bg-[#2a4d75] transition-all duration-300">Join Now</Link>
+            </div>
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden flex flex-col gap-1.5 p-2"
+              aria-label="Toggle menu"
+            >
+              <span className={`block h-0.5 w-6 bg-[#1E3A5F] transition-all duration-300 ${mobileMenuOpen ? 'rotate-45 translate-y-2' : ''}`} />
+              <span className={`block h-0.5 w-6 bg-[#1E3A5F] transition-all duration-300 ${mobileMenuOpen ? 'opacity-0' : ''}`} />
+              <span className={`block h-0.5 w-6 bg-[#1E3A5F] transition-all duration-300 ${mobileMenuOpen ? '-rotate-45 -translate-y-2' : ''}`} />
+            </button>
+          </div>
+        </div>
+        <div className={`md:hidden bg-white border-t border-gray-100 overflow-hidden transition-all duration-300 ${mobileMenuOpen ? 'max-h-96 py-4' : 'max-h-0'}`}>
+          <div className="flex flex-col gap-4 px-6">
+            {['Home', 'About', 'Sectors', 'Activities'].map((item) => (
+              <Link key={item} href="/" onClick={() => setMobileMenuOpen(false)} className="text-base font-semibold text-gray-600 hover:text-[#1E3A5F] transition-colors duration-300">{item}</Link>
+            ))}
+            <Link href="/auth" onClick={() => setMobileMenuOpen(false)} className="rounded-lg bg-[#1E3A5F] px-7 py-3 text-center text-sm font-semibold text-white transition-all duration-300">Join Now</Link>
+          </div>
+        </div>
+      </nav>
+
+    <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 p-4 md:p-8 relative overflow-hidden" style={{ paddingTop: '8rem' }}>
       {/* Decorative elements */}
       <motion.div
-        className="absolute top-0 left-0 w-80 h-80 bg-primary/5 rounded-full blur-3xl"
+        className="absolute top-0 left-0 w-80 h-80 bg-[#1E3A5F]/5 rounded-full blur-3xl"
         animate={{ y: [0, 30, 0] }}
         transition={{ duration: 8, repeat: Infinity }}
       />
       <motion.div
-        className="absolute bottom-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl"
+        className="absolute bottom-0 right-0 w-96 h-96 bg-[#1E3A5F]/5 rounded-full blur-3xl"
         animate={{ y: [0, -30, 0] }}
         transition={{ duration: 8, repeat: Infinity }}
       />
@@ -205,7 +246,7 @@ export default function InitialPaymentPage() {
             Complete Your Registration
           </h1>
           <p className="text-lg text-muted">
-            Make a payment of <span className="font-bold text-primary">30 BDT</span> to activate your account
+            Make a payment of <span className="font-bold text-[#1E3A5F]">30 BDT</span> to activate your account
           </p>
         </motion.div>
 
@@ -244,8 +285,8 @@ export default function InitialPaymentPage() {
                     className={clsx(
                       "p-4 rounded-lg border-2 transition-all text-left",
                       selectedMethod === method.id
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-primary/50"
+                        ? "border-[#1E3A5F] bg-[#1E3A5F]/5"
+                        : "border-border hover:border-[#1E3A5F]/50"
                     )}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
@@ -292,7 +333,7 @@ export default function InitialPaymentPage() {
                 value={senderNumber}
                 onChange={(e) => setSenderNumber(e.target.value)}
                 placeholder="Your phone number or account number"
-                className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/50 focus:border-[#1E3A5F] transition-all"
               />
             </motion.div>
 
@@ -305,7 +346,7 @@ export default function InitialPaymentPage() {
                 value={trxId}
                 onChange={(e) => setTrxId(e.target.value)}
                 placeholder="Transaction ID from your payment provider"
-                className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/50 focus:border-[#1E3A5F] transition-all"
               />
               <p className="text-xs text-muted mt-1">
                 Usually found in your transaction receipt or SMS confirmation
@@ -321,7 +362,7 @@ export default function InitialPaymentPage() {
                   type="date"
                   value={paymentDate}
                   onChange={(e) => setPaymentDate(e.target.value)}
-                  className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                  className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/50 focus:border-[#1E3A5F] transition-all"
                 />
               </div>
               <div>
@@ -332,7 +373,7 @@ export default function InitialPaymentPage() {
                   type="time"
                   value={paymentTime}
                   onChange={(e) => setPaymentTime(e.target.value)}
-                  className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                  className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/50 focus:border-[#1E3A5F] transition-all"
                 />
               </div>
             </motion.div>
@@ -352,7 +393,7 @@ export default function InitialPaymentPage() {
               variants={itemVariants}
               type="submit"
               disabled={loading}
-              className="w-full px-4 py-4 bg-primary text-white rounded-lg font-semibold hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-lg"
+              className="w-full px-4 py-4 bg-gradient-to-r from-blue-900 to-indigo-800 text-white rounded-lg font-semibold hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-lg"
             >
               {loading ? (
                 <>
@@ -401,7 +442,7 @@ export default function InitialPaymentPage() {
               <div
                 className={clsx(
                   "w-10 h-10 rounded-full flex items-center justify-center font-semibold text-white mb-2",
-                  item.done ? "bg-green-500" : "bg-primary"
+                  item.done ? "bg-green-500" : "bg-[#1E3A5F]"
                 )}
               >
                 {item.done ? "✓" : item.step}
@@ -411,6 +452,39 @@ export default function InitialPaymentPage() {
           ))}
         </motion.div>
       </div>
+    </div>
+
+      {/* Footer */}
+      <footer className="bg-[#1E3A5F] px-6 py-20 text-white">
+        <div className="mx-auto max-w-7xl">
+          <div className="grid gap-12 md:grid-cols-3">
+            <div>
+              <h3 className="text-2xl font-bold">ASAD</h3>
+              <p className="mt-1 text-[#4A90D9] font-semibold">Amar Somoy Amar Desh</p>
+              <p className="mt-4 text-white/60">Building a stronger Bangladesh through dedicated youth volunteerism.</p>
+            </div>
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-[#4A90D9]">Explore</h4>
+              <div className="mt-6 flex flex-col gap-3 text-white/60">
+                <Link href="/" className="hover:text-white transition-colors duration-300">Home</Link>
+                <Link href="/" className="hover:text-white transition-colors duration-300">About Us</Link>
+                <Link href="/" className="hover:text-white transition-colors duration-300">Sectors</Link>
+                <Link href="/auth" className="hover:text-white transition-colors duration-300">Join Us</Link>
+              </div>
+            </div>
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-[#4A90D9]">Contact</h4>
+              <div className="mt-6 space-y-3 text-white/60">
+                <p>FB: Asadian Asad</p>
+                <p>hello@asadofficial.org</p>
+              </div>
+            </div>
+          </div>
+          <div className="mt-16 border-t border-white/10 pt-8 text-center text-sm text-white/40">
+            © {new Date().getFullYear()} Amar Somoy Amar Desh. All rights reserved.
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

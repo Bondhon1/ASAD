@@ -62,6 +62,11 @@ export default function EmailVerificationPage() {
         const data = await response.json();
         setEmail(data.email);
         setVerified(true);
+        
+        // Redirect to payment after 3 seconds
+        setTimeout(() => {
+          window.location.href = "/payment";
+        }, 3000);
       } catch (err) {
         setError(
           "Email verification failed. The link may have expired."
