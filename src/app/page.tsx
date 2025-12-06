@@ -93,7 +93,7 @@ export default function NavyTheme() {
               {['Home', 'About', 'Sectors', 'Activities'].map((item) => (
                 <Link key={item} href="#" className="text-sm font-semibold text-gray-600 hover:text-[#1E3A5F] transition-colors duration-300">{item}</Link>
               ))}
-              <Link href="#join" className="rounded-lg bg-[#1E3A5F] px-7 py-3 text-sm font-semibold text-white hover:bg-[#2a4d75] transition-all duration-300">Join Now</Link>
+              <Link href="/auth" className="rounded-lg bg-[#1E3A5F] px-7 py-3 text-sm font-semibold text-white hover:bg-[#2a4d75] transition-all duration-300">Join Now</Link>
             </div>
             {/* Mobile burger button */}
             <button
@@ -113,7 +113,7 @@ export default function NavyTheme() {
             {['Home', 'About', 'Sectors', 'Activities'].map((item) => (
               <Link key={item} href="#" onClick={() => setMobileMenuOpen(false)} className="text-base font-semibold text-gray-600 hover:text-[#1E3A5F] transition-colors duration-300">{item}</Link>
             ))}
-            <Link href="#join" onClick={() => setMobileMenuOpen(false)} className="rounded-lg bg-[#1E3A5F] px-7 py-3 text-center text-sm font-semibold text-white transition-all duration-300">Join Now</Link>
+            <Link href="/auth" onClick={() => setMobileMenuOpen(false)} className="rounded-lg bg-[#1E3A5F] px-7 py-3 text-center text-sm font-semibold text-white transition-all duration-300">Join Now</Link>
           </div>
         </div>
       </nav>
@@ -790,6 +790,17 @@ export default function NavyTheme() {
                 <p className="mt-3 text-gray-600 leading-relaxed">{option.detail}</p>
               </div>
             ))}
+          </div>
+          <div className={`mt-12 text-center transition-all duration-700 delay-300 ${joinAnim.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+            <Link
+              href="/auth"
+              className="inline-flex items-center gap-2 rounded-lg bg-[#1E3A5F] px-8 py-4 text-base font-semibold text-white hover:bg-[#2a4d75] transition-all duration-300 hover:scale-105 shadow-lg"
+            >
+              Start Your Journey
+              <svg className="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+              </svg>
+            </Link>
           </div>
         </div>
       </section>

@@ -2,7 +2,7 @@ export const heroContent = {
   title: 'UNITING YOUTH, CULTIVATING SKILLS, BUILDING A STRONGER NATION.',
   description:
     'ASAD mobilizes students from Grade 8 to university to lead cultural, educational, environmental, medical, and humanitarian initiatives across Bangladesh.',
-  primaryAction: { label: 'Become a Volunteer', href: '#join' },
+  primaryAction: { label: 'Become a Volunteer', href: '/auth' },
   secondaryAction: { label: 'Contact', href: '#contact' },
 };
 
