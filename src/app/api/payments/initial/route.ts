@@ -7,16 +7,6 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
-    // Get session to verify user is authenticated
-    const session = await getServerSession();
-
-    if (!session || !session.user?.email) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
     const body = await request.json();
 
     // Validate input
@@ -30,18 +20,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { paymentMethod, senderNumber, trxId, paymentDate, paymentTime } =
+    const { paymentMethod, senderNumber, trxId, paymentDate, paymentTime, email } =
       validation.data;
 
-    // Find user by email
+    // Find user by email (email should be provided in the request)
+    if (!email) {
+      return NextResponse.json(
+        { error: "Email is required" },
+        { status: 400 }
+      );
+    }
+
     const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
+      where: { email },
     });
 
     if (!user) {
       return NextResponse.json(
         { error: "User not found" },
         { status: 404 }
+      );
+    }
+
+    // Check if email is verified
+    if (!user.emailVerified) {
+      return NextResponse.json(
+        { error: "Please verify your email first" },
+        { status: 403 }
       );
     }
 

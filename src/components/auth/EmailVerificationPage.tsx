@@ -63,9 +63,12 @@ export default function EmailVerificationPage() {
         setEmail(data.email);
         setVerified(true);
         
+        // Store email in localStorage for payment page
+        localStorage.setItem("userEmail", data.email);
+        
         // Redirect to payment after 3 seconds
         setTimeout(() => {
-          window.location.href = "/payment";
+          window.location.href = `/payment?email=${encodeURIComponent(data.email)}`;
         }, 3000);
       } catch (err) {
         setError(

@@ -82,6 +82,26 @@ export default function InitialPaymentPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userEmail, setUserEmail] = useState("");
+
+  // Get user email from URL params or localStorage
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const emailFromUrl = params.get("email");
+    const emailFromStorage = localStorage.getItem("userEmail");
+    
+    if (emailFromUrl) {
+      setUserEmail(emailFromUrl);
+    } else if (emailFromStorage) {
+      setUserEmail(emailFromStorage);
+    } else {
+      // Redirect to auth if no email found
+      setError("Session expired. Please sign up again.");
+      setTimeout(() => {
+        window.location.href = "/auth";
+      }, 2000);
+    }
+  }, []);
 
   const currentMethod = paymentMethods.find((m) => m.id === selectedMethod)!;
 
@@ -101,6 +121,7 @@ export default function InitialPaymentPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          email: userEmail,
           paymentMethod: selectedMethod,
           senderNumber,
           trxId,

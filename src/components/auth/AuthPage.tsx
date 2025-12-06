@@ -71,8 +71,10 @@ export default function AuthPage() {
         // Check if user needs to complete payment
         if (data.requiresPayment && data.redirectTo) {
           setError(data.error || "Payment required");
+          // Store email for payment page
+          localStorage.setItem("userEmail", email);
           setTimeout(() => {
-            window.location.href = data.redirectTo;
+            window.location.href = `${data.redirectTo}?email=${encodeURIComponent(email)}`;
           }, 2000);
           return;
         }

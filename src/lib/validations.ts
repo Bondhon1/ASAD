@@ -19,6 +19,7 @@ export const EmailVerificationSchema = z.object({
 });
 
 export const InitialPaymentSchema = z.object({
+  email: z.string().email("Invalid email address"),
   paymentMethod: z
     .enum(["bkash", "nagad", "visa", "mastercard"])
     .refine((val) => val, { message: "Invalid payment method" }),
