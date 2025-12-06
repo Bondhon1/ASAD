@@ -3,6 +3,8 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import clsx from "clsx";
+import Image from "next/image";
+import Link from "next/link";
 
 type AuthMode = "login" | "signup";
 
@@ -41,11 +43,6 @@ export default function AuthPage() {
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [institute, setInstitute] = useState("");
-  const [joiningSemester, setJoiningSemester] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -91,24 +88,13 @@ export default function AuthPage() {
     setError("");
     setLoading(true);
 
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
-      setLoading(false);
-      return;
-    }
-
     try {
       const response = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fullName,
           email,
-          phone,
           password,
-          confirmPassword,
-          instituteId: institute,
-          joiningSemester: joiningSemester || undefined,
         }),
       });
 
@@ -132,16 +118,56 @@ export default function AuthPage() {
     }
   };
 
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 flex items-center justify-center p-4 md:p-8 overflow-hidden relative">
+    <div className="min-h-screen bg-white" style={{ fontFamily: 'var(--font-dm-sans), system-ui, sans-serif' }}>
+      {/* Themed Navbar */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-md transition-all duration-300">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="flex h-20 items-center justify-between">
+            <Link href="/" className="flex items-center gap-3 group">
+              <div className="relative h-11 w-11 overflow-hidden rounded-xl shadow-md transition-transform duration-300 group-hover:scale-110">
+                <Image src="/logo.jpg" alt="ASAD Logo" fill className="object-cover" />
+              </div>
+              <span className="text-lg font-bold text-[#1E3A5F]">ASAD</span>
+            </Link>
+            <div className="hidden md:flex items-center gap-8">
+              {['Home', 'About', 'Sectors', 'Activities'].map((item) => (
+                <Link key={item} href="/" className="text-sm font-semibold text-gray-600 hover:text-[#1E3A5F] transition-colors duration-300">{item}</Link>
+              ))}
+              <Link href="/auth" className="rounded-lg bg-[#1E3A5F] px-7 py-3 text-sm font-semibold text-white hover:bg-[#2a4d75] transition-all duration-300">Join Now</Link>
+            </div>
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden flex flex-col gap-1.5 p-2"
+              aria-label="Toggle menu"
+            >
+              <span className={`block h-0.5 w-6 bg-[#1E3A5F] transition-all duration-300 ${mobileMenuOpen ? 'rotate-45 translate-y-2' : ''}`} />
+              <span className={`block h-0.5 w-6 bg-[#1E3A5F] transition-all duration-300 ${mobileMenuOpen ? 'opacity-0' : ''}`} />
+              <span className={`block h-0.5 w-6 bg-[#1E3A5F] transition-all duration-300 ${mobileMenuOpen ? '-rotate-45 -translate-y-2' : ''}`} />
+            </button>
+          </div>
+        </div>
+        <div className={`md:hidden bg-white border-t border-gray-100 overflow-hidden transition-all duration-300 ${mobileMenuOpen ? 'max-h-96 py-4' : 'max-h-0'}`}>
+          <div className="flex flex-col gap-4 px-6">
+            {['Home', 'About', 'Sectors', 'Activities'].map((item) => (
+              <Link key={item} href="/" onClick={() => setMobileMenuOpen(false)} className="text-base font-semibold text-gray-600 hover:text-[#1E3A5F] transition-colors duration-300">{item}</Link>
+            ))}
+            <Link href="/auth" onClick={() => setMobileMenuOpen(false)} className="rounded-lg bg-[#1E3A5F] px-7 py-3 text-center text-sm font-semibold text-white transition-all duration-300">Join Now</Link>
+          </div>
+        </div>
+      </nav>
+
+    <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 flex items-center justify-center p-4 md:p-8 overflow-hidden relative" style={{ paddingTop: '8rem' }}>
       {/* Decorative background elements */}
       <motion.div
-        className="absolute top-0 left-0 w-80 h-80 bg-primary/5 rounded-full blur-3xl"
+        className="absolute top-0 left-0 w-80 h-80 bg-[#1E3A5F]/5 rounded-full blur-3xl"
         animate={{ y: [0, 30, 0] }}
         transition={{ duration: 8, repeat: Infinity }}
       />
       <motion.div
-        className="absolute bottom-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl"
+        className="absolute bottom-0 right-0 w-96 h-96 bg-[#1E3A5F]/5 rounded-full blur-3xl"
         animate={{ y: [0, -30, 0] }}
         transition={{ duration: 8, repeat: Infinity }}
       />
@@ -173,9 +199,9 @@ export default function AuthPage() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.2 }}
                 >
-                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                  <div className="w-12 h-12 bg-[#1E3A5F]/10 rounded-lg flex items-center justify-center">
                     <svg
-                      className="w-6 h-6 text-primary"
+                      className="w-6 h-6 text-[#1E3A5F]"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -197,9 +223,9 @@ export default function AuthPage() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.3 }}
                 >
-                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                  <div className="w-12 h-12 bg-[#1E3A5F]/10 rounded-lg flex items-center justify-center">
                     <svg
-                      className="w-6 h-6 text-primary"
+                      className="w-6 h-6 text-[#1E3A5F]"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -221,9 +247,9 @@ export default function AuthPage() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.4 }}
                 >
-                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                  <div className="w-12 h-12 bg-[#1E3A5F]/10 rounded-lg flex items-center justify-center">
                     <svg
-                      className="w-6 h-6 text-primary"
+                      className="w-6 h-6 text-[#1E3A5F]"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -256,7 +282,7 @@ export default function AuthPage() {
               animate="animate"
             >
               {/* Form Header with Mode Toggle */}
-              <div className="bg-gradient-to-r from-primary to-primary/80 p-8 text-white">
+              <div className="bg-gradient-to-r from-blue-900 to-indigo-800 p-8 text-white">
                 <motion.div
                   className="flex gap-4 mb-6"
                   layout
@@ -268,7 +294,7 @@ export default function AuthPage() {
                       className={clsx(
                         "px-4 py-2 rounded-lg font-semibold transition-all duration-300",
                         mode === m
-                          ? "bg-white text-primary"
+                          ? "bg-white text-blue-900"
                           : "text-white/70 hover:text-white"
                       )}
                     >
@@ -299,7 +325,7 @@ export default function AuthPage() {
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
-                      className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm"
+                      className="mb-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 text-blue-900 rounded-lg text-sm"
                     >
                       {error}
                     </motion.div>
@@ -369,7 +395,7 @@ export default function AuthPage() {
                         variants={itemVariants}
                         type="submit"
                         disabled={loading}
-                        className="w-full mt-6 px-4 py-3 bg-primary text-white rounded-lg font-semibold hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        className="w-full mt-6 px-4 py-3 bg-gradient-to-r from-blue-900 to-indigo-800 text-white rounded-lg font-semibold hover:from-blue-800 hover:to-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                       >
                         {loading ? (
                           <>
@@ -400,19 +426,6 @@ export default function AuthPage() {
                     >
                       <motion.div variants={itemVariants}>
                         <label className="block text-sm font-semibold text-ink mb-2">
-                          Full Name
-                        </label>
-                        <input
-                          type="text"
-                          value={fullName}
-                          onChange={(e) => setFullName(e.target.value)}
-                          placeholder="John Doe"
-                          className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
-                        />
-                      </motion.div>
-
-                      <motion.div variants={itemVariants}>
-                        <label className="block text-sm font-semibold text-ink mb-2">
                           Email Address
                         </label>
                         <input
@@ -420,49 +433,7 @@ export default function AuthPage() {
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           placeholder="your@email.com"
-                          className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
-                        />
-                      </motion.div>
-
-                      <motion.div variants={itemVariants}>
-                        <label className="block text-sm font-semibold text-ink mb-2">
-                          Phone Number
-                        </label>
-                        <input
-                          type="tel"
-                          value={phone}
-                          onChange={(e) => setPhone(e.target.value)}
-                          placeholder="+880154xxxxxxxx"
-                          className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
-                        />
-                      </motion.div>
-
-                      <motion.div variants={itemVariants}>
-                        <label className="block text-sm font-semibold text-ink mb-2">
-                          Educational Institute
-                        </label>
-                        <select
-                          value={institute}
-                          onChange={(e) => setInstitute(e.target.value)}
-                          className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
-                        >
-                          <option value="">Select your institute</option>
-                          <option value="buet">BUET</option>
-                          <option value="du">Dhaka University</option>
-                          <option value="bracu">BRAC University</option>
-                          <option value="diu">DIU</option>
-                        </select>
-                      </motion.div>
-
-                      <motion.div variants={itemVariants}>
-                        <label className="block text-sm font-semibold text-ink mb-2">
-                          Joining Semester (Optional)
-                        </label>
-                        <input
-                          type="text"
-                          value={joiningSemester}
-                          onChange={(e) => setJoiningSemester(e.target.value)}
-                          placeholder="e.g., Spring 2024"
+                          required
                           className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
                         />
                       </motion.div>
@@ -476,6 +447,7 @@ export default function AuthPage() {
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           placeholder="••••••••"
+                          required
                           className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
                         />
                         <p className="text-xs text-muted mt-1">
@@ -483,24 +455,11 @@ export default function AuthPage() {
                         </p>
                       </motion.div>
 
-                      <motion.div variants={itemVariants}>
-                        <label className="block text-sm font-semibold text-ink mb-2">
-                          Confirm Password
-                        </label>
-                        <input
-                          type="password"
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                          placeholder="••••••••"
-                          className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
-                        />
-                      </motion.div>
-
                       <motion.button
                         variants={itemVariants}
                         type="submit"
                         disabled={loading}
-                        className="w-full mt-6 px-4 py-3 bg-primary text-white rounded-lg font-semibold hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        className="w-full mt-6 px-4 py-3 bg-gradient-to-r from-blue-900 to-indigo-800 text-white rounded-lg font-semibold hover:from-blue-800 hover:to-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                       >
                         {loading ? (
                           <>
@@ -585,6 +544,39 @@ export default function AuthPage() {
           </motion.div>
         </div>
       </div>
+    </div>
+
+      {/* Footer */}
+      <footer className="bg-[#1E3A5F] px-6 py-20 text-white">
+        <div className="mx-auto max-w-7xl">
+          <div className="grid gap-12 md:grid-cols-3">
+            <div>
+              <h3 className="text-2xl font-bold">ASAD</h3>
+              <p className="mt-1 text-[#4A90D9] font-semibold">Amar Somoy Amar Desh</p>
+              <p className="mt-4 text-white/60">Building a stronger Bangladesh through dedicated youth volunteerism.</p>
+            </div>
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-[#4A90D9]">Explore</h4>
+              <div className="mt-6 flex flex-col gap-3 text-white/60">
+                <Link href="/" className="hover:text-white transition-colors duration-300">Home</Link>
+                <Link href="/" className="hover:text-white transition-colors duration-300">About Us</Link>
+                <Link href="/" className="hover:text-white transition-colors duration-300">Sectors</Link>
+                <Link href="/auth" className="hover:text-white transition-colors duration-300">Join Us</Link>
+              </div>
+            </div>
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-[#4A90D9]">Contact</h4>
+              <div className="mt-6 space-y-3 text-white/60">
+                <p>FB: Asadian Asad</p>
+                <p>hello@asadofficial.org</p>
+              </div>
+            </div>
+          </div>
+          <div className="mt-16 border-t border-white/10 pt-8 text-center text-sm text-white/40">
+            © {new Date().getFullYear()} Amar Somoy Amar Desh. All rights reserved.
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

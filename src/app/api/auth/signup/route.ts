@@ -21,14 +21,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const {
-      fullName,
-      email,
-      phone,
-      password,
-      instituteId,
-      joiningSemester,
-    } = validation.data;
+    const { email, password } = validation.data;
+
+    // Generate username from email
+    const username = email.split('@')[0];
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
@@ -38,18 +34,6 @@ export async function POST(request: NextRequest) {
     if (existingUser) {
       return NextResponse.json(
         { error: "Email already registered" },
-        { status: 409 }
-      );
-    }
-
-    // Check if phone already exists
-    const existingPhone = await prisma.user.findUnique({
-      where: { phone },
-    });
-
-    if (existingPhone) {
-      return NextResponse.json(
-        { error: "Phone number already registered" },
         { status: 409 }
       );
     }
@@ -64,12 +48,9 @@ export async function POST(request: NextRequest) {
     // Create user
     const user = await prisma.user.create({
       data: {
-        fullName,
+        username,
         email,
-        phone,
         password: hashedPassword,
-        instituteId,
-        joiningSemester,
         status: "APPLICANT",
         emailVerificationToken: verificationToken,
         emailVerificationExpiry: verificationExpiry,
@@ -92,7 +73,7 @@ export async function POST(request: NextRequest) {
     try {
       await sendVerificationEmail({
         email,
-        fullName,
+        fullName: username, // Use username as display name
         verificationLink,
       });
     } catch (emailError) {
