@@ -79,12 +79,17 @@ export async function POST(request: NextRequest) {
 
     // Check if initial payment is verified
     if (user.initialPayment.status === "PENDING") {
+      // Allow login but will show message in dashboard
       return NextResponse.json(
         {
-          error: "Your payment is pending verification. Please wait or contact support.",
+          success: true,
+          message: "Login successful",
+          userId: user.id,
+          email: user.email,
+          status: user.status,
           paymentPending: true,
         },
-        { status: 403 }
+        { status: 200 }
       );
     }
 

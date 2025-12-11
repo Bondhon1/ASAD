@@ -73,7 +73,21 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Update user with basic info
+    // Check if phone number is already used by another user
+    if (phone) {
+      const existingPhoneUser = await prisma.user.findUnique({
+        where: { phone },
+      });
+
+      if (existingPhoneUser && existingPhoneUser.id !== user.id) {
+        return NextResponse.json(
+          { error: "Phone number already registered with another account" },
+          { status: 409 }
+        );
+      }
+    }
+
+    // Update user with basic info and status
     await prisma.user.update({
       where: { id: user.id },
       data: {
@@ -81,6 +95,7 @@ export async function POST(request: NextRequest) {
         phone,
         instituteId: institute.id,
         joiningSemester: educationLevel === "university" ? "University" : `Class ${educationLevel}`,
+        status: "INTERVIEW_REQUESTED",
       },
     });
 
@@ -100,15 +115,31 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Update application with payment info
-    await prisma.application.update({
+    // Create or update application with payment info
+    const existingApplication = await prisma.application.findUnique({
       where: { userId: user.id },
-      data: {
-        trxId,
-        paymentMethod,
-        status: "INTERVIEW_SCHEDULED",
-      },
     });
+
+    if (existingApplication) {
+      await prisma.application.update({
+        where: { userId: user.id },
+        data: {
+          trxId,
+          paymentMethod,
+          status: "INTERVIEW_REQUESTED",
+        },
+      });
+    } else {
+      // Create new application for Google users who don't have one
+      await prisma.application.create({
+        data: {
+          userId: user.id,
+          trxId,
+          paymentMethod,
+          status: "INTERVIEW_REQUESTED",
+        },
+      });
+    }
 
     return NextResponse.json(
       {

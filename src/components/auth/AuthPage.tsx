@@ -1,17 +1,33 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import clsx from "clsx";
 import Image from "next/image";
 import Link from "next/link";
+import { signIn } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 
 type AuthMode = "login" | "signup";
 
 const authModeVariants = {
   initial: { opacity: 0, x: 100 },
-  animate: { opacity: 1, x: 0 },
-  exit: { opacity: 0, x: -100 },
+  animate: { 
+    opacity: 1, 
+    x: 0,
+    transition: {
+      type: "spring",
+      stiffness: 260,
+      damping: 25,
+    }
+  },
+  exit: { 
+    opacity: 0, 
+    x: -100,
+    transition: {
+      duration: 0.2,
+    }
+  },
 };
 
 const containerVariants = {
@@ -20,8 +36,9 @@ const containerVariants = {
     opacity: 1,
     y: 0,
     transition: {
-      staggerChildren: 0.1,
-      delayChildren: 0.2,
+      staggerChildren: 0.08,
+      delayChildren: 0.15,
+      ease: [0.25, 0.46, 0.45, 0.94],
     },
   },
 };
@@ -33,19 +50,32 @@ const itemVariants = {
     y: 0,
     transition: {
       type: "spring" as const,
-      stiffness: 300,
-      damping: 30,
+      stiffness: 260,
+      damping: 25,
     },
   },
 };
 
 export default function AuthPage() {
+  const searchParams = useSearchParams();
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  useEffect(() => {
+    // Check for OAuth errors in URL
+    const oauthError = searchParams.get("error");
+    if (oauthError) {
+      if (oauthError === "OAuthAccountNotLinked") {
+        setError("This email is already registered. Please sign in with email/password.");
+      } else {
+        setError("Authentication failed. Please try again.");
+      }
+    }
+  }, [searchParams]);
 
   const handleModeChange = (newMode: AuthMode) => {
     setError("");
@@ -59,37 +89,27 @@ export default function AuthPage() {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+      // Use NextAuth signIn for credentials
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        // Check if user needs to complete payment
-        if (data.requiresPayment && data.redirectTo) {
-          setError(data.error || "Payment required");
-          // Store email for payment page
-          localStorage.setItem("userEmail", email);
-          setTimeout(() => {
-            window.location.href = `${data.redirectTo}?email=${encodeURIComponent(email)}`;
-          }, 2000);
-          return;
-        }
-        
-        setError(data.error || "Login failed");
+      if (result?.error) {
+        setError("Invalid email or password");
+        setLoading(false);
         return;
       }
 
-      setSuccess("Login successful! Redirecting...");
-      setTimeout(() => {
-        window.location.href = "/dashboard";
-      }, 1000);
+      if (result?.ok) {
+        setSuccess("Login successful! Redirecting...");
+        setTimeout(() => {
+          window.location.href = "/dashboard";
+        }, 1000);
+      }
     } catch (err) {
       setError("Login failed. Please try again.");
-    } finally {
       setLoading(false);
     }
   };
@@ -505,6 +525,7 @@ export default function AuthPage() {
 
                   <button
                     type="button"
+                    onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
                     className="w-full px-4 py-3 border border-border rounded-lg hover:bg-surface transition-all flex items-center justify-center gap-3 font-semibold text-ink"
                   >
                     <svg

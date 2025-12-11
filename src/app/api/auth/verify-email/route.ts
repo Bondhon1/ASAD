@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
         emailVerified: true,
         emailVerificationToken: null,
         emailVerificationExpiry: null,
-        status: "INTERVIEW_SCHEDULED", // Move to next stage after email verification
+        // Status remains APPLICANT until payment is made
       },
     });
 
