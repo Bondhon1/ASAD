@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { CheckCircle, XCircle, Calendar, Eye } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { CheckCircle, XCircle, Calendar, Eye, AlertTriangle } from "lucide-react";
+import DashboardLayout from "@/components/dashboard/DashboardLayout";
 
 interface Application {
   id: string;
@@ -20,19 +23,71 @@ interface Application {
 }
 
 export default function NewRequestsPage() {
+  const router = useRouter();
+  const { data: session, status } = useSession();
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
+  const [user, setUser] = useState<any>(null);
+  const [hasAvailableSlots, setHasAvailableSlots] = useState(true);
 
   useEffect(() => {
-    fetchApplications();
-  }, []);
+    // Check authentication and fetch user
+    const fetchUserAndApplications = async () => {
+      if (status === "unauthenticated") {
+        router.push("/auth");
+        return;
+      }
+
+      if (status === "loading") return;
+
+      const userEmail = session?.user?.email || localStorage.getItem("userEmail");
+      if (!userEmail) {
+        router.push("/auth");
+        return;
+      }
+
+      try {
+        // Fetch user profile
+        const userResponse = await fetch(`/api/user/profile?email=${encodeURIComponent(userEmail)}`);
+        const userData = await userResponse.json();
+        
+        if (!userData.user || (userData.user.role !== "HR" && userData.user.role !== "MASTER")) {
+          router.push("/dashboard");
+          return;
+        }
+        
+        setUser(userData.user);
+        
+        // Fetch applications
+        const response = await fetch("/api/hr/applications?status=INTERVIEW_REQUESTED");
+        const data = await response.json();
+        setApplications(data.applications || []);
+        
+        // Check slot availability
+        const slotsResponse = await fetch("/api/hr/interview-slots/available");
+        const slotsData = await slotsResponse.json();
+        setHasAvailableSlots(slotsData.hasAvailableSlots);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserAndApplications();
+  }, [router, session, status]);
 
   const fetchApplications = async () => {
     try {
       const response = await fetch("/api/hr/applications?status=INTERVIEW_REQUESTED");
       const data = await response.json();
       setApplications(data.applications || []);
+      
+      // Refresh slot availability
+      const slotsResponse = await fetch("/api/hr/interview-slots/available");
+      const slotsData = await slotsResponse.json();
+      setHasAvailableSlots(slotsData.hasAvailableSlots);
     } catch (error) {
       console.error("Error fetching applications:", error);
     } finally {
@@ -41,17 +96,27 @@ export default function NewRequestsPage() {
   };
 
   const handleApprove = async (applicationId: string) => {
+    if (!hasAvailableSlots) {
+      alert("No available interview slots. Please create slots first.");
+      return;
+    }
+
     try {
       const response = await fetch(`/api/hr/applications/${applicationId}/approve`, {
         method: "POST",
       });
       
+      const data = await response.json();
+      
       if (response.ok) {
-        alert("Application approved! Payment verified.");
+        alert(`Application approved! Assigned to interview on ${new Date(data.slot.startTime).toLocaleString()}\n\nMeet Link: ${data.slot.meetLink}`);
         fetchApplications();
+      } else {
+        alert(data.error || "Failed to approve application");
       }
     } catch (error) {
       console.error("Error approving application:", error);
+      alert("Failed to approve application");
     }
   };
 
@@ -77,20 +142,48 @@ export default function NewRequestsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1E3A5F] mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading applications...</p>
+      <DashboardLayout
+        userRole="HR"
+        userName="Loading..."
+        userEmail=""
+      >
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1E3A5F] mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading applications...</p>
+          </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
+  if (!user) return null;
+
   return (
+    <DashboardLayout
+      userRole={(user.role as "VOLUNTEER" | "HR" | "MASTER") || "HR"}
+      userName={user.fullName || user.username || "HR"}
+      userEmail={user.email}
+    >
     <div>
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900">New Volunteer Requests</h1>
         <p className="text-gray-600 mt-2">Review and approve payment submissions</p>
+        
+        {!hasAvailableSlots && (
+          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-semibold text-yellow-900">No Interview Slots Available</h3>
+              <p className="text-sm text-yellow-700 mt-1">
+                You need to create interview slots before approving applications. 
+                <a href="/dashboard/hr/interviews" className="underline ml-1 font-medium">
+                  Create slots now →
+                </a>
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -146,8 +239,13 @@ export default function NewRequestsPage() {
                           </button>
                           <button
                             onClick={() => handleApprove(app.id)}
-                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg"
-                            title="Approve"
+                            disabled={!hasAvailableSlots}
+                            className={`p-2 rounded-lg ${
+                              hasAvailableSlots
+                                ? "text-green-600 hover:bg-green-50 cursor-pointer"
+                                : "text-gray-400 bg-gray-100 cursor-not-allowed"
+                            }`}
+                            title={hasAvailableSlots ? "Approve" : "No slots available"}
                           >
                             <CheckCircle size={18} />
                           </button>
@@ -229,5 +327,6 @@ export default function NewRequestsPage() {
         </div>
       )}
     </div>
+    </DashboardLayout>
   );
 }

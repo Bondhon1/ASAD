@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import clsx from "clsx";
 import Image from "next/image";
@@ -16,7 +16,7 @@ const authModeVariants = {
     opacity: 1, 
     x: 0,
     transition: {
-      type: "spring",
+      type: "spring" as const,
       stiffness: 260,
       damping: 25,
     }
@@ -38,7 +38,7 @@ const containerVariants = {
     transition: {
       staggerChildren: 0.08,
       delayChildren: 0.15,
-      ease: [0.25, 0.46, 0.45, 0.94],
+      ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number],
     },
   },
 };
@@ -56,7 +56,7 @@ const itemVariants = {
   },
 };
 
-export default function AuthPage() {
+function AuthPageContent() {
   const searchParams = useSearchParams();
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
@@ -607,5 +607,17 @@ export default function AuthPage() {
         </div>
       </footer>
     </div>
+  );
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1E3A5F]"></div>
+      </div>
+    }>
+      <AuthPageContent />
+    </Suspense>
   );
 }

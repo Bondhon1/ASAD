@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -8,7 +9,18 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // TODO: Add authentication check for HR/MASTER role
+    const session = await getServerSession();
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const hrUser = await prisma.user.findUnique({
+      where: { email: session.user.email },
+    });
+
+    if (!hrUser || (hrUser.role !== "HR" && hrUser.role !== "MASTER")) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const { id: applicationId } = await params;
 
@@ -25,20 +37,63 @@ export async function POST(
       );
     }
 
-    // Update initial payment status to VERIFIED
-    await prisma.initialPayment.update({
-      where: { userId: application.userId },
-      data: {
-        status: "VERIFIED",
-        verifiedAt: new Date(),
+    // Find the first available slot (not full, ordered by start time)
+    const availableSlot = await prisma.interviewSlot.findFirst({
+      where: {
+        filledCount: {
+          lt: prisma.interviewSlot.fields.capacity,
+        },
       },
+      orderBy: { startTime: "asc" },
     });
 
-    // Application status remains INTERVIEW_REQUESTED
-    // It will be updated to INTERVIEW_SCHEDULED when HR sets an interview date
+    if (!availableSlot) {
+      return NextResponse.json(
+        { error: "No available interview slots. Please create slots first." },
+        { status: 400 }
+      );
+    }
+
+    // Use transaction to ensure data consistency
+    await prisma.$transaction([
+      // Update initial payment status to VERIFIED
+      prisma.initialPayment.update({
+        where: { userId: application.userId },
+        data: {
+          status: "VERIFIED",
+          verifiedAt: new Date(),
+        },
+      }),
+      // Assign application to slot and update status
+      prisma.application.update({
+        where: { id: applicationId },
+        data: {
+          interviewSlotId: availableSlot.id,
+          interviewDate: availableSlot.startTime,
+          status: "INTERVIEW_SCHEDULED",
+        },
+      }),
+      // Increment slot's filled count
+      prisma.interviewSlot.update({
+        where: { id: availableSlot.id },
+        data: {
+          filledCount: {
+            increment: 1,
+          },
+        },
+      }),
+    ]);
 
     return NextResponse.json(
-      { success: true, message: "Payment approved. Application is ready for interview scheduling." },
+      { 
+        success: true, 
+        message: "Application approved and assigned to interview slot.",
+        slot: {
+          startTime: availableSlot.startTime,
+          endTime: availableSlot.endTime,
+          meetLink: availableSlot.meetLink,
+        }
+      },
       { status: 200 }
     );
   } catch (error) {

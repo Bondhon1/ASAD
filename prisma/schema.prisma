@@ -180,11 +180,14 @@ model Application {
   status                ApplicationStatus @default(PENDING)
   interviewDate         DateTime?
   interviewResult       InterviewResult?
+  interviewSlot         InterviewSlot?   @relation(fields: [interviewSlotId], references: [id], onDelete: SetNull)
+  interviewSlotId       String?
   appliedAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
   
   @@index([status])
   @@index([interviewDate])
+  @@index([interviewSlotId])
 }
 
 enum ApplicationStatus {
@@ -558,6 +561,22 @@ enum LeaveStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+model InterviewSlot {
+  id                    String           @id @default(cuid())
+  startTime             DateTime
+  endTime               DateTime
+  meetLink              String
+  capacity              Int              @default(20)
+  filledCount           Int              @default(0)
+  createdBy             String           // HR user ID
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  applications          Application[]
+  
+  @@index([startTime])
+  @@index([createdBy])
 }
 
 model JobPost {
