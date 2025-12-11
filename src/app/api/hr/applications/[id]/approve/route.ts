@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
+import { sendInterviewInvitation } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -84,10 +85,26 @@ export async function POST(
       }),
     ]);
 
+    // Send interview invitation email
+    try {
+      await sendInterviewInvitation({
+        applicantName: application.user.fullName || application.user.username || "Applicant",
+        applicantEmail: application.user.email,
+        interviewDate: availableSlot.startTime,
+        startTime: availableSlot.startTime,
+        endTime: availableSlot.endTime,
+        meetLink: availableSlot.meetLink,
+        hrName: hrUser.fullName || hrUser.username || "ASAD HR Team",
+      });
+    } catch (emailError) {
+      console.error("Failed to send invitation email:", emailError);
+      // Don't fail the approval if email fails
+    }
+
     return NextResponse.json(
       { 
         success: true, 
-        message: "Application approved and assigned to interview slot.",
+        message: "Application approved! Interview invitation sent to applicant.",
         slot: {
           startTime: availableSlot.startTime,
           endTime: availableSlot.endTime,

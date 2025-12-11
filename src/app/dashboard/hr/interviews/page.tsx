@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { Plus, Calendar, Users, Link as LinkIcon, Trash2 } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Plus, Calendar, Users, Link as LinkIcon, Trash2, CheckCircle, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 
@@ -19,19 +19,32 @@ interface InterviewSlot {
   };
 }
 
-export default function InterviewSlotsPage() {
+interface CalendarStatus {
+  connected: boolean;
+  email: string | null;
+  connectedAt: string | null;
+}
+
+function InterviewSlotsContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: session, status } = useSession();
   const [slots, setSlots] = useState<InterviewSlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [calendarStatus, setCalendarStatus] = useState<CalendarStatus>({
+    connected: false,
+    email: null,
+    connectedAt: null,
+  });
   const [formData, setFormData] = useState({
     startDate: "",
     startTime: "",
     endTime: "",
     capacity: 20,
     meetLink: "",
+    autoCreateMeet: true,
   });
 
   useEffect(() => {
@@ -60,6 +73,7 @@ export default function InterviewSlotsPage() {
         
         setUser(userData.user);
         fetchSlots();
+        fetchCalendarStatus();
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
@@ -69,6 +83,93 @@ export default function InterviewSlotsPage() {
 
     fetchData();
   }, [router, session, status]);
+
+  // Handle OAuth callback
+  useEffect(() => {
+    const code = searchParams.get("calendar_code");
+    const error = searchParams.get("calendar_error");
+
+    if (code) {
+      handleCalendarCallback(code);
+    } else if (error) {
+      alert(`Failed to connect Google Calendar: ${error}`);
+      // Remove error from URL
+      router.replace("/dashboard/hr/interviews");
+    }
+  }, [searchParams]);
+
+  const fetchCalendarStatus = async () => {
+    try {
+      const response = await fetch("/api/hr/calendar-status");
+      const data = await response.json();
+      setCalendarStatus(data);
+      
+      // Update form default if calendar not connected
+      if (!data.connected) {
+        setFormData(prev => ({ ...prev, autoCreateMeet: false }));
+      }
+    } catch (error) {
+      console.error("Error fetching calendar status:", error);
+    }
+  };
+
+  const handleConnectCalendar = async () => {
+    try {
+      const response = await fetch("/api/hr/connect-calendar");
+      const data = await response.json();
+      if (data.authUrl) {
+        window.location.href = data.authUrl;
+      }
+    } catch (error) {
+      console.error("Error initiating calendar connection:", error);
+      alert("Failed to initiate calendar connection");
+    }
+  };
+
+  const handleDisconnectCalendar = async () => {
+    if (!confirm("Are you sure you want to disconnect your Google Calendar?")) {
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/hr/connect-calendar", {
+        method: "DELETE",
+      });
+      
+      if (response.ok) {
+        setCalendarStatus({ connected: false, email: null, connectedAt: null });
+        alert("Google Calendar disconnected successfully");
+      }
+    } catch (error) {
+      console.error("Error disconnecting calendar:", error);
+      alert("Failed to disconnect calendar");
+    }
+  };
+
+  const handleCalendarCallback = async (code: string) => {
+    try {
+      const response = await fetch("/api/hr/connect-calendar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+
+      const data = await response.json();
+      
+      if (response.ok) {
+        setCalendarStatus({ connected: true, email: data.email, connectedAt: new Date().toISOString() });
+        alert(`Google Calendar connected successfully as ${data.email}`);
+      } else {
+        alert(`Failed to connect: ${data.error}`);
+      }
+    } catch (error) {
+      console.error("Error completing calendar connection:", error);
+      alert("Failed to complete calendar connection");
+    } finally {
+      // Remove code from URL
+      router.replace("/dashboard/hr/interviews");
+    }
+  };
 
   const fetchSlots = async () => {
     try {
@@ -86,6 +187,7 @@ export default function InterviewSlotsPage() {
     const startDateTime = new Date(`${formData.startDate}T${formData.startTime}`);
     const endDateTime = new Date(`${formData.startDate}T${formData.endTime}`);
 
+    setLoading(true);
     try {
       const response = await fetch("/api/hr/interview-slots", {
         method: "POST",
@@ -94,10 +196,12 @@ export default function InterviewSlotsPage() {
           startTime: startDateTime.toISOString(),
           endTime: endDateTime.toISOString(),
           capacity: formData.capacity,
-          meetLink: formData.meetLink,
+          autoCreateMeet: formData.autoCreateMeet,
         }),
       });
 
+      const data = await response.json();
+      
       if (response.ok) {
         setShowCreateModal(false);
         setFormData({
@@ -106,15 +210,18 @@ export default function InterviewSlotsPage() {
           endTime: "",
           capacity: 20,
           meetLink: "",
+          autoCreateMeet: true,
         });
         fetchSlots();
+        alert(data.message || "Slot created successfully!");
       } else {
-        const data = await response.json();
         alert(data.error || "Failed to create slot");
       }
     } catch (error) {
       console.error("Error creating slot:", error);
       alert("Failed to create slot");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -177,6 +284,48 @@ export default function InterviewSlotsPage() {
             Create Slot
           </button>
         </div>
+
+        {/* Google Calendar Connection Card */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Calendar className="w-5 h-5 text-[#1E3A5F]" />
+              <div>
+                <h3 className="font-semibold text-gray-900">Google Calendar</h3>
+                {calendarStatus.connected ? (
+                  <p className="text-sm text-green-600 flex items-center gap-1">
+                    <CheckCircle className="w-4 h-4" />
+                    Connected as {calendarStatus.email}
+                  </p>
+                ) : (
+                  <p className="text-sm text-amber-600 flex items-center gap-1">
+                    <AlertCircle className="w-4 h-4" />
+                    Not connected - Connect to auto-create Meet links
+                  </p>
+                )}
+              </div>
+            </div>
+            {calendarStatus.connected ? (
+              <button
+                onClick={handleDisconnectCalendar}
+                className="px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              >
+                Disconnect
+              </button>
+            ) : (
+              <button
+                onClick={handleConnectCalendar}
+                className="px-4 py-2 text-sm bg-[#1E3A5F] text-white rounded-lg hover:bg-[#2a4d75] transition-colors"
+              >
+                Connect Calendar
+              </button>
+            )}
+          </div>
+        </motion.div>
 
         {/* Slots Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -327,32 +476,63 @@ export default function InterviewSlotsPage() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Google Meet Link
-                  </label>
-                  <div className="flex gap-2">
+                <div className={`border rounded-lg p-4 ${calendarStatus.connected ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'}`}>
+                  <div className="flex items-start gap-3">
                     <input
-                      type="url"
-                      required
-                      placeholder="https://meet.google.com/xxx-xxxx-xxx"
-                      value={formData.meetLink}
-                      onChange={(e) => setFormData({ ...formData, meetLink: e.target.value })}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]"
+                      type="checkbox"
+                      id="autoCreateMeet"
+                      checked={formData.autoCreateMeet}
+                      onChange={(e) => setFormData({ ...formData, autoCreateMeet: e.target.checked })}
+                      disabled={!calendarStatus.connected}
+                      className="mt-1 w-4 h-4 text-[#1E3A5F] border-gray-300 rounded focus:ring-[#1E3A5F] disabled:opacity-50 disabled:cursor-not-allowed"
                     />
-                    <button
-                      type="button"
-                      onClick={generateMeetLink}
-                      className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-                      title="Generate sample link"
-                    >
-                      <LinkIcon className="w-5 h-5" />
-                    </button>
+                    <div className="flex-1">
+                      <label htmlFor="autoCreateMeet" className={`font-medium ${calendarStatus.connected ? 'text-gray-900' : 'text-gray-500'} cursor-pointer`}>
+                        🚀 Auto-generate Google Meet link
+                      </label>
+                      {calendarStatus.connected ? (
+                        <p className="text-sm text-gray-600 mt-1">
+                          Automatically create a Google Calendar event with Meet link from your account ({calendarStatus.email}). 
+                          Invitation emails will be sent automatically when you approve applications.
+                        </p>
+                      ) : (
+                        <p className="text-sm text-amber-600 mt-1">
+                          ⚠️ Connect your Google Calendar above to enable auto-creation. 
+                          Each HR can connect their own account to host Meet sessions.
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Create a meeting in Google Meet and paste the link here
-                  </p>
                 </div>
+
+                {!formData.autoCreateMeet && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Google Meet Link (Manual)
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        required={!formData.autoCreateMeet}
+                        placeholder="https://meet.google.com/xxx-xxxx-xxx"
+                        value={formData.meetLink}
+                        onChange={(e) => setFormData({ ...formData, meetLink: e.target.value })}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]"
+                      />
+                      <button
+                        type="button"
+                        onClick={generateMeetLink}
+                        className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                        title="Generate sample link"
+                      >
+                        <LinkIcon className="w-5 h-5" />
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Create a meeting in Google Meet and paste the link here
+                    </p>
+                  </div>
+                )}
 
                 <div className="flex gap-3 pt-4">
                   <button
@@ -375,5 +555,19 @@ export default function InterviewSlotsPage() {
         )}
       </div>
     </DashboardLayout>
+  );
+}
+
+export default function InterviewSlotsPage() {
+  return (
+    <Suspense fallback={
+      <DashboardLayout userRole="HR" userName="Loading..." userEmail="">
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1E3A5F]"></div>
+        </div>
+      </DashboardLayout>
+    }>
+      <InterviewSlotsContent />
+    </Suspense>
   );
 }

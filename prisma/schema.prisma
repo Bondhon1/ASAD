@@ -33,6 +33,11 @@ model User {
   emailVerificationToken String?               @unique
   emailVerificationExpiry DateTime?
   
+  // Google Calendar integration (for HR)
+  googleRefreshToken    String?                // Encrypted refresh token
+  calendarConnectedAt   DateTime?              // When HR connected Calendar
+  calendarEmail         String?                // Which Google account
+  
   // Account linking for OAuth
   accounts              Account[]
   sessions              Session[]

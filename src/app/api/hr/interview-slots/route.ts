@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
+import { createCalendarEvent, generateSimpleMeetLink } from "@/lib/googleCalendar";
+import { decrypt } from "@/lib/encryption";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 // GET - List all interview slots
 export async function GET() {
   try {
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -37,22 +40,30 @@ export async function GET() {
 // POST - Create new interview slot
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        fullName: true,
+        username: true,
+        googleRefreshToken: true,
+      },
     });
 
     if (!user || (user.role !== "HR" && user.role !== "MASTER")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { startTime, endTime, capacity, meetLink } = await request.json();
+    const { startTime, endTime, capacity, autoCreateMeet } = await request.json();
 
-    if (!startTime || !endTime || !capacity || !meetLink) {
+    if (!startTime || !endTime || !capacity) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
@@ -67,6 +78,46 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Capacity must be between 1 and 50" }, { status: 400 });
     }
 
+    let meetLink = "";
+    let calendarEventId = "";
+
+    // Try to create Google Calendar event with Meet link using HR's token
+    if (autoCreateMeet) {
+      // Check if HR has connected Google Calendar
+      if (!user.googleRefreshToken) {
+        return NextResponse.json(
+          { error: "Please connect your Google Calendar first to auto-create Meet links" },
+          { status: 400 }
+        );
+      }
+
+      try {
+        // Decrypt the HR's refresh token
+        const refreshToken = decrypt(user.googleRefreshToken);
+
+        const calendarEvent = await createCalendarEvent(refreshToken, {
+          summary: "ASAD Volunteer Interview Session",
+          description: `Interview session for ASAD volunteer applicants.\n\nCapacity: ${capacity} candidates\nOrganized by: ${user.fullName || user.username}`,
+          startTime: start,
+          endTime: end,
+          attendees: [], // Attendees will be added when applications are approved
+          hrEmail: user.email,
+        });
+
+        meetLink = calendarEvent.meetLink;
+        calendarEventId = calendarEvent.eventId || "";
+      } catch (calendarError) {
+        console.error("Calendar API error:", calendarError);
+        return NextResponse.json(
+          { error: "Failed to create Calendar event. Please try reconnecting your Google Calendar." },
+          { status: 500 }
+        );
+      }
+    } else {
+      // Use simple meet link generation
+      meetLink = generateSimpleMeetLink();
+    }
+
     const slot = await prisma.interviewSlot.create({
       data: {
         startTime: start,
@@ -77,7 +128,12 @@ export async function POST(request: Request) {
       },
     });
 
-    return NextResponse.json({ slot }, { status: 201 });
+    return NextResponse.json({ 
+      slot,
+      message: autoCreateMeet && calendarEventId 
+        ? "Slot created with Google Calendar event" 
+        : "Slot created with generated Meet link"
+    }, { status: 201 });
   } catch (error) {
     console.error("Error creating slot:", error);
     return NextResponse.json({ error: "Failed to create slot" }, { status: 500 });
