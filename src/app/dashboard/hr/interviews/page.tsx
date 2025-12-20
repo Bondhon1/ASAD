@@ -46,6 +46,10 @@ function InterviewSlotsContent() {
     meetLink: "",
     autoCreateMeet: true,
   });
+  const [showParticipantsModal, setShowParticipantsModal] = useState(false);
+  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+  const [participants, setParticipants] = useState<any[]>([]);
+  const [participantsLoading, setParticipantsLoading] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -252,6 +256,58 @@ function InterviewSlotsContent() {
     });
   };
 
+  const fetchParticipants = async (slotId: string) => {
+    setParticipantsLoading(true);
+    try {
+      const res = await fetch(`/api/hr/interview-slots/${slotId}/participants`);
+      const data = await res.json();
+      setParticipants(data.applications || []);
+    } catch (error) {
+      console.error("Error fetching participants:", error);
+      setParticipants([]);
+    } finally {
+      setParticipantsLoading(false);
+    }
+  };
+
+  const handleOpenParticipants = (slotId: string) => {
+    setSelectedSlotId(slotId);
+    setShowParticipantsModal(true);
+    fetchParticipants(slotId);
+  };
+
+  const handleCloseParticipants = () => {
+    setShowParticipantsModal(false);
+    setSelectedSlotId(null);
+    setParticipants([]);
+  };
+
+  const handleApproveDecline = async (applicationId: string, action: "approve" | "decline") => {
+    if (!selectedSlotId) return;
+    if (!confirm(`Are you sure you want to ${action} this applicant?`)) return;
+
+    try {
+      const res = await fetch(`/api/hr/interview-slots/${selectedSlotId}/participants`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ applicationId, action }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        // refresh participants and slots
+        fetchParticipants(selectedSlotId);
+        fetchSlots();
+        alert("Action completed");
+      } else {
+        alert(data.error || "Failed to update participant");
+      }
+    } catch (error) {
+      console.error("Error updating participant:", error);
+      alert("Failed to update participant");
+    }
+  };
+
   if (loading) {
     return (
       <DashboardLayout userRole="HR" userName="Loading..." userEmail="">
@@ -391,6 +447,14 @@ function InterviewSlotsContent() {
                     {slot.meetLink}
                   </a>
                 </div>
+                <div className="pt-3">
+                  <button
+                    onClick={() => handleOpenParticipants(slot.id)}
+                    className="px-3 py-2 bg-[#1E3A5F] text-white rounded-lg hover:bg-[#2a4d75] transition-colors text-sm"
+                  >
+                    View Participants
+                  </button>
+                </div>
               </div>
             </motion.div>
           ))}
@@ -410,6 +474,43 @@ function InterviewSlotsContent() {
             </div>
           )}
         </div>
+
+        {/* Participants Modal */}
+        {showParticipantsModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold">Participants</h2>
+                <button onClick={handleCloseParticipants} className="text-gray-600 hover:text-gray-800">Close</button>
+              </div>
+
+              {participantsLoading ? (
+                <div className="text-center py-8">Loading...</div>
+              ) : participants.length === 0 ? (
+                <div className="text-center py-8">No participants registered for this slot.</div>
+              ) : (
+                <div className="space-y-3">
+                  {participants.map((app) => (
+                    <div key={app.id} className="flex items-center justify-between border rounded-lg p-3">
+                      <div className="flex items-center gap-3">
+                        <img src={app.user?.profilePicUrl || '/default-avatar.png'} alt="avatar" className="w-10 h-10 rounded-full object-cover" />
+                        <div>
+                          <div className="font-medium">{app.user?.fullName || app.user?.email}</div>
+                          <div className="text-sm text-gray-600">{app.user?.email}</div>
+                          <div className="text-xs text-gray-500">Application status: {app.status}</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => handleApproveDecline(app.id, 'approve')} className="px-3 py-1 bg-green-50 text-green-700 rounded-md">Approve</button>
+                        <button onClick={() => handleApproveDecline(app.id, 'decline')} className="px-3 py-1 bg-red-50 text-red-700 rounded-md">Decline</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
 
         {/* Create Modal */}
         {showCreateModal && (
