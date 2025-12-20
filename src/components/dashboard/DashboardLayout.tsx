@@ -190,7 +190,6 @@ export default function DashboardLayout({ children, userRole, userName, userEmai
               </div>
               <div className="flex items-center gap-2">
                 <a href="/payments/initial" className="px-3 py-2 bg-[#1E3A5F] text-white rounded-md">Pay 30 BDT</a>
-                <a href="/dashboard" className="px-3 py-2 bg-white border rounded-md">View Details</a>
               </div>
             </div>
           )}
@@ -205,7 +204,6 @@ export default function DashboardLayout({ children, userRole, userName, userEmai
                   <div className="text-sm text-yellow-700">We've received your final payment. Admin will verify it shortly.</div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <a href="/dashboard" className="px-3 py-2 bg-white border rounded-md">View Details</a>
                 </div>
               </div>
             ) : (finalPaymentStatus === "VERIFIED") ? null : (
@@ -216,7 +214,6 @@ export default function DashboardLayout({ children, userRole, userName, userEmai
                 </div>
                 <div className="flex items-center gap-2">
                   <a href="/payments/final" className="px-3 py-2 bg-[#1E3A5F] text-white rounded-md">Pay 170 BDT</a>
-                  <a href="/dashboard" className="px-3 py-2 bg-white border rounded-md">View Details</a>
                 </div>
               </div>
             )
@@ -230,7 +227,6 @@ export default function DashboardLayout({ children, userRole, userName, userEmai
               </div>
               <div className="flex items-center gap-2">
                 <a href="/payments/final" className="px-3 py-2 bg-[#1E3A5F] text-white rounded-md">Pay 170 BDT</a>
-                <a href="/dashboard" className="px-3 py-2 bg-white border rounded-md">View Details</a>
               </div>
             </div>
           )}
