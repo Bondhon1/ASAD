@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
@@ -83,6 +84,7 @@ export default function InitialPaymentPage() {
   const [success, setSuccess] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userEmail, setUserEmail] = useState("");
+  const [isRejected, setIsRejected] = useState(false);
   
   // User basic info
   const [fullName, setFullName] = useState("");
@@ -90,24 +92,52 @@ export default function InitialPaymentPage() {
   const [instituteName, setInstituteName] = useState("");
   const [educationLevel, setEducationLevel] = useState("");
 
-  // Get user email from URL params or localStorage
-  React.useEffect(() => {
+  // Get user email from URL params or localStorage and check if previous payment was rejected
+  const { data: session, status } = useSession();
+
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const emailFromUrl = params.get("email");
     const emailFromStorage = localStorage.getItem("userEmail");
-    
-    if (emailFromUrl) {
-      setUserEmail(emailFromUrl);
-    } else if (emailFromStorage) {
-      setUserEmail(emailFromStorage);
-    } else {
-      // Redirect to auth if no email found
+
+    // prefer authenticated session email
+    if (status === "authenticated" && session?.user?.email) {
+      setUserEmail(session.user.email);
+      checkRejectedAndPrefill(session.user.email);
+      return;
+    }
+
+    const emailToUse = emailFromUrl || emailFromStorage;
+    if (emailToUse) {
+      setUserEmail(emailToUse);
+      checkRejectedAndPrefill(emailToUse);
+      return;
+    }
+
+    // if session loading, wait; if unauthenticated and no email, redirect
+    if (status === "unauthenticated") {
       setError("Session expired. Please sign up again.");
       setTimeout(() => {
         window.location.href = "/auth";
       }, 2000);
     }
-  }, []);
+    // otherwise, do nothing while loading
+  }, [session, status]);
+
+  const checkRejectedAndPrefill = async (emailToUse: string) => {
+    try {
+      const res = await fetch(`/api/user/profile?email=${encodeURIComponent(emailToUse)}`);
+      const data = await res.json();
+      if (data?.user && data.user.status === "REJECTED") {
+        setIsRejected(true);
+        setFullName(data.user.fullName || "");
+        setPhone(data.user.phone || "");
+        if (data.user.institute) setInstituteName(data.user.institute.name || "");
+      }
+    } catch (e) {
+      // ignore
+    }
+  };
 
   const currentMethod = paymentMethods.find((m) => m.id === selectedMethod)!;
 
@@ -522,7 +552,7 @@ export default function InitialPaymentPage() {
                       d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                     />
                   </svg>
-                  Submit Payment
+                  {isRejected ? 'Pay Again' : 'Submit Payment'}
                 </>
               )}
             </motion.button>

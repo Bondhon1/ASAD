@@ -67,6 +67,7 @@ model User {
   
   // Payment related
   initialPayment        InitialPayment?
+  finalPayment          FinalPayment?
   leaves                Leave[]
   
   createdAt             DateTime               @default(now())
@@ -86,6 +87,8 @@ enum UserStatus {
   OFFICIAL
   INACTIVE
   BANNED
+  REJECTED
+  FINAL_PAYMENT_REJECTED
 }
 
 enum UserRole {
@@ -404,6 +407,25 @@ model InitialPayment {
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
   
+  @@index([status])
+}
+
+model FinalPayment {
+  id                    String           @id @default(cuid())
+  user                  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                String           @unique
+  amount                Float            @default(170)
+  trxId                 String
+  paymentMethod         String           // bkash, nagad, visa, mastercard
+  senderNumber          String
+  paymentDate           DateTime
+  paymentTime           String?
+  proofUrl              String?
+  status                PaymentStatus    @default(PENDING)
+  verifiedAt            DateTime?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
   @@index([status])
 }
 

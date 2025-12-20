@@ -86,8 +86,8 @@ export async function POST(
         data: { status: "REJECTED", interviewResult: "FAILED" },
       });
 
-      // There's no explicit "DECLINED" user status in the schema; set the user's status to INACTIVE to reflect decline.
-      await prisma.user.update({ where: { id: application.userId }, data: { status: "INACTIVE" } });
+      // There's no explicit "DECLINED" user status in the schema; set the user's status to REJECTED to reflect decline.
+      await prisma.user.update({ where: { id: application.userId }, data: { status: "REJECTED" } });
 
       return NextResponse.json({ application: updatedApp });
     }

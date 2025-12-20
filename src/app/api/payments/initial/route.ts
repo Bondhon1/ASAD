@@ -55,7 +55,8 @@ export async function POST(request: NextRequest) {
       where: { userId: user.id },
     });
 
-    if (existingPayment) {
+    // Allow resubmission when previous payment was rejected OR when the user's status is REJECTED
+    if (existingPayment && existingPayment.status !== "REJECTED" && user.status !== "REJECTED") {
       return NextResponse.json(
         { error: "Payment already submitted" },
         { status: 409 }
@@ -102,18 +103,37 @@ export async function POST(request: NextRequest) {
     // Create payment record
     const paymentDateTime = new Date(`${paymentDate}T${paymentTime}`);
 
-    const payment = await prisma.initialPayment.create({
-      data: {
-        userId: user.id,
-        amount: 30,
-        paymentMethod,
-        senderNumber,
-        trxId,
-        paymentDate: paymentDateTime,
-        paymentTime,
-        status: "PENDING",
-      },
-    });
+    let payment;
+    if (existingPayment) {
+      // If a payment record already exists (rejected or otherwise allowed resubmission),
+      // update it instead of creating a new one to avoid unique constraint errors.
+      payment = await prisma.initialPayment.update({
+        where: { userId: user.id },
+        data: {
+          amount: 30,
+          paymentMethod,
+          senderNumber,
+          trxId,
+          paymentDate: paymentDateTime,
+          paymentTime,
+          status: "PENDING",
+          updatedAt: new Date(),
+        },
+      });
+    } else {
+      payment = await prisma.initialPayment.create({
+        data: {
+          userId: user.id,
+          amount: 30,
+          paymentMethod,
+          senderNumber,
+          trxId,
+          paymentDate: paymentDateTime,
+          paymentTime,
+          status: "PENDING",
+        },
+      });
+    }
 
     // Create or update application with payment info
     const existingApplication = await prisma.application.findUnique({

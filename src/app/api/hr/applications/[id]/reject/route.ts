@@ -35,6 +35,9 @@ export async function POST(
       },
     });
 
+    // Set user status to REJECTED so they can re-submit initial payment
+    await prisma.user.update({ where: { id: application.userId }, data: { status: "REJECTED" } });
+
     // Update application status
     await prisma.application.update({
       where: { id: applicationId },

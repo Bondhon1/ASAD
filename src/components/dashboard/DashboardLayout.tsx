@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { 
   Bell, 
   MessageSquare, 
@@ -30,6 +31,22 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children, userRole, userName, userEmail }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const router = useRouter();
+  const [userStatus, setUserStatus] = useState<string | null>(null);
+  const [finalPaymentStatus, setFinalPaymentStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!userEmail) return;
+    (async () => {
+      try {
+        const res = await fetch(`/api/user/profile?email=${encodeURIComponent(userEmail)}`);
+        const data = await res.json();
+        setUserStatus(data?.user?.status || null);
+        setFinalPaymentStatus(data?.user?.finalPayment?.status || null);
+      } catch (e) {
+        // ignore
+      }
+    })();
+  }, [userEmail]);
 
   const handleLogout = () => {
     localStorage.clear();
@@ -163,7 +180,63 @@ export default function DashboardLayout({ children, userRole, userName, userEmai
 
       {/* Main Content */}
       <div className="pt-16 lg:pl-64">
-        <main className="p-6">{children}</main>
+        <main className="p-6">
+          {/* Rejection / payment banners */}
+          {userStatus === "REJECTED" && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md flex items-center justify-between">
+              <div>
+                <div className="font-semibold text-red-800">Application Rejected</div>
+                <div className="text-sm text-red-700">Your application was rejected. Please re-submit the 30 BDT initial payment to retry.</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <a href="/payments/initial" className="px-3 py-2 bg-[#1E3A5F] text-white rounded-md">Pay 30 BDT</a>
+                <a href="/dashboard" className="px-3 py-2 bg-white border rounded-md">View Details</a>
+              </div>
+            </div>
+          )}
+
+          {userStatus === "INTERVIEW_PASSED" && (
+            // If user has submitted a final payment and it's pending, show pending review message.
+            // If final payment is verified, don't show any banner. If no final payment, prompt to pay.
+            (finalPaymentStatus === "PENDING") ? (
+              <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md flex items-center justify-between">
+                <div>
+                  <div className="font-semibold text-yellow-800">Payment Pending Review</div>
+                  <div className="text-sm text-yellow-700">We've received your final payment. Admin will verify it shortly.</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <a href="/dashboard" className="px-3 py-2 bg-white border rounded-md">View Details</a>
+                </div>
+              </div>
+            ) : (finalPaymentStatus === "VERIFIED") ? null : (
+              <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md flex items-center justify-between">
+                <div>
+                  <div className="font-semibold text-blue-800">Interview Passed</div>
+                  <div className="text-sm text-blue-700">Congratulations — your interview passed. Please submit the 170 BDT final payment for your ID card.</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <a href="/payments/final" className="px-3 py-2 bg-[#1E3A5F] text-white rounded-md">Pay 170 BDT</a>
+                  <a href="/dashboard" className="px-3 py-2 bg-white border rounded-md">View Details</a>
+                </div>
+              </div>
+            )
+          )}
+
+          {userStatus === "FINAL_PAYMENT_REJECTED" && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md flex items-center justify-between">
+              <div>
+                <div className="font-semibold text-red-800">Final Payment Rejected</div>
+                <div className="text-sm text-red-700">Your final payment for the ID card was rejected. Please resubmit the 170 BDT payment.</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <a href="/payments/final" className="px-3 py-2 bg-[#1E3A5F] text-white rounded-md">Pay 170 BDT</a>
+                <a href="/dashboard" className="px-3 py-2 bg-white border rounded-md">View Details</a>
+              </div>
+            </div>
+          )}
+
+          {children}
+        </main>
       </div>
     </div>
   );

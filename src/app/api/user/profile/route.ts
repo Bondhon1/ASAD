@@ -31,8 +31,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // fetch final payment separately (Prisma client may not have generated relation types locally)
+    const finalPayment = await prisma.finalPayment.findUnique({
+      where: { userId: user.id },
+    });
+
+    const resultUser = { ...user, finalPayment };
+
     return NextResponse.json(
-      { user },
+      { user: resultUser },
       { status: 200 }
     );
   } catch (error) {

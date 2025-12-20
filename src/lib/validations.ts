@@ -41,6 +41,17 @@ export const InitialPaymentSchema = z.object({
   paymentTime: z.string().regex(/^\d{2}:\d{2}$/, "Invalid time format (HH:MM)"),
 });
 
+export const FinalPaymentSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  paymentMethod: z
+    .enum(["bkash", "nagad", "visa", "mastercard"])
+    .refine((val) => val, { message: "Invalid payment method" }),
+  senderNumber: z.string().min(1, "Sender number is required").regex(/^[0-9]+$/, "Sender number must contain only digits"),
+  trxId: z.string().min(1, "Transaction ID is required"),
+  paymentDate: z.string().refine((date) => !isNaN(Date.parse(date)), "Invalid payment date"),
+  paymentTime: z.string().regex(/^\d{2}:\d{2}$/, "Invalid time format (HH:MM)"),
+});
+
 export type SignUpInput = z.infer<typeof SignUpSchema>;
 export type LogInInput = z.infer<typeof LogInSchema>;
 export type EmailVerificationInput = z.infer<typeof EmailVerificationSchema>;
