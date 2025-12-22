@@ -63,14 +63,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find or create institute by name
-    let institute = await prisma.institute.findUnique({
-      where: { name: instituteName },
+    // Find or create institute by name (case-insensitive)
+    const trimmedInstituteName = instituteName.trim();
+    let institute = await prisma.institute.findFirst({
+      where: { name: { equals: trimmedInstituteName, mode: "insensitive" } },
     });
 
     if (!institute) {
       institute = await prisma.institute.create({
-        data: { name: instituteName },
+        data: { name: trimmedInstituteName },
       });
     }
 
@@ -89,13 +90,21 @@ export async function POST(request: NextRequest) {
     }
 
     // Update user with basic info and status
+    const joiningSemesterValue = educationLevel === "university"
+      ? "University"
+      : educationLevel === "admission_candidate"
+      ? "Admission Candidate"
+      : educationLevel === "medical_student"
+      ? "Medical Student"
+      : `Class ${educationLevel}`;
+
     await prisma.user.update({
       where: { id: user.id },
       data: {
         fullName,
         phone,
         instituteId: institute.id,
-        joiningSemester: educationLevel === "university" ? "University" : `Class ${educationLevel}`,
+        joiningSemester: joiningSemesterValue,
         status: "INTERVIEW_REQUESTED",
       },
     });

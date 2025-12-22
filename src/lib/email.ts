@@ -211,8 +211,6 @@ export async function sendInitialPaymentEmail({
                 <ul style="text-align: left; display: inline-block;">
                   <li>bKash</li>
                   <li>Nagad</li>
-                  <li>Visa</li>
-                  <li>Mastercard</li>
                 </ul>
                 <a href="${paymentLink}" class="button">Continue to Payment</a>
                 <p style="color: #999; font-size: 12px;">This registration step must be completed within 7 days.</p>

@@ -39,8 +39,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       if (!payment) return NextResponse.json({ error: "Payment not found" }, { status: 404 });
 
       if (action === "approve") {
-        await prisma.finalPayment.update({ where: { id }, data: { status: "VERIFIED", verifiedAt: new Date() } });
-
         // Assign a sequential volunteerId starting from 22000799 if not present
         const usersWithIds = await prisma.user.findMany({ where: { volunteerId: { not: null } }, select: { volunteerId: true } });
         let maxNumeric = 0;
@@ -53,7 +51,19 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         const nextId = maxNumeric >= start ? maxNumeric + 1 : start;
         const volunteerId = String(nextId);
 
-        await prisma.user.update({ where: { id: payment.userId }, data: { status: "OFFICIAL", volunteerId } });
+        const ops: any[] = [];
+        // mark final payment verified
+        ops.push(prisma.finalPayment.update({ where: { id }, data: { status: "VERIFIED", verifiedAt: new Date() } }));
+
+        // update user to OFFICIAL (only increment institute count if user wasn't already OFFICIAL)
+        ops.push(prisma.user.update({ where: { id: payment.userId }, data: { status: "OFFICIAL", volunteerId } }));
+
+        // If user has an institute and wasn't OFFICIAL before, increment the cached count
+        if (payment.user?.instituteId && payment.user.status !== "OFFICIAL") {
+          ops.push(prisma.institute.update({ where: { id: payment.user.instituteId }, data: { totalVolunteersCached: { increment: 1 } } }));
+        }
+
+        await prisma.$transaction(ops);
         return NextResponse.json({ success: true });
       }
 

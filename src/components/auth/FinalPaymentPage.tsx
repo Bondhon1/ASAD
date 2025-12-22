@@ -8,8 +8,7 @@ interface Props { userEmail?: string }
 const paymentMethods = [
   { id: "bkash", name: "bKash", dummy: "01730123456" },
   { id: "nagad", name: "Nagad", dummy: "01829123456" },
-  { id: "visa", name: "Visa", dummy: "4111 1111 1111 1111" },
-  { id: "mastercard", name: "Mastercard", dummy: "5555 5555 5555 4444" },
+  // Visa and Mastercard removed
 ];
 
 export default function FinalPaymentPage({ userEmail: propEmail }: Props) {

@@ -23,11 +23,21 @@ export const InitialPaymentSchema = z.object({
   fullName: z.string().min(2, "Full name is required"),
   phone: z.string().regex(/^01[0-9]{9}$/, "Invalid phone number (must be 11 digits starting with 01)"),
   instituteName: z.string().min(1, "Please select your institution"),
-  educationLevel: z.enum(["7", "8", "9", "10", "11", "12", "university"], {
+  educationLevel: z.enum([
+    "7",
+    "8",
+    "9",
+    "10",
+    "11",
+    "12",
+    "university",
+    "admission_candidate",
+    "medical_student",
+  ], {
     message: "Please select your class/level",
   }),
   paymentMethod: z
-    .enum(["bkash", "nagad", "visa", "mastercard"])
+    .enum(["bkash", "nagad"])
     .refine((val) => val, { message: "Invalid payment method" }),
   senderNumber: z
     .string()
@@ -44,7 +54,7 @@ export const InitialPaymentSchema = z.object({
 export const FinalPaymentSchema = z.object({
   email: z.string().email("Invalid email address"),
   paymentMethod: z
-    .enum(["bkash", "nagad", "visa", "mastercard"])
+    .enum(["bkash", "nagad"])
     .refine((val) => val, { message: "Invalid payment method" }),
   senderNumber: z.string().min(1, "Sender number is required").regex(/^[0-9]+$/, "Sender number must contain only digits"),
   trxId: z.string().min(1, "Transaction ID is required"),

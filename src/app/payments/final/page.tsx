@@ -51,7 +51,7 @@ export default function Page() {
   if (!user) return null;
 
   return (
-    <DashboardLayout userRole={(user.role as any) || "VOLUNTEER"} userName={user.fullName || user.username || "User"} userEmail={user.email}>
+    <DashboardLayout showStatusBanners={false} userRole={(user.role as any) || "VOLUNTEER"} userName={user.fullName || user.username || "User"} userEmail={user.email}>
       <FinalPaymentPage userEmail={user.email} />
     </DashboardLayout>
   );

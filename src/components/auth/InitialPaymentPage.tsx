@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
 import clsx from "clsx";
 
-type PaymentMethod = "bkash" | "nagad" | "visa" | "mastercard";
+type PaymentMethod = "bkash" | "nagad";
 
 interface PaymentMethodInfo {
   id: PaymentMethod;
@@ -31,20 +31,6 @@ const paymentMethods: PaymentMethodInfo[] = [
     icon: "📱",
     dummyNumber: "01829123456",
     description: "Mobile banking service",
-  },
-  {
-    id: "visa",
-    name: "Visa",
-    icon: "💳",
-    dummyNumber: "4111 1111 1111 1111",
-    description: "Credit/Debit card",
-  },
-  {
-    id: "mastercard",
-    name: "Mastercard",
-    icon: "💳",
-    dummyNumber: "5555 5555 5555 4444",
-    description: "Credit/Debit card",
   },
 ];
 
@@ -91,6 +77,9 @@ export default function InitialPaymentPage() {
   const [phone, setPhone] = useState("");
   const [instituteName, setInstituteName] = useState("");
   const [educationLevel, setEducationLevel] = useState("");
+  const [suggestions, setSuggestions] = useState<Array<{ label: string; value: string; eiin?: number | string; institutionType?: string }>>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const instituteInputRef = useRef<HTMLInputElement | null>(null);
 
   // Get user email from URL params or localStorage and check if previous payment was rejected
   const { data: session, status } = useSession();
@@ -369,14 +358,91 @@ export default function InitialPaymentPage() {
                 <label className="block text-sm font-semibold text-ink mb-2">
                   School/Institute <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  value={instituteName}
-                  onChange={(e) => setInstituteName(e.target.value)}
-                  placeholder="Enter your school/institute name"
-                  className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/50 focus:border-[#1E3A5F] transition-all"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    ref={instituteInputRef}
+                    type="text"
+                    value={instituteName}
+                    onChange={async (e) => {
+                      const v = e.target.value;
+                      setInstituteName(v);
+                      if (!v) {
+                        setSuggestions([]);
+                        return;
+                      }
+                      try {
+                        const res = await fetch(`/api/institutes/suggestions?q=${encodeURIComponent(v)}`);
+                        const data = await res.json();
+                        setSuggestions(data.suggestions || []);
+                        setShowSuggestions(true);
+                      } catch (err) {
+                        setSuggestions([]);
+                      }
+                    }}
+                    onFocus={async (e) => {
+                      const v = e.currentTarget.value || '';
+                      try {
+                        const res = await fetch(`/api/institutes/suggestions?q=${encodeURIComponent(v)}`);
+                        const data = await res.json();
+                        setSuggestions(data.suggestions || []);
+                        setShowSuggestions(true);
+                      } catch (err) {
+                        setSuggestions([]);
+                      }
+                    }}
+                    onBlur={() => {
+                      setTimeout(() => setShowSuggestions(false), 150);
+                      const v = instituteName.trim();
+                      if (v && !suggestions.find((s) => s.value.toLowerCase() === v.toLowerCase())) {
+                        const first = v.split(/\s+/)[0] || v;
+                        setSuggestions((prev) => [{ label: first, value: v, eiin: undefined, institutionType: undefined }, ...prev].slice(0, 100));
+                      }
+                    }}
+                    placeholder="Enter your school/institute name"
+                    className="w-full pr-10 px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/50 focus:border-[#1E3A5F] transition-all"
+                    required
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInstituteName("");
+                      setSuggestions([]);
+                      setShowSuggestions(false);
+                      instituteInputRef.current?.focus();
+                    }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
+                    aria-label="Clear institute"
+                  >
+                    ✕
+                  </button>
+
+                  {showSuggestions && suggestions.length > 0 && (
+                    <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg max-h-56 overflow-y-auto shadow-lg">
+                      {suggestions.slice(0,5).map((s) => (
+                        <button
+                          type="button"
+                          key={s.value}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setInstituteName(s.value);
+                            setShowSuggestions(false);
+                          }}
+                          className="w-full text-left px-4 py-2 hover:bg-gray-50"
+                        >
+                          <div className="font-medium text-sm text-gray-900">{s.value}</div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {s.eiin ? `EIIN: ${s.eiin}` : ''}{s.eiin && s.institutionType ? ' • ' : ''}{s.institutionType ? s.institutionType : ''}
+                          </div>
+                        </button>
+                      ))}
+                      {suggestions.length > 5 && (
+                        <div className="px-3 py-2 text-xs text-gray-500">Showing 5 of {suggestions.length} results</div>
+                      )}
+                      <div className="px-3 py-2 text-xs text-gray-500">Click a suggestion to fill. If none match, keep typing to submit free text.</div>
+                    </div>
+                  )}
+                </div>
               </motion.div>
 
               <motion.div variants={itemVariants} className="mb-6">
@@ -396,6 +462,8 @@ export default function InitialPaymentPage() {
                   <option value="10">Class 10</option>
                   <option value="11">Class 11</option>
                   <option value="12">Class 12</option>
+                  <option value="admission_candidate">Admission candidate</option>
+                  <option value="medical_student">Medical student</option>
                   <option value="university">University</option>
                 </select>
               </motion.div>
@@ -467,6 +535,7 @@ export default function InitialPaymentPage() {
                 onChange={(e) => setSenderNumber(e.target.value)}
                 placeholder="Your phone number or account number"
                 className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/50 focus:border-[#1E3A5F] transition-all"
+                required
               />
             </motion.div>
 
@@ -480,6 +549,7 @@ export default function InitialPaymentPage() {
                 onChange={(e) => setTrxId(e.target.value)}
                 placeholder="Transaction ID from your payment provider"
                 className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/50 focus:border-[#1E3A5F] transition-all"
+                required
               />
               <p className="text-xs text-muted mt-1">
                 Usually found in your transaction receipt or SMS confirmation
@@ -496,6 +566,7 @@ export default function InitialPaymentPage() {
                   value={paymentDate}
                   onChange={(e) => setPaymentDate(e.target.value)}
                   className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/50 focus:border-[#1E3A5F] transition-all"
+                  required
                 />
               </div>
               <div>
@@ -507,6 +578,7 @@ export default function InitialPaymentPage() {
                   value={paymentTime}
                   onChange={(e) => setPaymentTime(e.target.value)}
                   className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/50 focus:border-[#1E3A5F] transition-all"
+                  required
                 />
               </div>
             </motion.div>
