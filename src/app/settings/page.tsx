@@ -52,10 +52,13 @@ export default function SettingsPage() {
     setSaving(true);
     setMessage(null);
     try {
+      // ensure we send the actual current input value (DOM) in case a recent suggestion
+      // selection hasn't fully propagated to React state yet
+      const instituteToSend = inputRef.current?.value ?? institute;
       const res = await fetch('/api/user/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fullName, username, institute, profilePicUrl }),
+        body: JSON.stringify({ fullName, username, institute: instituteToSend, profilePicUrl }),
       });
       const json = await res.json();
       if (res.ok) {
@@ -65,10 +68,10 @@ export default function SettingsPage() {
           setUser(json.user);
           setFullName(json.user.fullName || fullName);
           setUsername(json.user.username || username);
-          setInstitute(json.user.institute?.name || institute);
+          setInstitute(json.user.institute?.name || instituteToSend);
           setProfilePicUrl(json.user.profilePicUrl || profilePicUrl);
         } else {
-          setUser((prev: any) => ({ ...(prev || {}), fullName, username, institute: { name: institute }, profilePicUrl }));
+          setUser((prev: any) => ({ ...(prev || {}), fullName, username, institute: { name: instituteToSend }, profilePicUrl }));
         }
       } else {
         setMessage(json.error || 'Failed to update');
