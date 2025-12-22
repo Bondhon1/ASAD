@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import AppLoading from '@/components/ui/AppLoading';
@@ -19,6 +19,8 @@ export default function SettingsPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<Array<{ label: string; value: string; eiin?: number | string; institutionType?: string }>>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const hideTimeoutRef = useRef<number | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -118,34 +120,90 @@ export default function SettingsPage() {
                     <input type="file" accept="image/*" id="avatarFileInput" className="hidden" onChange={async (e) => {
                       const file = e.currentTarget.files?.[0];
                       if (!file) return;
-                      const reader = new FileReader();
-                      reader.onload = async () => {
-                        const dataUrl = reader.result as string;
-                        const base64 = dataUrl.split(',')[1];
-                        try {
-                          const res = await fetch('/api/user/upload', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ fileName: file.name, mimeType: file.type, data: base64 }),
-                          });
-                          const json = await res.json();
-                          if (res.ok && json.url) {
-                            setProfilePicUrl(json.url);
-                            setUser((prev: any) => prev ? ({ ...prev, profilePicUrl: json.url }) : prev);
-                            setMessage('Uploaded avatar');
-                          } else if (json.url) {
-                            // fallback data url
-                            setProfilePicUrl(json.url);
-                            setUser((prev: any) => prev ? ({ ...prev, profilePicUrl: json.url }) : prev);
-                            setMessage('Uploaded (fallback)');
-                          } else {
-                            setMessage(json.error || 'Upload failed');
-                          }
-                        } catch (err) {
-                          setMessage('Upload error');
+
+                      // client-side image resize/compress to avoid large uploads (prevent 413)
+                      const maxBytes = 2_500_000; // target max binary size (~2.5MB)
+
+                      async function fileToImageBitmap(f: File) {
+                        if ('createImageBitmap' in window) {
+                          return await createImageBitmap(f);
                         }
-                      };
-                      reader.readAsDataURL(file);
+                        return new Promise<ImageBitmap>((resolve, reject) => {
+                          const img = new Image();
+                          img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = img.naturalWidth;
+                            canvas.height = img.naturalHeight;
+                            const ctx = canvas.getContext('2d')!;
+                            ctx.drawImage(img, 0, 0);
+                            canvas.toBlob((b) => {
+                              if (!b) return reject(new Error('decode error'));
+                              createImageBitmap(b).then(resolve).catch(reject);
+                            });
+                          };
+                          img.onerror = reject;
+                          img.src = URL.createObjectURL(f);
+                        });
+                      }
+
+                      async function blobToBase64(b: Blob) {
+                        return await new Promise<string>((resolve, reject) => {
+                          const r = new FileReader();
+                          r.onload = () => resolve((r.result as string).split(',')[1]);
+                          r.onerror = reject;
+                          r.readAsDataURL(b);
+                        });
+                      }
+
+                      try {
+                        const imgBitmap = await fileToImageBitmap(file);
+                        // resize if large
+                        const maxDim = 1600;
+                        let { width, height } = imgBitmap;
+                        let scale = 1;
+                        if (Math.max(width, height) > maxDim) scale = maxDim / Math.max(width, height);
+                        const canvas = document.createElement('canvas');
+                        canvas.width = Math.max(1, Math.round(width * scale));
+                        canvas.height = Math.max(1, Math.round(height * scale));
+                        const ctx = canvas.getContext('2d');
+                        if (!ctx) throw new Error('Canvas not supported');
+                        ctx.drawImage(imgBitmap, 0, 0, canvas.width, canvas.height);
+
+                        // try decreasing quality until under size limit
+                        let quality = 0.92;
+                        let blob: Blob | null = null;
+                        for (; quality >= 0.4; quality -= 0.08) {
+                          // eslint-disable-next-line @typescript-eslint/no-misused-promises
+                          blob = await new Promise<Blob | null>((res) => canvas.toBlob((b) => res(b), file.type === 'image/png' ? 'image/png' : 'image/jpeg', quality));
+                          if (!blob) break;
+                          if (blob.size <= maxBytes) break;
+                        }
+
+                        if (!blob) throw new Error('Failed to encode image');
+
+                        const base64 = await blobToBase64(blob);
+
+                        const res = await fetch('/api/user/upload', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ fileName: file.name, mimeType: blob.type || file.type, data: base64 }),
+                        });
+                        const json = await res.json();
+                        if (res.ok && json.url) {
+                          setProfilePicUrl(json.url);
+                          setUser((prev: any) => prev ? ({ ...prev, profilePicUrl: json.url }) : prev);
+                          setMessage('Uploaded avatar');
+                        } else if (json.url) {
+                          setProfilePicUrl(json.url);
+                          setUser((prev: any) => prev ? ({ ...prev, profilePicUrl: json.url }) : prev);
+                          setMessage('Uploaded (fallback)');
+                        } else {
+                          setMessage(json.error || 'Upload failed');
+                        }
+                      } catch (err) {
+                        console.error('upload error', err);
+                        setMessage('Upload error');
+                      }
                     }} />
 
                     <label htmlFor="avatarFileInput" className="inline-flex items-center gap-2 px-3 py-2 bg-[#07223f] text-white text-sm rounded-md cursor-pointer">
@@ -169,7 +227,7 @@ export default function SettingsPage() {
                     <div>
                       <label className="text-xs text-gray-600">Institute</label>
                       <div className="relative">
-                        <input value={institute} onChange={async (e) => {
+                        <input ref={inputRef} value={institute} onChange={async (e) => {
                           const v = e.target.value;
                           setInstitute(v);
                           if (!v) { setSuggestions([]); setShowSuggestions(false); return; }
@@ -183,6 +241,8 @@ export default function SettingsPage() {
                             setShowSuggestions(false);
                           }
                         }} onFocus={async (e) => {
+                          // clear pending hide timeout when focusing
+                          if (hideTimeoutRef.current) { window.clearTimeout(hideTimeoutRef.current); hideTimeoutRef.current = null; }
                           const v = e.currentTarget.value || '';
                           try {
                             const res = await fetch(`/api/institutes/suggestions?q=${encodeURIComponent(v)}`);
@@ -190,12 +250,12 @@ export default function SettingsPage() {
                             setSuggestions(data.suggestions || []);
                             setShowSuggestions(true);
                           } catch (err) { setSuggestions([]); }
-                        }} onBlur={() => { setTimeout(()=>setShowSuggestions(false), 150); }} className="w-full mt-1 p-2 border border-gray-100 rounded-md" />
+                        }} onBlur={() => { hideTimeoutRef.current = window.setTimeout(()=>{ setShowSuggestions(false); hideTimeoutRef.current = null; }, 150); }} className="w-full mt-1 p-2 border border-gray-100 rounded-md" />
 
                         {showSuggestions && suggestions.length > 0 && (
                           <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-gray-100 rounded-md shadow-sm max-h-52 overflow-auto">
                             {suggestions.slice(0,5).map(s => (
-                              <div key={s.value} onClick={() => { setInstitute(s.value); setShowSuggestions(false); setUser((prev: any) => prev ? ({ ...prev, institute: { name: s.value } }) : prev); }} className="p-2 text-sm hover:bg-gray-50 cursor-pointer">
+                              <div key={s.value} onMouseDown={(e) => { e.preventDefault(); if (hideTimeoutRef.current) { window.clearTimeout(hideTimeoutRef.current); hideTimeoutRef.current = null; } setInstitute(s.value); setShowSuggestions(false); setUser((prev: any) => prev ? ({ ...prev, institute: { name: s.value } }) : prev); inputRef.current?.focus(); }} className="p-2 text-sm hover:bg-gray-50 cursor-pointer">
                                 <div className="font-medium text-gray-800">{s.value}</div>
                                 <div className="text-xs text-gray-500">{s.eiin ? `EIIN: ${s.eiin}` : ''} {s.institutionType ? ` · ${s.institutionType}` : ''}</div>
                               </div>
