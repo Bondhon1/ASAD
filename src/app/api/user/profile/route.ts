@@ -21,6 +21,16 @@ export async function GET(request: NextRequest) {
         institute: true,
         volunteerProfile: true,
         initialPayment: true,
+        // include recent task submissions and pending donations for dashboard
+        taskSubmissions: {
+          include: { task: true },
+          orderBy: { submittedAt: 'desc' },
+          take: 20,
+        },
+        donations: {
+          orderBy: { donatedAt: 'desc' },
+          take: 20,
+        },
       },
     });
 
@@ -38,8 +48,12 @@ export async function GET(request: NextRequest) {
 
     const resultUser = { ...user, finalPayment };
 
+    // compute social counts (followers / following)
+    const followersCount = await prisma.friendList.count({ where: { friendId: user.id } });
+    const followingCount = await prisma.friendList.count({ where: { userId: user.id } });
+
     return NextResponse.json(
-      { user: resultUser },
+      { user: { ...resultUser, followersCount, followingCount } },
       { status: 200 }
     );
   } catch (error) {

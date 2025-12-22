@@ -15,8 +15,25 @@ interface User {
   role: string;
   volunteerId: string | null;
   institute: { name: string } | null;
-  volunteerProfile: { points: number } | null;
+  volunteerProfile: { points: number; isOfficial?: boolean } | null;
   initialPayment: { status: string } | null;
+  // from profile API include
+  taskSubmissions?: Array<{
+    id: string;
+    status: string;
+    submittedAt: string;
+    task: { id: string; title: string } | null;
+  }>;
+  donations?: Array<{
+    id: string;
+    amount: number;
+    status: string;
+    donatedAt: string;
+    trxId?: string;
+    paymentMethod?: string;
+  }>;
+  followersCount?: number;
+  followingCount?: number;
 }
 
 // Helper function to format status text
@@ -25,6 +42,11 @@ const formatStatus = (status: string) => {
     .split('_')
     .map(word => word.charAt(0) + word.slice(1).toLowerCase())
     .join(' ');
+};
+
+const formatRole = (role: string) => {
+  if (!role) return '';
+  return role.charAt(0) + role.slice(1).toLowerCase();
 };
 
 export default function DashboardPage() {
@@ -121,255 +143,117 @@ export default function DashboardPage() {
       userName={user.fullName || user.username || "User"}
       userEmail={user.email}
     >
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ 
-          duration: 0.6,
-          ease: [0.25, 0.46, 0.45, 0.94]
-        }}
-        className="max-w-7xl mx-auto"
-      >
-        <motion.h1
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ 
-            delay: 0.1,
-            duration: 0.5,
-            ease: [0.25, 0.46, 0.45, 0.94]
-          }}
-          className="text-3xl font-bold bg-gradient-to-r from-[#1E3A5F] to-[#2D5F7E] bg-clip-text text-transparent mb-6"
-        >
-          Welcome back, {user.fullName || user.username}!
-        </motion.h1>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ 
-              delay: 0.2,
-              duration: 0.5,
-              ease: [0.25, 0.46, 0.45, 0.94]
-            }}
-            whileHover={{ 
-              scale: 1.02, 
-              y: -5,
-              transition: { duration: 0.2 }
-            }}
-            className="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-xl shadow-lg text-white"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-blue-100 font-medium">Status</p>
-                <p className="text-2xl font-bold mt-1">{formatStatus(user.status)}</p>
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Top Profile Header */}
+        <div className="bg-white border border-gray-200 rounded-lg p-6 mb-8">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-20 h-20 bg-gray-50 border border-gray-200 rounded-md flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-10 h-10 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5a8.25 8.25 0 0115 0" />
+                </svg>
               </div>
-              <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center">
-                <span className="text-3xl">📊</span>
+              <div>
+                <div className="flex items-center gap-3">
+                  <div className="text-lg font-semibold text-gray-900">{user.fullName || user.username || "Volunteer"}</div>
+                  {user.role === 'VOLUNTEER' && (
+                    <span className="text-xs px-2 py-1 rounded-full bg-[#0b2545] text-white">{formatRole(user.role)}</span>
+                  )}
+                </div>
+                <div className="text-sm text-gray-600">{user.institute?.name || "Independent"}</div>
+                <div className="text-xs text-gray-500">ID: {user.volunteerId || "—"} · {user.volunteerProfile?.points || 0} points</div>
+                <div className="text-xs text-gray-500 mt-1">{user.followersCount ?? 0} followers · {user.followingCount ?? 0} following</div>
               </div>
             </div>
-          </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            whileHover={{ scale: 1.02, y: -5 }}
-            className="bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-xl shadow-lg text-white"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-green-100 font-medium">Points</p>
-                <p className="text-2xl font-bold mt-1">
-                  {user.volunteerProfile?.points || 0}
-                </p>
-              </div>
-              <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center">
-                <span className="text-3xl">⭐</span>
-              </div>
+            <div className="flex items-center gap-3">
+              <button className="px-4 py-2 bg-gray-100 text-gray-800 rounded-full text-sm hover:bg-gray-200 cursor-pointer">{formatRole(user.role) || 'Volunteer'}</button>
+              <button className="px-4 py-2 bg-gradient-to-r from-[#0b2545] to-[#07223f] text-white rounded-full text-sm hover:opacity-95 cursor-pointer">Points: {user.volunteerProfile?.points || 0}</button>
             </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            whileHover={{ scale: 1.02, y: -5 }}
-            className="bg-gradient-to-br from-purple-500 to-purple-600 p-6 rounded-xl shadow-lg text-white"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-purple-100 font-medium">Institute</p>
-                <p className="text-lg font-semibold mt-1 line-clamp-1">
-                  {user.institute?.name || "Not Set"}
-                </p>
-              </div>
-              <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center">
-                <span className="text-3xl">🏫</span>
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            whileHover={{ scale: 1.02, y: -5 }}
-            className="bg-gradient-to-br from-orange-500 to-orange-600 p-6 rounded-xl shadow-lg text-white"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-orange-100 font-medium">Role</p>
-                <p className="text-2xl font-bold mt-1">{user.role}</p>
-              </div>
-              <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center">
-                <span className="text-3xl">👤</span>
-              </div>
-            </div>
-          </motion.div>
+          </div>
         </div>
 
-        {/* Status Messages */}
-        {user.role === "VOLUNTEER" && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
-            className="mb-8"
-          >
-            {user.initialPayment?.status === "PENDING" && (
-              <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border-l-4 border-yellow-500 p-6 rounded-r-xl shadow-md">
-                <div className="flex items-start">
-                  <div className="flex-shrink-0">
-                    <span className="text-3xl">⏳</span>
-                  </div>
-                  <div className="ml-4">
-                    <h3 className="text-lg font-semibold text-yellow-900 mb-1">
-                      Payment Verification Pending
-                    </h3>
-                    <p className="text-yellow-800">
-                      Your payment is being verified by our team. You will be
-                      notified once it&apos;s approved.
-                    </p>
-                  </div>
+        {/* 3-column content area */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Column 1: Experience / Roles Panel */}
+          <aside className="bg-gray-50 border border-gray-200 rounded-lg p-4 h-[56vh] md:h-auto overflow-hidden">
+            <div className="bg-white rounded-md border border-gray-100 p-4 h-full flex flex-col">
+              <h3 className="text-sm font-medium text-gray-800 mb-3">Experience & Roles</h3>
+              <div className="flex-1 overflow-y-auto pr-2 space-y-3">
+                {/* Example items - replace with real data bindings as needed */}
+                <div className="flex items-start gap-3">
+                  <div className="mt-1 text-gray-500">💼</div>
+                  <div className="text-sm text-gray-700">Former Director of Cultural Sector <span className="text-xs text-gray-500">(15/2/2020 – 30/12/2023)</span></div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="mt-1 text-gray-500">💼</div>
+                  <div className="text-sm text-gray-700">Coordinator, Youth Programs <span className="text-xs text-gray-500">(01/01/2018 – 31/12/2019)</span></div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="mt-1 text-gray-500">💼</div>
+                  <div className="text-sm text-gray-700">Volunteer Mentor <span className="text-xs text-gray-500">(01/03/2016 – 01/08/2017)</span></div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="mt-1 text-gray-500">💼</div>
+                  <div className="text-sm text-gray-700">Event Organizer <span className="text-xs text-gray-500">(05/05/2015 – 12/11/2015)</span></div>
                 </div>
               </div>
-            )}
-            {user.status === "INTERVIEW_REQUESTED" && user.initialPayment?.status !== "PENDING" && (
-              <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border-l-4 border-yellow-500 p-6 rounded-r-xl shadow-md">
-                <div className="flex items-start">
-                  <div className="flex-shrink-0">
-                    <span className="text-3xl">⏳</span>
-                  </div>
-                  <div className="ml-4">
-                    <h3 className="text-lg font-semibold text-yellow-900 mb-1">
-                      Application Under Review
-                    </h3>
-                    <p className="text-yellow-800">
-                      Your payment has been received. HR team will review your application and schedule an interview soon.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-            {user.status === "INTERVIEW_SCHEDULED" && (
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500 p-6 rounded-r-xl shadow-md">
-                <div className="flex items-start">
-                  <div className="flex-shrink-0">
-                    <span className="text-3xl">📅</span>
-                  </div>
-                  <div className="ml-4">
-                    <h3 className="text-lg font-semibold text-blue-900 mb-1">
-                      Interview Scheduled
-                    </h3>
-                    <p className="text-blue-800">
-                      Your interview is scheduled. Please check your email for
-                      details.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-            {user.status === "OFFICIAL" && (
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 p-6 rounded-r-xl shadow-md">
-                <div className="flex items-start">
-                  <div className="flex-shrink-0">
-                    <span className="text-3xl">🎉</span>
-                  </div>
-                  <div className="ml-4">
-                    <h3 className="text-lg font-semibold text-green-900 mb-1">
-                      Welcome, Official Volunteer!
-                    </h3>
-                    <p className="text-green-800">
-                      Congratulations! You are now an official volunteer. Your ID:{" "}
-                      {user.volunteerId || "Pending"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </motion.div>
-        )}
+            </div>
+          </aside>
 
-        {/* Quick Actions */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7 }}
-        >
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-[#1E3A5F] to-[#2D5F7E] bg-clip-text text-transparent mb-4">
-            Quick Actions
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <motion.a
-              href="/dashboard/tasks"
-              whileHover={{ 
-                scale: 1.03, 
-                y: -5,
-                transition: { 
-                  type: "spring", 
-                  stiffness: 260, 
-                  damping: 20 
-                }
-              }}
-              className="bg-gradient-to-br from-white to-blue-50 p-6 rounded-xl shadow-md hover:shadow-xl border border-blue-100 cursor-pointer block"
-            >
-              <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mb-4">
-                <span className="text-3xl">📋</span>
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">My Tasks</h3>
-              <p className="text-gray-600">View and manage your assigned tasks</p>
-            </motion.a>
+          {/* Column 2: Pending Tasks */}
+          <section className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+            <h3 className="text-sm font-medium text-[#0b2545] mb-4">Pending Tasks</h3>
+            <div className="space-y-3">
+              {user.taskSubmissions && user.taskSubmissions.length > 0 ? (
+                user.taskSubmissions
+                  .filter(ts => ts.status === 'PENDING')
+                  .slice(0, 6)
+                  .map((ts) => (
+                    <div key={ts.id} className="bg-white border border-gray-100 rounded-lg p-4 h-16 flex items-center justify-between cursor-pointer hover:shadow-sm hover:translate-y-[-1px] transition-transform">
+                      <div className="text-sm text-gray-800">{ts.task?.title || 'Task'}</div>
+                      <div className="text-xs text-gray-500">{new Date(ts.submittedAt).toLocaleDateString()}</div>
+                    </div>
+                  ))
+              ) : (
+                <div className="text-sm text-gray-600">No pending tasks.</div>
+              )}
+            </div>
+          </section>
 
-            <motion.a
-              href="/dashboard/donations"
-              whileHover={{ scale: 1.03, y: -5 }}
-              transition={{ type: "spring", stiffness: 300 }}
-              className="bg-gradient-to-br from-white to-purple-50 p-6 rounded-xl shadow-md hover:shadow-xl border border-purple-100 cursor-pointer block"
-            >
-              <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center mb-4">
-                <span className="text-3xl">💰</span>
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Donations</h3>
-              <p className="text-gray-600">Support our campaigns</p>
-            </motion.a>
-
-            <motion.a
-              href="/dashboard/community"
-              whileHover={{ scale: 1.03, y: -5 }}
-              transition={{ type: "spring", stiffness: 300 }}
-              className="bg-gradient-to-br from-white to-green-50 p-6 rounded-xl shadow-md hover:shadow-xl border border-green-100 cursor-pointer block"
-            >
-              <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center mb-4">
-                <span className="text-3xl">👥</span>
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Community</h3>
-              <p className="text-gray-600">Connect with other volunteers</p>
-            </motion.a>
-          </div>
-        </motion.div>
-      </motion.div>
+          {/* Column 3: Pending Donations */}
+          <aside className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+            <h3 className="text-sm font-medium text-[#0b2545] mb-4">Pending Donations</h3>
+            <div className="space-y-4">
+              {user.donations && user.donations.some(d => d.status === 'PENDING') ? (
+                user.donations.filter(d => d.status === 'PENDING').slice(0, 6).map(d => (
+                  <div key={d.id} className="bg-white border border-gray-100 rounded-lg p-4 cursor-pointer hover:shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-sm font-semibold text-gray-900">{d.trxId || 'Donation'}</div>
+                        <div className="text-xs text-gray-500">{d.paymentMethod || ''} · {new Date(d.donatedAt).toLocaleDateString()}</div>
+                      </div>
+                      <div className="text-sm text-gray-800">৳{d.amount.toFixed(2)}</div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <>
+                  <div className="bg-white border border-gray-100 rounded-lg p-6 cursor-pointer hover:bg-gradient-to-r hover:from-[#0b2545]/5 hover:to-white">
+                    <div className="text-base font-semibold text-[#07223f]">Monthly Donations</div>
+                    <div className="text-sm text-gray-500">Manage recurring donors and pledges</div>
+                  </div>
+                  <div className="bg-white border border-gray-100 rounded-lg p-6 cursor-pointer hover:bg-gradient-to-r hover:from-[#0b2545]/5 hover:to-white">
+                    <div className="text-base font-semibold text-[#07223f]">Event Donations</div>
+                    <div className="text-sm text-gray-500">Review incoming event donations</div>
+                  </div>
+                </>
+              )}
+            </div>
+          </aside>
+        </div>
+      </div>
     </DashboardLayout>
   );
 }
