@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import AppLoading from '@/components/ui/AppLoading';
 
 export default function SettingsPage() {
   const { data: session, status } = useSession();
@@ -77,7 +78,7 @@ export default function SettingsPage() {
     }
   };
 
-  if (loading) return <div className="p-6">Loading...</div>;
+  if (loading) return <AppLoading />;
 
   return (
     <DashboardLayout userRole={(user?.role as any) || 'VOLUNTEER'} userName={user?.fullName || user?.username || 'User'} userEmail={user?.email}>

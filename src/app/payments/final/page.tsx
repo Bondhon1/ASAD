@@ -47,7 +47,7 @@ export default function Page() {
     fetchUser();
   }, [session, status]);
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  if (loading) return <AppLoading />;
   if (!user) return null;
 
   return (
