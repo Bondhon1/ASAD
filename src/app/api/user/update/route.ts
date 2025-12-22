@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     const user = await prisma.user.findUnique({ where: { email }, include: { volunteerProfile: true } });
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-    console.log('DEBUG user/update incoming profilePicUrl:', profilePicUrl);
+    // incoming profilePicUrl received from client
 
     // Determine new institute id if institute name provided
     let newInstituteId = user.instituteId;
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     const results = await prisma.$transaction(ops);
 
     const updatedUser = results[results.length - 1];
-    console.log('DEBUG user/update updated profilePicUrl:', updatedUser?.profilePicUrl);
+    // updated profilePicUrl saved in DB (no debug logging)
 
     return NextResponse.json({ user: updatedUser });
   } catch (error) {

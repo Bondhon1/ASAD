@@ -27,8 +27,7 @@ export async function POST(request: NextRequest) {
       console.error('DEBUG blob token not found in environment');
       return NextResponse.json({ error: 'Server not configured for blob uploads' }, { status: 500 });
     }
-    // log which env var provided the token (do not log the token itself)
-    console.log('DEBUG blob token source:', found ? found[0] : 'none');
+    // Do not log token or its source in production.
 
     // create blob entry to receive upload
     // prepare binary buffer and accurate size (bytes)

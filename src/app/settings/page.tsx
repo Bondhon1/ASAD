@@ -65,7 +65,7 @@ export default function SettingsPage() {
           setInstitute(json.user.institute?.name || institute);
           setProfilePicUrl(json.user.profilePicUrl || profilePicUrl);
         } else {
-          setUser(prev => ({ ...prev, fullName, username, institute: { name: institute }, profilePicUrl }));
+          setUser((prev: any) => ({ ...(prev || {}), fullName, username, institute: { name: institute }, profilePicUrl }));
         }
       } else {
         setMessage(json.error || 'Failed to update');
@@ -112,41 +112,47 @@ export default function SettingsPage() {
                       </svg>
                     )}
                   </div>
-                  <input
-                    type="text"
-                    placeholder="Image URL"
-                    value={profilePicUrl}
-                    onChange={(e) => setProfilePicUrl(e.target.value)}
-                    className="w-full text-sm p-2 border border-gray-100 rounded-md"
-                  />
-                  <div className="text-xs text-gray-500 mt-2">Paste image URL to update avatar or upload a local file below</div>
-                  <input type="file" accept="image/*" className="mt-2 text-sm" onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    // read as base64
-                    const reader = new FileReader();
-                    reader.onload = async () => {
-                      const dataUrl = reader.result as string;
-                      const base64 = dataUrl.split(',')[1];
-                      try {
-                        const res = await fetch('/api/user/upload', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ fileName: file.name, mimeType: file.type, data: base64 }),
-                        });
-                        const json = await res.json();
-                        if (res.ok && json.url) {
-                          setProfilePicUrl(json.url);
-                          setMessage('Uploaded avatar');
-                        } else {
-                          setMessage(json.error || 'Upload failed');
+                  <div className="text-xs text-gray-500 mt-2">Upload a local file or paste an image URL using the input below</div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <input type="file" accept="image/*" id="avatarFileInput" className="hidden" onChange={async (e) => {
+                      const file = e.currentTarget.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = async () => {
+                        const dataUrl = reader.result as string;
+                        const base64 = dataUrl.split(',')[1];
+                        try {
+                          const res = await fetch('/api/user/upload', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ fileName: file.name, mimeType: file.type, data: base64 }),
+                          });
+                          const json = await res.json();
+                          if (res.ok && json.url) {
+                            setProfilePicUrl(json.url);
+                            setUser((prev: any) => prev ? ({ ...prev, profilePicUrl: json.url }) : prev);
+                            setMessage('Uploaded avatar');
+                          } else if (json.url) {
+                            // fallback data url
+                            setProfilePicUrl(json.url);
+                            setUser((prev: any) => prev ? ({ ...prev, profilePicUrl: json.url }) : prev);
+                            setMessage('Uploaded (fallback)');
+                          } else {
+                            setMessage(json.error || 'Upload failed');
+                          }
+                        } catch (err) {
+                          setMessage('Upload error');
                         }
-                      } catch (err) {
-                        setMessage('Upload error');
-                      }
-                    };
-                    reader.readAsDataURL(file);
-                  }} />
+                      };
+                      reader.readAsDataURL(file);
+                    }} />
+
+                    <label htmlFor="avatarFileInput" className="inline-flex items-center gap-2 px-3 py-2 bg-[#07223f] text-white text-sm rounded-md cursor-pointer">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M7.5 12l2.25 3L12 11.25l2.25 3L16.5 9"/></svg>
+                      Upload image
+                    </label>
+                    <button type="button" onClick={() => { setProfilePicUrl(''); setUser((prev: any) => prev ? ({ ...prev, profilePicUrl: null }) : prev); setMessage(null); }} className="text-sm text-gray-500">Remove</button>
+                  </div>
                 </div>
 
                 <div className="md:col-span-2">
@@ -188,7 +194,7 @@ export default function SettingsPage() {
                         {showSuggestions && suggestions.length > 0 && (
                           <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-gray-100 rounded-md shadow-sm max-h-52 overflow-auto">
                             {suggestions.slice(0,5).map(s => (
-                              <div key={s.value} onClick={() => { setInstitute(s.value); setShowSuggestions(false); }} className="p-2 text-sm hover:bg-gray-50 cursor-pointer">
+                              <div key={s.value} onClick={() => { setInstitute(s.value); setShowSuggestions(false); setUser((prev: any) => prev ? ({ ...prev, institute: { name: s.value } }) : prev); }} className="p-2 text-sm hover:bg-gray-50 cursor-pointer">
                                 <div className="font-medium text-gray-800">{s.value}</div>
                                 <div className="text-xs text-gray-500">{s.eiin ? `EIIN: ${s.eiin}` : ''} {s.institutionType ? ` · ${s.institutionType}` : ''}</div>
                               </div>
