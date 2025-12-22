@@ -478,7 +478,7 @@ function InterviewSlotsContent() {
         {/* Participants Modal */}
         {showParticipantsModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6">
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6 max-h-[80vh] overflow-hidden">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-bold">Participants</h2>
                 <button onClick={handleCloseParticipants} className="text-gray-600 hover:text-gray-800">Close</button>
@@ -489,7 +489,7 @@ function InterviewSlotsContent() {
               ) : participants.length === 0 ? (
                 <div className="text-center py-8">No participants registered for this slot.</div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-3 overflow-y-auto max-h-[55vh] pr-2">
                   {participants.map((app) => (
                     <div key={app.id} className="flex items-center justify-between border rounded-lg p-3">
                       <div className="flex items-center gap-3">
