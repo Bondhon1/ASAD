@@ -39,24 +39,37 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       if (!payment) return NextResponse.json({ error: "Payment not found" }, { status: 404 });
 
       if (action === "approve") {
-        // Assign a sequential volunteerId starting from 22000799 if not present
-        const usersWithIds = await prisma.user.findMany({ where: { volunteerId: { not: null } }, select: { volunteerId: true } });
-        let maxNumeric = 0;
-        for (const u of usersWithIds) {
-          const v = u.volunteerId || "";
-          const n = parseInt(v, 10);
-          if (!Number.isNaN(n) && n > maxNumeric) maxNumeric = n;
+        // support manual assignment: body may contain assignMode: 'auto'|'manual' and volunteerId when manual
+        const { assignMode, volunteerId: manualVolunteerId } = body as { assignMode?: string; volunteerId?: string };
+
+        // determine volunteerId to use
+        let volunteerIdToUse: string | null = null;
+        if (assignMode === 'manual') {
+          if (!manualVolunteerId) return NextResponse.json({ error: 'Manual volunteerId required' }, { status: 400 });
+          // ensure uniqueness
+          const exists = await prisma.user.findFirst({ where: { volunteerId: manualVolunteerId } });
+          if (exists) return NextResponse.json({ error: 'Volunteer ID already in use' }, { status: 409 });
+          volunteerIdToUse = manualVolunteerId;
+        } else {
+          // auto-generate sequential volunteerId starting from 22000799
+          const usersWithIds = await prisma.user.findMany({ where: { volunteerId: { not: null } }, select: { volunteerId: true } });
+          let maxNumeric = 0;
+          for (const u of usersWithIds) {
+            const v = u.volunteerId || "";
+            const n = parseInt(v, 10);
+            if (!Number.isNaN(n) && n > maxNumeric) maxNumeric = n;
+          }
+          const start = 22000799;
+          const nextId = maxNumeric >= start ? maxNumeric + 1 : start;
+          volunteerIdToUse = String(nextId);
         }
-        const start = 22000799;
-        const nextId = maxNumeric >= start ? maxNumeric + 1 : start;
-        const volunteerId = String(nextId);
 
         const ops: any[] = [];
         // mark final payment verified
         ops.push(prisma.finalPayment.update({ where: { id }, data: { status: "VERIFIED", verifiedAt: new Date() } }));
 
         // update user to OFFICIAL (only increment institute count if user wasn't already OFFICIAL)
-        ops.push(prisma.user.update({ where: { id: payment.userId }, data: { status: "OFFICIAL", volunteerId } }));
+        ops.push(prisma.user.update({ where: { id: payment.userId }, data: { status: "OFFICIAL", volunteerId: volunteerIdToUse } }));
 
         // If user has an institute and wasn't OFFICIAL before, increment the cached count
         if (payment.user?.instituteId && payment.user.status !== "OFFICIAL") {
