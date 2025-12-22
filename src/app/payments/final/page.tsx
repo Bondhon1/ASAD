@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import FinalPaymentPage from "@/components/auth/FinalPaymentPage";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import AppLoading from '@/components/ui/AppLoading';
 
 interface User {
   email: string;
