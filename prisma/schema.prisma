@@ -32,6 +32,12 @@ model User {
   emailVerified         Boolean                @default(false)
   emailVerificationToken String?               @unique
   emailVerificationExpiry DateTime?
+
+  // Address (Bangladesh)
+  division              String?
+  district              String?
+  upazila               String?
+  addressLine           String?
   
   // Google Calendar integration (for HR)
   googleRefreshToken    String?                // Encrypted refresh token
@@ -51,6 +57,7 @@ model User {
   approvedTaskSubmissions TaskSubmission[]     @relation("ApprovedBy")
   approvedDonations     Donation[]             @relation("ApprovedBy")
   pointsHistory         PointsHistory[]
+  experiences           Experience[]
   auditLogs             AuditLog[]             @relation("ActorUser")
   
   // Social features
@@ -261,6 +268,22 @@ model PointsHistory {
   @@index([userId])
   @@index([relatedTaskId])
   @@index([relatedDonationId])
+}
+
+// Volunteer experiences (roles & work history)
+model Experience {
+  id           String   @id @default(cuid())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
+  title        String
+  organization String?
+  startDate    DateTime?
+  endDate      DateTime?
+  isCurrent    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
 }
 
 // ============================================================================

@@ -4,6 +4,16 @@ import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import AppLoading from '@/components/ui/AppLoading';
+import { divisions, getDistricts, getUpazilas } from '@/lib/bdGeo';
+
+type ExperienceInput = {
+  id?: string;
+  title: string;
+  organization: string;
+  startDate?: string;
+  endDate?: string;
+  isCurrent?: boolean;
+};
 
 export default function SettingsPage() {
   const { data: session, status } = useSession();
@@ -15,6 +25,11 @@ export default function SettingsPage() {
   const [username, setUsername] = useState("");
   const [institute, setInstitute] = useState("");
   const [profilePicUrl, setProfilePicUrl] = useState("");
+  const [division, setDivision] = useState("");
+  const [district, setDistrict] = useState("");
+  const [upazila, setUpazila] = useState("");
+  const [addressLine, setAddressLine] = useState("");
+  const [experiences, setExperiences] = useState<ExperienceInput[]>([]);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<Array<{ label: string; value: string; eiin?: number | string; institutionType?: string }>>([]);
@@ -37,6 +52,20 @@ export default function SettingsPage() {
           setUsername(data.user.username || "");
           setInstitute(data.user.institute?.name || "");
           setProfilePicUrl(data.user.profilePicUrl || "");
+          setDivision(data.user.division || "");
+          setDistrict(data.user.district || "");
+          setUpazila(data.user.upazila || "");
+          setAddressLine(data.user.addressLine || "");
+          setExperiences(
+            (data.user.experiences || []).map((exp: any) => ({
+              id: exp.id,
+              title: exp.title || "",
+              organization: exp.organization || "",
+              startDate: exp.startDate ? exp.startDate.slice(0, 10) : "",
+              endDate: exp.endDate ? exp.endDate.slice(0, 10) : "",
+              isCurrent: exp.isCurrent || false,
+            }))
+          );
         }
       } catch (e) {
         console.error(e);
@@ -48,6 +77,22 @@ export default function SettingsPage() {
     fetchProfile();
   }, [session, status]);
 
+  // Keep district and upazila in sync with division selection
+  useEffect(() => {
+    const availableDistricts = getDistricts(division);
+    if (division && !availableDistricts.includes(district)) {
+      setDistrict("");
+      setUpazila("");
+    }
+  }, [division, district]);
+
+  useEffect(() => {
+    const availableUpazilas = getUpazilas(division, district);
+    if (district && availableUpazilas.length && !availableUpazilas.includes(upazila)) {
+      setUpazila("");
+    }
+  }, [division, district, upazila]);
+
   const handleSave = async () => {
     setSaving(true);
     setMessage(null);
@@ -58,7 +103,14 @@ export default function SettingsPage() {
       const res = await fetch('/api/user/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fullName, username, institute: instituteToSend, profilePicUrl }),
+        body: JSON.stringify({
+          fullName,
+          username,
+          institute: instituteToSend,
+          profilePicUrl,
+          address: { division, district, upazila, addressLine },
+          experiences,
+        }),
       });
       const json = await res.json();
       if (res.ok) {
@@ -70,6 +122,20 @@ export default function SettingsPage() {
           setUsername(json.user.username || username);
           setInstitute(json.user.institute?.name || instituteToSend);
           setProfilePicUrl(json.user.profilePicUrl || profilePicUrl);
+          setDivision(json.user.division || division);
+          setDistrict(json.user.district || district);
+          setUpazila(json.user.upazila || upazila);
+          setAddressLine(json.user.addressLine || addressLine);
+          setExperiences(
+            (json.user.experiences || []).map((exp: any) => ({
+              id: exp.id,
+              title: exp.title || '',
+              organization: exp.organization || '',
+              startDate: exp.startDate ? exp.startDate.slice(0, 10) : '',
+              endDate: exp.endDate ? exp.endDate.slice(0, 10) : '',
+              isCurrent: !!exp.isCurrent,
+            }))
+          );
         } else {
           setUser((prev: any) => ({ ...(prev || {}), fullName, username, institute: { name: instituteToSend }, profilePicUrl }));
         }
@@ -265,6 +331,96 @@ export default function SettingsPage() {
                             ))}
                           </div>
                         )}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+                      <div>
+                        <label className="text-xs text-gray-600">Division</label>
+                        <select value={division} onChange={(e) => setDivision(e.target.value)} className="w-full mt-1 p-2 border border-gray-100 rounded-md bg-white">
+                          <option value="">Select division</option>
+                          {divisions.map((d) => (
+                            <option key={d} value={d}>{d}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-600">District</label>
+                        <select value={district} onChange={(e) => setDistrict(e.target.value)} className="w-full mt-1 p-2 border border-gray-100 rounded-md bg-white" disabled={!division}>
+                          <option value="">{division ? 'Select district' : 'Pick division first'}</option>
+                          {getDistricts(division).map((d) => (
+                            <option key={d} value={d}>{d}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-600">Upazila</label>
+                        <select value={upazila} onChange={(e) => setUpazila(e.target.value)} className="w-full mt-1 p-2 border border-gray-100 rounded-md bg-white" disabled={!district}>
+                          <option value="">{district ? 'Select upazila' : 'Pick district first'}</option>
+                          {getUpazilas(division, district).map((u) => (
+                            <option key={u} value={u}>{u}</option>
+                          ))}
+                          {district && <option value="Other">Other / not listed</option>}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-600">Address line</label>
+                        <input value={addressLine} onChange={(e) => setAddressLine(e.target.value)} className="w-full mt-1 p-2 border border-gray-100 rounded-md" placeholder="House, road, village or area" />
+                      </div>
+                    </div>
+
+                    <div className="pt-4 mt-4 border-t border-gray-100">
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm font-medium text-gray-900">Roles & Experience</div>
+                        <button type="button" onClick={() => setExperiences((prev) => [...prev, { title: "", organization: "", startDate: "", endDate: "", isCurrent: false }])} className="px-3 py-2 text-xs bg-gray-100 rounded-md text-gray-800 hover:bg-gray-200">Add experience</button>
+                      </div>
+                      <div className="space-y-3 mt-3">
+                        {experiences.length === 0 && (
+                          <div className="text-sm text-gray-500">No experience added yet.</div>
+                        )}
+                        {experiences.map((exp, idx) => (
+                          <div key={exp.id || idx} className="border border-gray-100 rounded-md p-3 bg-gray-50">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              <div>
+                                <label className="text-xs text-gray-600">Role / Title</label>
+                                <input value={exp.title} onChange={(e) => {
+                                  const v = e.target.value;
+                                  setExperiences((prev) => prev.map((p, i) => i === idx ? { ...p, title: v } : p));
+                                }} className="w-full mt-1 p-2 border border-gray-100 rounded-md" placeholder="e.g., Coordinator" />
+                              </div>
+                              <div>
+                                <label className="text-xs text-gray-600">Organization</label>
+                                <input value={exp.organization} onChange={(e) => {
+                                  const v = e.target.value;
+                                  setExperiences((prev) => prev.map((p, i) => i === idx ? { ...p, organization: v } : p));
+                                }} className="w-full mt-1 p-2 border border-gray-100 rounded-md" placeholder="Institute / workplace" />
+                              </div>
+                              <div>
+                                <label className="text-xs text-gray-600">Start date</label>
+                                <input type="date" value={exp.startDate || ''} onChange={(e) => {
+                                  const v = e.target.value;
+                                  setExperiences((prev) => prev.map((p, i) => i === idx ? { ...p, startDate: v } : p));
+                                }} className="w-full mt-1 p-2 border border-gray-100 rounded-md" />
+                              </div>
+                              <div>
+                                <label className="text-xs text-gray-600">End date</label>
+                                <input type="date" value={exp.endDate || ''} disabled={exp.isCurrent} onChange={(e) => {
+                                  const v = e.target.value;
+                                  setExperiences((prev) => prev.map((p, i) => i === idx ? { ...p, endDate: v } : p));
+                                }} className="w-full mt-1 p-2 border border-gray-100 rounded-md disabled:bg-gray-100" />
+                              </div>
+                            </div>
+                            <div className="mt-2 flex items-center justify-between">
+                              <label className="flex items-center gap-2 text-xs text-gray-600">
+                                <input type="checkbox" checked={!!exp.isCurrent} onChange={(e) => {
+                                  const checked = e.target.checked;
+                                  setExperiences((prev) => prev.map((p, i) => i === idx ? { ...p, isCurrent: checked, endDate: checked ? "" : p.endDate } : p));
+                                }} />
+                                Currently working here
+                              </label>
+                              <button type="button" onClick={() => setExperiences((prev) => prev.filter((_, i) => i !== idx))} className="text-xs text-red-600 hover:underline">Remove</button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                     <div className="flex items-center gap-3 mt-3">

@@ -21,6 +21,9 @@ export async function GET(request: NextRequest) {
         institute: true,
         volunteerProfile: true,
         initialPayment: true,
+        experiences: {
+          orderBy: { startDate: 'desc' },
+        },
         // include recent task submissions and pending donations for dashboard
         taskSubmissions: {
           include: { task: true },
