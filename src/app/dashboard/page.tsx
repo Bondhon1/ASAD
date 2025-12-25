@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { motion } from "framer-motion";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import AppDashboardLoading from "@/components/ui/AppDashboardLoading";
 
 interface User {
   id: string;
@@ -128,33 +128,7 @@ export default function DashboardPage() {
   }, [router, session, status]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#0A1929] via-[#1E3A5F] to-[#2D5F7E]">
-        <div className="text-center">
-          <motion.div
-            className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full mx-auto"
-            animate={{ rotate: 360 }}
-            transition={{ 
-              duration: 0.8, 
-              repeat: Infinity, 
-              ease: "linear" 
-            }}
-          />
-          <motion.p
-            className="mt-4 text-white font-medium"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ 
-              delay: 0.2,
-              duration: 0.5,
-              ease: [0.25, 0.46, 0.45, 0.94]
-            }}
-          >
-            Loading your dashboard...
-          </motion.p>
-        </div>
-      </div>
-    );
+    return <AppDashboardLoading />;
   }
 
   if (!user) {

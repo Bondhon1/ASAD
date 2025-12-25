@@ -4,6 +4,8 @@ import React, { useEffect, useState } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import AppLoading from "@/components/ui/AppLoading";
+import useDelayedLoader from '@/lib/useDelayedLoader';
 
 export default function ApprovalsPage() {
   const { data: session, status } = useSession();
@@ -109,7 +111,8 @@ export default function ApprovalsPage() {
     }
   };
 
-  if (loading) return <DashboardLayout userRole="HR" userName="Loading..." userEmail=""><div className="p-6">Loading...</div></DashboardLayout>;
+  const showLoader = useDelayedLoader(loading, 300);
+  if (showLoader) return <AppLoading />;
   if (!user) return null;
 
   return (

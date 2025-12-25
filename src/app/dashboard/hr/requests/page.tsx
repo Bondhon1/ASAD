@@ -5,6 +5,8 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { CheckCircle, XCircle, Calendar, Eye, AlertTriangle } from "lucide-react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import AppLoading from "@/components/ui/AppLoading";
+import useDelayedLoader from '@/lib/useDelayedLoader';
 
 interface Application {
   id: string;
@@ -140,22 +142,8 @@ export default function NewRequestsPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <DashboardLayout
-        userRole="HR"
-        userName="Loading..."
-        userEmail=""
-      >
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1E3A5F] mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading applications...</p>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
+  const showLoader = useDelayedLoader(loading, 300);
+  if (showLoader) return <AppLoading />;
 
   if (!user) return null;
 

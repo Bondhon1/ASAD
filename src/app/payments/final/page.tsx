@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import FinalPaymentPage from "@/components/auth/FinalPaymentPage";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import AppLoading from '@/components/ui/AppLoading';
+import useDelayedLoader from '@/lib/useDelayedLoader';
 
 interface User {
   email: string;
@@ -48,7 +49,8 @@ export default function Page() {
     fetchUser();
   }, [session, status]);
 
-  if (loading) return <AppLoading />;
+  const showLoader = useDelayedLoader(loading, 300);
+  if (showLoader) return <AppLoading />;
   if (!user) return null;
 
   return (

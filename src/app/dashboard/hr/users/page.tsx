@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import AppLoading from "@/components/ui/AppLoading";
+import useDelayedLoader from '@/lib/useDelayedLoader';
 
 interface User {
   id: string;
@@ -76,6 +78,9 @@ export default function UsersManagementPage() {
     return acc;
   }, {});
 
+  const showLoader = useDelayedLoader(loading, 300);
+  if (showLoader) return <AppLoading />;
+
   return (
     <DashboardLayout userRole={"HR" as any} userName={"HR"} userEmail={"hr@example.com"}>
       <div className="max-w-6xl mx-auto px-6 py-8">
@@ -107,11 +112,9 @@ export default function UsersManagementPage() {
         </div>
 
         {/* Debug summary removed */}
+  {error && <div className="text-sm text-red-600">{error}</div>}
 
-        {loading && <div className="text-sm text-gray-600">Loading users...</div>}
-        {error && <div className="text-sm text-red-600">{error}</div>}
-
-        {!loading && !error && (
+  {!error && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="md:col-span-2">
               {Object.keys(grouped).length === 0 ? (

@@ -6,6 +6,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, Calendar, Users, Link as LinkIcon, Trash2, CheckCircle, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import AppLoading from "@/components/ui/AppLoading";
+import useDelayedLoader from '@/lib/useDelayedLoader';
 
 interface InterviewSlot {
   id: string;
@@ -308,15 +310,8 @@ function InterviewSlotsContent() {
     }
   };
 
-  if (loading) {
-    return (
-      <DashboardLayout userRole="HR" userName="Loading..." userEmail="">
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1E3A5F]"></div>
-        </div>
-      </DashboardLayout>
-    );
-  }
+  const showLoader = useDelayedLoader(loading, 300);
+  if (showLoader) return <AppLoading />;
 
   if (!user) return null;
 
@@ -485,7 +480,7 @@ function InterviewSlotsContent() {
               </div>
 
               {participantsLoading ? (
-                <div className="text-center py-8">Loading...</div>
+                <div className="py-4"><AppLoading /></div>
               ) : participants.length === 0 ? (
                 <div className="text-center py-8">No participants registered for this slot.</div>
               ) : (
@@ -662,11 +657,7 @@ function InterviewSlotsContent() {
 export default function InterviewSlotsPage() {
   return (
     <Suspense fallback={
-      <DashboardLayout userRole="HR" userName="Loading..." userEmail="">
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1E3A5F]"></div>
-        </div>
-      </DashboardLayout>
+      <AppLoading />
     }>
       <InterviewSlotsContent />
     </Suspense>

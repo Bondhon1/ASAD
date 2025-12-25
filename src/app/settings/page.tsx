@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import AppLoading from '@/components/ui/AppLoading';
+import useDelayedLoader from '@/lib/useDelayedLoader';
 import { divisions, getDistricts, getUpazilas } from '@/lib/bdGeo';
 
 type ExperienceInput = {
@@ -149,7 +150,8 @@ export default function SettingsPage() {
     }
   };
 
-  if (loading) return <AppLoading />;
+  const showLoader = useDelayedLoader(loading, 300);
+  if (showLoader) return <AppLoading />;
 
   return (
     <DashboardLayout userRole={(user?.role as any) || 'VOLUNTEER'} userName={user?.fullName || user?.username || 'User'} userEmail={user?.email}>
