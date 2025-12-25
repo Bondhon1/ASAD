@@ -243,19 +243,16 @@ export default function DashboardPage() {
               <div>
                 <div className="flex items-center gap-3">
                   <div className="text-lg font-semibold text-gray-900">{user.fullName || user.username || "Volunteer"}</div>
-                  {user.role === 'VOLUNTEER' && (
-                    <span className="text-xs px-2 py-1 rounded-full bg-[#0b2545] text-white">{formatRole(user.role)}</span>
-                  )}
                 </div>
                 <div className="text-sm text-gray-600">{user.institute?.name || "Independent"}</div>
-                <div className="text-xs text-gray-500">ID: {user.volunteerId || "—"} · {user.volunteerProfile?.points || 0} points</div>
+                <div className="text-xs text-gray-500">ID: {user.volunteerId || "—"}</div>
                 <div className="text-xs text-gray-500 mt-1">{user.followersCount ?? 0} followers · {user.followingCount ?? 0} following</div>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
-              <button className="px-4 py-2 bg-gray-100 text-gray-800 rounded-full text-sm hover:bg-gray-200 cursor-pointer">{formatRole(user.role) || 'Volunteer'}</button>
-              <button className="px-4 py-2 bg-gradient-to-r from-[#0b2545] to-[#07223f] text-white rounded-full text-sm hover:opacity-95 cursor-pointer">Points: {user.volunteerProfile?.points || 0}</button>
+              <span className="inline-flex items-center px-4 py-2 rounded-full bg-gray-100 text-sm font-medium text-gray-800">{user.volunteerProfile?.rank ?? '—'}</span>
+              <span className="inline-flex items-center px-3 py-2 rounded-full bg-gradient-to-r from-[#0b2545] to-[#07223f] text-white text-sm font-medium">Points: {user.volunteerProfile?.points ?? 0}</span>
             </div>
           </div>
         </div>

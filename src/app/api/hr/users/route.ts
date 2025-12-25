@@ -1,8 +1,28 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 
 export async function GET(req: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const requester = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { role: true, status: true },
+    });
+
+    if (!requester || requester.status === 'BANNED') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!['HR', 'MASTER'].includes(requester.role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const url = new URL(req.url);
     const statusParam = url.searchParams.get('status');
     const isOfficialParam = url.searchParams.get('isOfficial');
@@ -40,7 +60,7 @@ export async function GET(req: Request) {
       prisma.user.findMany({
         where,
         include: {
-          volunteerProfile: true,
+          volunteerProfile: { include: { rank: true } },
           institute: { select: { name: true } },
           taskSubmissions: { include: { task: true } },
           donations: true,
@@ -52,7 +72,15 @@ export async function GET(req: Request) {
       }),
     ]);
 
-    return NextResponse.json({ users, total, page, pageSize });
+    // Normalize rank to a simple string for frontend convenience
+    const usersNormalized = users.map((u: any) => {
+      if (u.volunteerProfile && u.volunteerProfile.rank) {
+        return { ...u, volunteerProfile: { ...u.volunteerProfile, rank: u.volunteerProfile.rank.name ?? u.volunteerProfile.rank } };
+      }
+      return u;
+    });
+
+    return NextResponse.json({ users: usersNormalized, total, page, pageSize });
   } catch (err: any) {
     console.error('GET /api/hr/users error', err);
     return NextResponse.json({ error: err?.message || 'Server error' }, { status: 500 });

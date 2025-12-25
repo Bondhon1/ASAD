@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       where: { email },
       include: {
         institute: true,
-        volunteerProfile: true,
+        volunteerProfile: { include: { rank: true } },
         initialPayment: true,
         experiences: {
           orderBy: { startDate: 'desc' },
@@ -48,6 +48,12 @@ export async function GET(request: NextRequest) {
     const finalPayment = await prisma.finalPayment.findUnique({
       where: { userId: user.id },
     });
+
+    // normalize rank to a name string for frontend
+    const vp = user.volunteerProfile as any | null;
+    if (vp && vp.rank) {
+      vp.rank = vp.rank.name ?? vp.rank;
+    }
 
     const resultUser = { ...user, finalPayment };
 
