@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
-import AppLoading from "@/components/ui/AppLoading";
 import useDelayedLoader from '@/lib/useDelayedLoader';
 
 interface User {
@@ -40,12 +39,29 @@ export default function UsersManagementPage() {
   const [total, setTotal] = useState(0);
   const [statusFilter, setStatusFilter] = useState<'ANY' | 'UNOFFICIAL' | 'OFFICIAL'>('UNOFFICIAL');
 
-  const showLoader = useDelayedLoader(loading, 300);
+  const delayedLoading = useDelayedLoader(loading, 250);
+  const isCheckingAuth = status === "loading" || !authChecked;
+  const isLoading = delayedLoading || isCheckingAuth;
+  const displayName = viewer?.fullName || viewer?.username || session?.user?.name || "HR";
+  const displayEmail = viewer?.email || session?.user?.email || "";
+  const displayRole = (viewer?.role as "VOLUNTEER" | "HR" | "MASTER") || (session as any)?.user?.role || "HR";
   const [showPointsForm, setShowPointsForm] = useState(false);
   const [showRankForm, setShowRankForm] = useState(false);
   const [pointsInput, setPointsInput] = useState<number | ''>('');
   const [rankInput, setRankInput] = useState<string>('');
   const [saving, setSaving] = useState(false);
+
+  const skeletonPage = (
+    <div className="max-w-6xl mx-auto px-6 py-8 space-y-4 animate-pulse">
+      <div className="h-8 w-48 bg-gray-200 rounded" />
+      <div className="h-10 w-full bg-gray-200 rounded" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="h-32 bg-gray-200 rounded" />
+        ))}
+      </div>
+    </div>
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -57,7 +73,6 @@ export default function UsersManagementPage() {
         router.replace("/auth");
         return;
       }
-
       const email = session?.user?.email;
       if (!email) {
         router.replace("/auth");
@@ -129,7 +144,7 @@ export default function UsersManagementPage() {
     };
   }, [page, pageSize, query, statusFilter, authChecked]);
 
-  if (status === "loading" || !authChecked) return <AppLoading />;
+  if (status === "unauthenticated") return null;
   if (authError) return null;
 
   // API returns users already filtered by status=UNOFFICIAL & isOfficial=true
@@ -142,41 +157,44 @@ export default function UsersManagementPage() {
     return acc;
   }, {});
 
-  if (showLoader) return <AppLoading />;
-
   return (
     <DashboardLayout
-      userRole={(viewer?.role as any) || "HR"}
-      userName={viewer?.fullName || viewer?.username || session?.user?.email || "HR"}
-      userEmail={viewer?.email || session?.user?.email || ""}
+      userRole={displayRole}
+      userName={displayName}
+      userEmail={displayEmail}
+      initialUserStatus={viewer?.status ?? null}
+      initialFinalPaymentStatus={(viewer as any)?.finalPayment?.status ?? null}
     >
-      <div className="max-w-6xl mx-auto px-6 py-8">
-        <h2 className="text-2xl font-semibold text-[#0b2545] mb-4">User Management</h2>
+      {isLoading ? (
+        skeletonPage
+      ) : (
+        <div className="max-w-6xl mx-auto px-6 py-8">
+          <h2 className="text-2xl font-semibold text-[#0b2545] mb-4">User Management</h2>
 
-        <div className="mb-4 flex flex-col md:flex-row items-start md:items-center gap-3">
-          <input
-            value={query}
-            onChange={(e) => { setQuery(e.target.value); setPage(1); }}
-            placeholder="Search by name, email, or volunteer ID"
-            className="px-3 py-2 border rounded-md w-full md:max-w-sm"
-          />
-          <label className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Status:</span>
-            <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value as any); setPage(1); }} className="border rounded px-2 py-1">
-              <option value="ANY">Any</option>
-              <option value="UNOFFICIAL">Unofficial (not OFFICIAL)</option>
-              <option value="OFFICIAL">OFFICIAL</option>
-            </select>
-          </label>
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-600">Page size:</label>
-            <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }} className="border rounded px-2 py-1">
-              <option value={10}>10</option>
-              <option value={20}>20</option>
-              <option value={50}>50</option>
-            </select>
+          <div className="mb-4 flex flex-col md:flex-row items-start md:items-center gap-3">
+            <input
+              value={query}
+              onChange={(e) => { setQuery(e.target.value); setPage(1); }}
+              placeholder="Search by name, email, or volunteer ID"
+              className="px-3 py-2 border rounded-md w-full md:max-w-sm"
+            />
+            <label className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">Status:</span>
+              <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value as any); setPage(1); }} className="border rounded px-2 py-1">
+                <option value="ANY">Any</option>
+                <option value="UNOFFICIAL">Unofficial (not OFFICIAL)</option>
+                <option value="OFFICIAL">OFFICIAL</option>
+              </select>
+            </label>
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600">Page size:</label>
+              <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }} className="border rounded px-2 py-1">
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
           </div>
-        </div>
 
         {/* Debug summary removed */}
   {error && <div className="text-sm text-red-600">{error}</div>}
@@ -333,7 +351,8 @@ export default function UsersManagementPage() {
             
           </div>
         )}
-      </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }

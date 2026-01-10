@@ -5,7 +5,6 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { CheckCircle, XCircle, Calendar, Eye, AlertTriangle } from "lucide-react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
-import AppLoading from "@/components/ui/AppLoading";
 import useDelayedLoader from '@/lib/useDelayedLoader';
 
 interface Application {
@@ -32,6 +31,11 @@ export default function NewRequestsPage() {
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
   const [user, setUser] = useState<any>(null);
   const [hasAvailableSlots, setHasAvailableSlots] = useState(true);
+
+  const isLoading = useDelayedLoader(loading, 250) || status === "loading";
+  const displayName = user?.fullName || user?.username || session?.user?.name || "HR";
+  const displayEmail = user?.email || session?.user?.email || "";
+  const displayRole = (user?.role as "VOLUNTEER" | "HR" | "MASTER") || (session as any)?.user?.role || "HR";
 
   useEffect(() => {
     // Check authentication and fetch user
@@ -142,16 +146,28 @@ export default function NewRequestsPage() {
     }
   };
 
-  const showLoader = useDelayedLoader(loading, 300);
-  if (showLoader) return <AppLoading />;
+  if (status === "unauthenticated") return null;
 
-  if (!user) return null;
+  const skeletonTable = (
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 animate-pulse">
+      <div className="p-6 space-y-4">
+        <div className="h-5 w-48 bg-gray-200 rounded" />
+        <div className="space-y-2">
+          {[1,2,3].map((i) => (
+            <div key={i} className="h-12 w-full bg-gray-200 rounded" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <DashboardLayout
-      userRole={(user.role as "VOLUNTEER" | "HR" | "MASTER") || "HR"}
-      userName={user.fullName || user.username || "HR"}
-      userEmail={user.email}
+      userRole={displayRole}
+      userName={displayName}
+      userEmail={displayEmail}
+      initialUserStatus={user?.status ?? null}
+      initialFinalPaymentStatus={user?.finalPayment?.status ?? null}
     >
     <div>
       <div className="mb-6">
@@ -174,86 +190,90 @@ export default function NewRequestsPage() {
         )}
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Pending Requests ({applications.length})
-            </h2>
-          </div>
+      {isLoading ? (
+        skeletonTable
+      ) : (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">
+                Pending Requests ({applications.length})
+              </h2>
+            </div>
 
-          {applications.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500">No pending applications</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Institute</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {applications.map((app) => (
-                    <tr key={app.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-4 text-sm font-medium text-gray-900">
-                        {app.user.fullName}
-                      </td>
-                      <td className="px-4 py-4 text-sm text-gray-600">{app.user.email}</td>
-                      <td className="px-4 py-4 text-sm text-gray-600">{app.user.phone}</td>
-                      <td className="px-4 py-4 text-sm text-gray-600">
-                        {app.user.institute?.name || "N/A"}
-                      </td>
-                      <td className="px-4 py-4 text-sm text-gray-600">
-                        <div>
-                          <p className="font-medium">{app.paymentMethod.toUpperCase()}</p>
-                          <p className="text-xs text-gray-500">TRX: {app.trxId}</p>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 text-sm">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => setSelectedApp(app)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
-                            title="View Details"
-                          >
-                            <Eye size={18} />
-                          </button>
-                          <button
-                            onClick={() => handleApprove(app.id)}
-                            disabled={!hasAvailableSlots}
-                            className={`p-2 rounded-lg ${
-                              hasAvailableSlots
-                                ? "text-green-600 hover:bg-green-50 cursor-pointer"
-                                : "text-gray-400 bg-gray-100 cursor-not-allowed"
-                            }`}
-                            title={hasAvailableSlots ? "Approve" : "No slots available"}
-                          >
-                            <CheckCircle size={18} />
-                          </button>
-                          <button
-                            onClick={() => handleReject(app.id)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                            title="Reject"
-                          >
-                            <XCircle size={18} />
-                          </button>
-                        </div>
-                      </td>
+            {applications.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-500">No pending applications</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Institute</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {applications.map((app) => (
+                      <tr key={app.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-4 text-sm font-medium text-gray-900">
+                          {app.user.fullName}
+                        </td>
+                        <td className="px-4 py-4 text-sm text-gray-600">{app.user.email}</td>
+                        <td className="px-4 py-4 text-sm text-gray-600">{app.user.phone}</td>
+                        <td className="px-4 py-4 text-sm text-gray-600">
+                          {app.user.institute?.name || "N/A"}
+                        </td>
+                        <td className="px-4 py-4 text-sm text-gray-600">
+                          <div>
+                            <p className="font-medium">{app.paymentMethod.toUpperCase()}</p>
+                            <p className="text-xs text-gray-500">TRX: {app.trxId}</p>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4 text-sm">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => setSelectedApp(app)}
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                              title="View Details"
+                            >
+                              <Eye size={18} />
+                            </button>
+                            <button
+                              onClick={() => handleApprove(app.id)}
+                              disabled={!hasAvailableSlots}
+                              className={`p-2 rounded-lg ${
+                                hasAvailableSlots
+                                  ? "text-green-600 hover:bg-green-50 cursor-pointer"
+                                  : "text-gray-400 bg-gray-100 cursor-not-allowed"
+                              }`}
+                              title={hasAvailableSlots ? "Approve" : "No slots available"}
+                            >
+                              <CheckCircle size={18} />
+                            </button>
+                            <button
+                              onClick={() => handleReject(app.id)}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                              title="Reject"
+                            >
+                              <XCircle size={18} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Detail Modal */}
       {selectedApp && (

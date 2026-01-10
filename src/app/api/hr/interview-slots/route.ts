@@ -108,10 +108,8 @@ export async function POST(request: Request) {
         calendarEventId = calendarEvent.eventId || "";
       } catch (calendarError) {
         console.error("Calendar API error:", calendarError);
-        return NextResponse.json(
-          { error: "Failed to create Calendar event. Please try reconnecting your Google Calendar." },
-          { status: 500 }
-        );
+        // Graceful fallback to generated Meet link so slot creation still works
+        meetLink = generateSimpleMeetLink();
       }
     } else {
       // Use simple meet link generation
@@ -128,11 +126,12 @@ export async function POST(request: Request) {
       },
     });
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       slot,
-      message: autoCreateMeet && calendarEventId 
-        ? "Slot created with Google Calendar event" 
-        : "Slot created with generated Meet link"
+      message:
+        autoCreateMeet && calendarEventId
+          ? "Slot created with Google Calendar event"
+          : "Slot created with generated Meet link",
     }, { status: 201 });
   } catch (error) {
     console.error("Error creating slot:", error);

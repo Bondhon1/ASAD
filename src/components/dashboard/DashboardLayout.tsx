@@ -27,16 +27,40 @@ interface DashboardLayoutProps {
   userName: string;
   userEmail: string;
   showStatusBanners?: boolean;
+  initialUserStatus?: string | null;
+  initialFinalPaymentStatus?: string | null;
 }
 
-export default function DashboardLayout({ children, userRole, userName, userEmail, showStatusBanners = true }: DashboardLayoutProps) {
+export default function DashboardLayout({
+  children,
+  userRole,
+  userName,
+  userEmail,
+  showStatusBanners = true,
+  initialUserStatus,
+  initialFinalPaymentStatus,
+}: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const router = useRouter();
-  const [userStatus, setUserStatus] = useState<string | null>(null);
-  const [finalPaymentStatus, setFinalPaymentStatus] = useState<string | null>(null);
+  const [userStatus, setUserStatus] = useState<string | null>(initialUserStatus ?? null);
+  const [finalPaymentStatus, setFinalPaymentStatus] = useState<string | null>(initialFinalPaymentStatus ?? null);
+
+  useEffect(() => {
+    if (initialUserStatus !== undefined) {
+      setUserStatus(initialUserStatus);
+    }
+  }, [initialUserStatus]);
+
+  useEffect(() => {
+    if (initialFinalPaymentStatus !== undefined) {
+      setFinalPaymentStatus(initialFinalPaymentStatus);
+    }
+  }, [initialFinalPaymentStatus]);
 
   useEffect(() => {
     if (!userEmail) return;
+    // Skip fetching if caller already provided the status values.
+    if (initialUserStatus !== undefined || initialFinalPaymentStatus !== undefined) return;
     (async () => {
       try {
         const res = await fetch(`/api/user/profile?email=${encodeURIComponent(userEmail)}`);
@@ -47,7 +71,7 @@ export default function DashboardLayout({ children, userRole, userName, userEmai
         // ignore
       }
     })();
-  }, [userEmail]);
+  }, [userEmail, initialFinalPaymentStatus, initialUserStatus]);
 
   const handleLogout = () => {
     localStorage.clear();

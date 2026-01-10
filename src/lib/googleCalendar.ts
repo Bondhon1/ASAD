@@ -17,7 +17,7 @@ function createOAuth2Client(refreshToken: string): OAuth2Client {
   const oauth2Client = new OAuth2Client(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
-    process.env.NEXTAUTH_URL
+    `${process.env.NEXTAUTH_URL}/api/hr/connect-calendar/callback`
   );
 
   oauth2Client.setCredentials({

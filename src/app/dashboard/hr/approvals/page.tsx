@@ -4,7 +4,6 @@ import React, { useEffect, useState } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import AppLoading from "@/components/ui/AppLoading";
 import useDelayedLoader from '@/lib/useDelayedLoader';
 
 export default function ApprovalsPage() {
@@ -18,6 +17,11 @@ export default function ApprovalsPage() {
   const [modalPayment, setModalPayment] = useState<any | null>(null);
   const [assignMode, setAssignMode] = useState<'auto' | 'manual'>('auto');
   const [manualVolunteerId, setManualVolunteerId] = useState('');
+
+  const isLoading = useDelayedLoader(loading, 250) || status === "loading";
+  const displayName = user?.fullName || user?.username || session?.user?.name || "HR";
+  const displayEmail = user?.email || session?.user?.email || "";
+  const displayRole = (user?.role as "VOLUNTEER" | "HR" | "MASTER") || (session as any)?.user?.role || "HR";
 
   useEffect(() => {
     const load = async () => {
@@ -35,7 +39,7 @@ export default function ApprovalsPage() {
       setLoading(false);
     };
     load();
-  }, [status]);
+  }, [status, router, session]);
 
   const fetchPayments = async () => {
     try {
@@ -111,12 +115,33 @@ export default function ApprovalsPage() {
     }
   };
 
-  const showLoader = useDelayedLoader(loading, 300);
-  if (showLoader) return <AppLoading />;
-  if (!user) return null;
+  if (status === "unauthenticated") return null;
+
+  const skeletonCards = (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-pulse">
+      {[1,2,3,4].map((i) => (
+        <div key={i} className="bg-white p-4 rounded border space-y-3">
+          <div className="h-4 w-32 bg-gray-200 rounded" />
+          <div className="h-3 w-24 bg-gray-200 rounded" />
+          <div className="h-3 w-20 bg-gray-200 rounded" />
+          <div className="h-3 w-28 bg-gray-200 rounded" />
+          <div className="flex gap-2">
+            <div className="h-8 w-20 bg-gray-200 rounded" />
+            <div className="h-8 w-20 bg-gray-200 rounded" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 
   return (
-    <DashboardLayout userRole={(user.role as any) || "HR"} userName={user.fullName || user.username} userEmail={user.email}>
+    <DashboardLayout
+      userRole={displayRole}
+      userName={displayName}
+      userEmail={displayEmail}
+      initialUserStatus={user?.status ?? null}
+      initialFinalPaymentStatus={user?.finalPayment?.status ?? null}
+    >
       <div className="max-w-6xl mx-auto p-6">
         <h1 className="text-2xl font-bold mb-4">Payments Approvals</h1>
 
@@ -124,33 +149,37 @@ export default function ApprovalsPage() {
 
         <section>
           <h2 className="text-lg font-semibold mb-3">Final Payments (ID Card - 170 BDT)</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {finalPayments.map((p) => (
-              <div key={p.id} className="bg-white p-4 rounded border">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <div className="font-medium">{p.user?.fullName || p.user?.email}</div>
-                    <div className="text-sm text-gray-600">{p.user?.email} • {p.user?.phone}</div>
-                    <div className="text-xs text-gray-500">Submitted: {new Date(p.createdAt).toLocaleString()}</div>
-                    <div className="text-xs mt-1">Status: {p.status}</div>
-                    <div className="mt-2 text-sm">
-                      <div><strong>Transaction ID:</strong> {p.trxId}</div>
-                      <div><strong>Sender:</strong> {p.senderNumber}</div>
-                      <div><strong>Method:</strong> {p.paymentMethod}</div>
-                      <div><strong>Paid at:</strong> {p.paymentDate ? new Date(p.paymentDate).toLocaleString() : p.paymentTime || ''}</div>
-                      {p.proofUrl && (
-                        <div className="mt-2"><a href={p.proofUrl} target="_blank" rel="noreferrer" className="text-blue-600">View proof</a></div>
-                      )}
+          {isLoading ? (
+            skeletonCards
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {finalPayments.map((p) => (
+                <div key={p.id} className="bg-white p-4 rounded border">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="font-medium">{p.user?.fullName || p.user?.email}</div>
+                      <div className="text-sm text-gray-600">{p.user?.email} • {p.user?.phone}</div>
+                      <div className="text-xs text-gray-500">Submitted: {new Date(p.createdAt).toLocaleString()}</div>
+                      <div className="text-xs mt-1">Status: {p.status}</div>
+                      <div className="mt-2 text-sm">
+                        <div><strong>Transaction ID:</strong> {p.trxId}</div>
+                        <div><strong>Sender:</strong> {p.senderNumber}</div>
+                        <div><strong>Method:</strong> {p.paymentMethod}</div>
+                        <div><strong>Paid at:</strong> {p.paymentDate ? new Date(p.paymentDate).toLocaleString() : p.paymentTime || ''}</div>
+                        {p.proofUrl && (
+                          <div className="mt-2"><a href={p.proofUrl} target="_blank" rel="noreferrer" className="text-blue-600">View proof</a></div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <button onClick={() => handleAction(p.id, 'final', 'approve')} className="px-3 py-1 bg-green-50 text-green-700 rounded">Approve</button>
+                      <button onClick={() => handleAction(p.id, 'final', 'reject')} className="px-3 py-1 bg-red-50 text-red-700 rounded">Reject</button>
                     </div>
                   </div>
-                  <div className="flex flex-col gap-2">
-                    <button onClick={() => handleAction(p.id, 'final', 'approve')} className="px-3 py-1 bg-green-50 text-green-700 rounded">Approve</button>
-                    <button onClick={() => handleAction(p.id, 'final', 'reject')} className="px-3 py-1 bg-red-50 text-red-700 rounded">Reject</button>
-                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
           {/* Modal for approve options */}
           {modalOpen && modalPayment && (
