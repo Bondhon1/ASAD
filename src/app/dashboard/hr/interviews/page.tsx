@@ -6,8 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, Calendar, Users, Link as LinkIcon, Trash2, CheckCircle, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
-import AppLoading from "@/components/ui/AppLoading";
-import useDelayedLoader from "@/lib/useDelayedLoader";
+import { useCachedUserProfile } from "@/hooks/useCachedUserProfile";
 
 interface InterviewSlot {
   id: string;
@@ -27,44 +26,16 @@ interface CalendarStatus {
   connectedAt: string | null;
 }
 
-const skeletonGrid = (
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-    {[1, 2, 3].map((i) => (
-      <div key={i} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 animate-pulse space-y-4">
-        <div className="h-4 w-32 bg-gray-200 rounded" />
-        <div className="h-3 w-24 bg-gray-200 rounded" />
-        <div className="h-3 w-40 bg-gray-200 rounded" />
-        <div className="h-10 w-full bg-gray-200 rounded" />
-      </div>
-    ))}
-  </div>
-);
-
-const skeletonPage = (
-  <div className="max-w-7xl mx-auto">
-    <div className="mb-6 flex items-center justify-between animate-pulse">
-      <div className="space-y-2">
-        <div className="h-6 w-40 bg-gray-200 rounded" />
-        <div className="h-4 w-64 bg-gray-200 rounded" />
-      </div>
-      <div className="h-10 w-32 bg-gray-200 rounded" />
-    </div>
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6 animate-pulse">
-      <div className="h-4 w-48 bg-gray-200 rounded" />
-      <div className="h-3 w-32 bg-gray-200 rounded mt-3" />
-    </div>
-    {skeletonGrid}
-  </div>
-);
-
 function InterviewSlotsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session, status } = useSession();
 
+  const email = useMemo(() => session?.user?.email || (typeof window !== "undefined" ? window.localStorage.getItem("userEmail") : null), [session?.user?.email]);
+  const { user, loading: userCacheLoading, refresh: refreshUser, setUser } = useCachedUserProfile(email);
+
   const [slots, setSlots] = useState<InterviewSlot[]>([]);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [calendarStatus, setCalendarStatus] = useState<CalendarStatus>({ connected: false, email: null, connectedAt: null });
   const [formData, setFormData] = useState({ startDate: "", startTime: "", endTime: "", capacity: 20, meetLink: "", autoCreateMeet: true });
@@ -73,7 +44,37 @@ function InterviewSlotsContent() {
   const [participants, setParticipants] = useState<any[]>([]);
   const [participantsLoading, setParticipantsLoading] = useState(false);
 
-  const isLoading = useDelayedLoader(loading, 250) || status === "loading";
+  const isLoading = loading || userCacheLoading || status === "loading";
+
+  const skeletonGrid = (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 animate-pulse space-y-4">
+          <div className="h-4 w-32 bg-gray-200 rounded" />
+          <div className="h-3 w-24 bg-gray-200 rounded" />
+          <div className="h-3 w-40 bg-gray-200 rounded" />
+          <div className="h-10 w-full bg-gray-200 rounded" />
+        </div>
+      ))}
+    </div>
+  );
+
+  const skeletonPage = (
+    <div className="max-w-7xl mx-auto">
+      <div className="mb-6 flex items-center justify-between animate-pulse">
+        <div className="space-y-2">
+          <div className="h-6 w-40 bg-gray-200 rounded" />
+          <div className="h-4 w-64 bg-gray-200 rounded" />
+        </div>
+        <div className="h-10 w-32 bg-gray-200 rounded" />
+      </div>
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6 animate-pulse">
+        <div className="h-4 w-48 bg-gray-200 rounded" />
+        <div className="h-3 w-32 bg-gray-200 rounded mt-3" />
+      </div>
+      {skeletonGrid}
+    </div>
+  );
 
   const displayName = useMemo(() => user?.fullName || user?.username || session?.user?.name || "HR", [session?.user?.name, user?.fullName, user?.username]);
   const displayEmail = useMemo(() => user?.email || session?.user?.email || "", [session?.user?.email, user?.email]);
@@ -86,23 +87,19 @@ function InterviewSlotsContent() {
         return;
       }
       if (status === "loading") return;
-
-      const userEmail = session?.user?.email || localStorage.getItem("userEmail");
-      if (!userEmail) {
+      if (!email) {
         router.push("/auth");
         return;
       }
 
       try {
-        const userResponse = await fetch(`/api/user/profile?email=${encodeURIComponent(userEmail)}`);
-        const userData = await userResponse.json();
-
-        if (!userData.user || (userData.user.role !== "HR" && userData.user.role !== "MASTER")) {
+        const currentUser = user || (await refreshUser());
+        if (!currentUser) return;
+        if (currentUser.role !== "HR" && currentUser.role !== "MASTER") {
           router.push("/dashboard");
           return;
         }
-
-        setUser(userData.user);
+        setUser(currentUser);
         await Promise.all([fetchSlots(), fetchCalendarStatus()]);
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -112,7 +109,7 @@ function InterviewSlotsContent() {
     };
 
     fetchUserAndSlots();
-  }, [router, session, status]);
+  }, [router, session, status, email, user, refreshUser, setUser]);
 
   // Handle OAuth callback from Google Calendar (exchange code for token)
   useEffect(() => {
@@ -301,9 +298,7 @@ function InterviewSlotsContent() {
       initialUserStatus={user?.status ?? null}
       initialFinalPaymentStatus={user?.finalPayment?.status ?? null}
     >
-      {isLoading || !user ? (
-        skeletonPage
-      ) : (
+      {isLoading || !user ? skeletonPage : (
         <div className="max-w-7xl mx-auto">
           <div className="mb-6 flex items-center justify-between">
             <div>
@@ -510,7 +505,7 @@ function InterviewSlotsContent() {
 
 export default function InterviewSlotsPage() {
   return (
-    <Suspense fallback={<AppLoading />}>
+    <Suspense fallback={null}>
       <InterviewSlotsContent />
     </Suspense>
   );

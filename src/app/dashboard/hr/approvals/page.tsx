@@ -4,45 +4,79 @@ import React, { useEffect, useState } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import useDelayedLoader from '@/lib/useDelayedLoader';
+import { useCachedUserProfile } from "@/hooks/useCachedUserProfile";
 
 export default function ApprovalsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
+  const userEmail = session?.user?.email || (typeof window !== "undefined" ? localStorage.getItem("userEmail") : null);
+  const { user, loading: userLoading, error, refresh } = useCachedUserProfile<any>(userEmail);
   const [initialPayments, setInitialPayments] = useState<any[]>([]);
   const [finalPayments, setFinalPayments] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [paymentsLoading, setPaymentsLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalPayment, setModalPayment] = useState<any | null>(null);
   const [assignMode, setAssignMode] = useState<'auto' | 'manual'>('auto');
   const [manualVolunteerId, setManualVolunteerId] = useState('');
 
-  const isLoading = useDelayedLoader(loading, 250) || status === "loading";
+  const isLoading = paymentsLoading || userLoading || status === "loading";
+  const skeletonCards = (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-pulse">
+      {[1, 2, 3, 4].map((i) => (
+        <div key={i} className="bg-white p-4 rounded border space-y-3">
+          <div className="h-4 w-32 bg-gray-200 rounded" />
+          <div className="h-3 w-24 bg-gray-200 rounded" />
+          <div className="h-3 w-20 bg-gray-200 rounded" />
+          <div className="h-3 w-28 bg-gray-200 rounded" />
+          <div className="flex gap-2">
+            <div className="h-8 w-20 bg-gray-200 rounded" />
+            <div className="h-8 w-20 bg-gray-200 rounded" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
   const displayName = user?.fullName || user?.username || session?.user?.name || "HR";
   const displayEmail = user?.email || session?.user?.email || "";
   const displayRole = (user?.role as "VOLUNTEER" | "HR" | "MASTER") || (session as any)?.user?.role || "HR";
 
   useEffect(() => {
-    const load = async () => {
-      if (status === "unauthenticated") return router.push("/auth");
-      if (status === "loading") return;
-      const email = session?.user?.email || localStorage.getItem("userEmail");
-      if (!email) return router.push("/auth");
+    if (status === "unauthenticated") {
+      router.push("/auth");
+    }
+  }, [router, status]);
 
-      const userRes = await fetch(`/api/user/profile?email=${encodeURIComponent(email)}`);
-      const userData = await userRes.json();
-      if (!userData.user || (userData.user.role !== "HR" && userData.user.role !== "MASTER")) return router.push("/dashboard");
-      setUser(userData.user);
+  useEffect(() => {
+    if (status === "loading") return;
 
-      await fetchPayments();
-      setLoading(false);
-    };
-    load();
-  }, [status, router, session]);
+    if (!userEmail) {
+      router.push("/auth");
+      return;
+    }
+
+    if (!user && !userLoading && !error) {
+      refresh();
+      return;
+    }
+
+    if (error) {
+      router.push("/auth");
+    }
+  }, [status, userEmail, user, userLoading, error, refresh, router]);
+
+  useEffect(() => {
+    if (!user || userLoading) return;
+    if (user.role !== "HR" && user.role !== "MASTER") {
+      router.push("/dashboard");
+      return;
+    }
+
+    fetchPayments();
+  }, [user, userLoading, router]);
 
   const fetchPayments = async () => {
     try {
+      setPaymentsLoading(true);
       const res = await fetch(`/api/hr/payments`);
       const data = await res.json();
       // show only pending payments (exclude already processed)
@@ -50,6 +84,8 @@ export default function ApprovalsPage() {
       setFinalPayments(finals);
     } catch (err) {
       console.error(err);
+    } finally {
+      setPaymentsLoading(false);
     }
   };
 
@@ -116,23 +152,6 @@ export default function ApprovalsPage() {
   };
 
   if (status === "unauthenticated") return null;
-
-  const skeletonCards = (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-pulse">
-      {[1,2,3,4].map((i) => (
-        <div key={i} className="bg-white p-4 rounded border space-y-3">
-          <div className="h-4 w-32 bg-gray-200 rounded" />
-          <div className="h-3 w-24 bg-gray-200 rounded" />
-          <div className="h-3 w-20 bg-gray-200 rounded" />
-          <div className="h-3 w-28 bg-gray-200 rounded" />
-          <div className="flex gap-2">
-            <div className="h-8 w-20 bg-gray-200 rounded" />
-            <div className="h-8 w-20 bg-gray-200 rounded" />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
 
   return (
     <DashboardLayout

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import { useCachedUserProfile } from "@/hooks/useCachedUserProfile";
 
 interface User {
   id: string;
@@ -62,63 +63,46 @@ type TabKey = "experience" | "tasks" | "donations";
 export default function DashboardPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabKey>("experience");
+  const userEmail = session?.user?.email || (typeof window !== "undefined" ? localStorage.getItem("userEmail") : null);
+  const { user, loading: userLoading, error, refresh } = useCachedUserProfile<User>(userEmail);
 
   useEffect(() => {
-    const fetchUser = async () => {
-      // If not authenticated, redirect to auth page
-      if (status === "unauthenticated") {
-        router.push("/auth");
-        return;
-      }
+    if (status === "unauthenticated") {
+      router.push("/auth");
+    }
+  }, [router, status]);
 
-      // Wait for session to load
-      if (status === "loading") {
-        return;
-      }
+  useEffect(() => {
+    if (status === "loading") return;
 
-      // Get email from session or localStorage (for backward compatibility)
-      const userEmail = session?.user?.email || localStorage.getItem("userEmail");
-      
-      if (!userEmail) {
-        router.push("/auth");
-        return;
-      }
+    if (!userEmail) {
+      router.push("/auth");
+      return;
+    }
 
-      try {
-        const response = await fetch(`/api/user/profile?email=${encodeURIComponent(userEmail)}`);
-        const data = await response.json();
-        
-        if (data.user) {
-          setUser(data.user);
-          
-          // Check if new Google user needs to complete payment
-          if ((session as any)?.user?.needsPayment && !data.user.initialPayment) {
-            // Redirect to payment page
-            router.push(`/payment?email=${encodeURIComponent(userEmail)}`);
-            return;
-          }
-        } else {
-          router.push("/auth");
-        }
-      } catch (error) {
-        console.error("Error fetching user:", error);
-        router.push("/auth");
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (!user && !userLoading && !error) {
+      refresh();
+      return;
+    }
 
-    fetchUser();
-  }, [router, session, status]);
+    if (error) {
+      router.push("/auth");
+    }
+  }, [status, userEmail, user, userLoading, error, refresh, router]);
+
+  useEffect(() => {
+    if (!userEmail || !user) return;
+    if ((session as any)?.user?.needsPayment && !user.initialPayment) {
+      router.push(`/payment?email=${encodeURIComponent(userEmail)}`);
+    }
+  }, [router, session, user, userEmail]);
 
   if (status === "unauthenticated") {
     return null;
   }
 
-  const isLoading = loading || status === "loading";
+  const isLoading = userLoading || status === "loading";
 
   const displayUserName = user?.fullName || user?.username || session?.user?.name || "User";
   const displayEmail = user?.email || session?.user?.email || "";

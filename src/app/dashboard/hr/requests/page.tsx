@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { CheckCircle, XCircle, Calendar, Eye, AlertTriangle } from "lucide-react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
-import useDelayedLoader from '@/lib/useDelayedLoader';
+import { useCachedUserProfile } from "@/hooks/useCachedUserProfile";
 
 interface Application {
   id: string;
@@ -26,13 +26,26 @@ interface Application {
 export default function NewRequestsPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
+  const email = useMemo(() => session?.user?.email || (typeof window !== "undefined" ? window.localStorage.getItem("userEmail") : null), [session?.user?.email]);
+  const { user, loading: userCacheLoading, refresh: refreshUser, setUser } = useCachedUserProfile(email);
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
-  const [user, setUser] = useState<any>(null);
   const [hasAvailableSlots, setHasAvailableSlots] = useState(true);
 
-  const isLoading = useDelayedLoader(loading, 250) || status === "loading";
+  const isLoading = loading || userCacheLoading || status === "loading";
+  const skeletonTable = (
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 animate-pulse">
+      <div className="p-6 space-y-4">
+        <div className="h-5 w-48 bg-gray-200 rounded" />
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-12 w-full bg-gray-200 rounded" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
   const displayName = user?.fullName || user?.username || session?.user?.name || "HR";
   const displayEmail = user?.email || session?.user?.email || "";
   const displayRole = (user?.role as "VOLUNTEER" | "HR" | "MASTER") || (session as any)?.user?.role || "HR";
@@ -47,23 +60,19 @@ export default function NewRequestsPage() {
 
       if (status === "loading") return;
 
-      const userEmail = session?.user?.email || localStorage.getItem("userEmail");
-      if (!userEmail) {
+      if (!email) {
         router.push("/auth");
         return;
       }
 
       try {
-        // Fetch user profile
-        const userResponse = await fetch(`/api/user/profile?email=${encodeURIComponent(userEmail)}`);
-        const userData = await userResponse.json();
-        
-        if (!userData.user || (userData.user.role !== "HR" && userData.user.role !== "MASTER")) {
+        const currentUser = user || (await refreshUser());
+        if (!currentUser) return;
+        if (currentUser.role !== "HR" && currentUser.role !== "MASTER") {
           router.push("/dashboard");
           return;
         }
-        
-        setUser(userData.user);
+        setUser(currentUser);
         
         // Fetch applications
         const response = await fetch("/api/hr/applications?status=INTERVIEW_REQUESTED");
@@ -82,7 +91,7 @@ export default function NewRequestsPage() {
     };
 
     fetchUserAndApplications();
-  }, [router, session, status]);
+  }, [router, session, status, email, user, refreshUser, setUser]);
 
   const fetchApplications = async () => {
     try {
@@ -147,19 +156,6 @@ export default function NewRequestsPage() {
   };
 
   if (status === "unauthenticated") return null;
-
-  const skeletonTable = (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 animate-pulse">
-      <div className="p-6 space-y-4">
-        <div className="h-5 w-48 bg-gray-200 rounded" />
-        <div className="space-y-2">
-          {[1,2,3].map((i) => (
-            <div key={i} className="h-12 w-full bg-gray-200 rounded" />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
 
   return (
     <DashboardLayout

@@ -3,8 +3,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
-import AppLoading from '@/components/ui/AppLoading';
-import useDelayedLoader from '@/lib/useDelayedLoader';
 import { divisions, getDistricts, getUpazilas } from '@/lib/bdGeo';
 
 type ExperienceInput = {
@@ -37,6 +35,23 @@ export default function SettingsPage() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const hideTimeoutRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const isLoading = loading || status === "loading";
+
+  const skeleton = (
+    <div className="max-w-4xl mx-auto px-6 py-8 animate-pulse space-y-4">
+      <div className="h-8 w-40 bg-gray-200 rounded" />
+      <div className="bg-white border border-gray-200 rounded-md p-4 space-y-3">
+        <div className="h-4 w-48 bg-gray-200 rounded" />
+        <div className="h-3 w-64 bg-gray-200 rounded" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[1,2,3].map((i) => (
+            <div key={i} className="h-20 bg-gray-200 rounded" />
+          ))}
+        </div>
+        <div className="h-10 w-32 bg-gray-200 rounded" />
+      </div>
+    </div>
+  );
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -150,15 +165,17 @@ export default function SettingsPage() {
     }
   };
 
-  const showLoader = useDelayedLoader(loading, 300);
-  if (showLoader) return <AppLoading />;
+  if (status === "unauthenticated") return null;
 
   return (
-    <DashboardLayout userRole={(user?.role as any) || 'VOLUNTEER'} userName={user?.fullName || user?.username || 'User'} userEmail={user?.email}>
-      <div className="max-w-4xl mx-auto px-6 py-8">
-        <h1 className="text-2xl font-semibold text-[#07223f] mb-4">Settings</h1>
+    <DashboardLayout userRole={(user?.role as any) || 'VOLUNTEER'} userName={user?.fullName || user?.username || 'User'} userEmail={user?.email || session?.user?.email}>
+      {isLoading ? (
+        skeleton
+      ) : (
+        <div className="max-w-4xl mx-auto px-6 py-8">
+          <h1 className="text-2xl font-semibold text-[#07223f] mb-4">Settings</h1>
 
-        <div className="bg-white border border-gray-200 rounded-md">
+          <div className="bg-white border border-gray-200 rounded-md">
           <button
             className="w-full text-left px-4 py-3 flex items-center justify-between"
             onClick={() => setExpanded(v => !v)}
@@ -436,6 +453,7 @@ export default function SettingsPage() {
           )}
         </div>
       </div>
+      )}
     </DashboardLayout>
   );
 }

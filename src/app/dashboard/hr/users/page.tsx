@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
-import useDelayedLoader from '@/lib/useDelayedLoader';
+import { useCachedUserProfile } from "@/hooks/useCachedUserProfile";
 
 interface User {
   id: string;
@@ -26,6 +26,8 @@ interface User {
 export default function UsersManagementPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
+  const userEmail = session?.user?.email || (typeof window !== "undefined" ? localStorage.getItem("userEmail") : null);
+  const { user: cachedUser, loading: userLoading, error: userError, refresh } = useCachedUserProfile<User>(userEmail);
   const [viewer, setViewer] = useState<User | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -39,18 +41,8 @@ export default function UsersManagementPage() {
   const [total, setTotal] = useState(0);
   const [statusFilter, setStatusFilter] = useState<'ANY' | 'UNOFFICIAL' | 'OFFICIAL'>('UNOFFICIAL');
 
-  const delayedLoading = useDelayedLoader(loading, 250);
   const isCheckingAuth = status === "loading" || !authChecked;
-  const isLoading = delayedLoading || isCheckingAuth;
-  const displayName = viewer?.fullName || viewer?.username || session?.user?.name || "HR";
-  const displayEmail = viewer?.email || session?.user?.email || "";
-  const displayRole = (viewer?.role as "VOLUNTEER" | "HR" | "MASTER") || (session as any)?.user?.role || "HR";
-  const [showPointsForm, setShowPointsForm] = useState(false);
-  const [showRankForm, setShowRankForm] = useState(false);
-  const [pointsInput, setPointsInput] = useState<number | ''>('');
-  const [rankInput, setRankInput] = useState<string>('');
-  const [saving, setSaving] = useState(false);
-
+  const isLoading = loading || isCheckingAuth;
   const skeletonPage = (
     <div className="max-w-6xl mx-auto px-6 py-8 space-y-4 animate-pulse">
       <div className="h-8 w-48 bg-gray-200 rounded" />
@@ -62,50 +54,54 @@ export default function UsersManagementPage() {
       </div>
     </div>
   );
+  const displayName = viewer?.fullName || viewer?.username || session?.user?.name || "HR";
+  const displayEmail = viewer?.email || session?.user?.email || "";
+  const displayRole = (viewer?.role as "VOLUNTEER" | "HR" | "MASTER") || (session as any)?.user?.role || "HR";
+  const [showPointsForm, setShowPointsForm] = useState(false);
+  const [showRankForm, setShowRankForm] = useState(false);
+  const [pointsInput, setPointsInput] = useState<number | ''>('');
+  const [rankInput, setRankInput] = useState<string>('');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const controller = new AbortController();
+    if (status === "loading") return;
 
-    const verifyAccess = async () => {
-      if (status === "loading") return;
+    if (status === "unauthenticated") {
+      router.replace("/auth");
+      setAuthChecked(true);
+      return;
+    }
 
-      if (status === "unauthenticated") {
-        router.replace("/auth");
-        return;
-      }
-      const email = session?.user?.email;
-      if (!email) {
-        router.replace("/auth");
-        return;
-      }
+    if (!userEmail) {
+      setAuthError("You do not have permission to view this page.");
+      setAuthChecked(true);
+      router.replace("/auth");
+      return;
+    }
 
-      try {
-        const res = await fetch(`/api/user/profile?email=${encodeURIComponent(email)}`, { signal: controller.signal });
-        if (!res.ok) throw new Error("Unable to verify your access");
+    if (userError) {
+      setAuthError(userError || "Unable to verify your access");
+      setAuthChecked(true);
+      router.replace("/auth");
+      return;
+    }
 
-        const data = await res.json();
-        const profile = data?.user as User | undefined;
-        if (!profile) throw new Error("Profile not found");
+    if (userLoading) return;
 
-        if (!['HR', 'MASTER'].includes(profile.role)) {
-          setAuthError("You do not have permission to view this page.");
-          router.replace("/dashboard");
-          return;
-        }
+    if (!cachedUser) {
+      refresh();
+      return;
+    }
 
-        setViewer(profile);
-        setAuthChecked(true);
-      } catch (err: any) {
-        if (controller.signal.aborted) return;
-        setAuthError(err?.message || "Unable to verify your access");
-        router.replace("/auth");
-      }
-    };
+    if (!['HR', 'MASTER'].includes(cachedUser.role)) {
+      setAuthError("You do not have permission to view this page.");
+      router.replace("/dashboard");
+      return;
+    }
 
-    verifyAccess();
-
-    return () => controller.abort();
-  }, [session, status, router]);
+    setViewer(cachedUser);
+    setAuthChecked(true);
+  }, [status, router, userEmail, cachedUser, userLoading, userError, refresh]);
 
   useEffect(() => {
     let active = true;
