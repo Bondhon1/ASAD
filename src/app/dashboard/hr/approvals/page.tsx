@@ -40,6 +40,21 @@ export default function ApprovalsPage() {
   const displayEmail = user?.email || session?.user?.email || "";
   const displayRole = (user?.role as "VOLUNTEER" | "HR" | "MASTER") || (session as any)?.user?.role || "HR";
 
+  const formatDhaka = (value?: string | null) => {
+    if (!value) return "";
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return value;
+    return d.toLocaleString("en-US", {
+      timeZone: "Asia/Dhaka",
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/auth");
@@ -184,13 +199,13 @@ export default function ApprovalsPage() {
                         <div className="text-xs text-gray-500">Volunteer ID: {p.user.volunteerId}</div>
                       )}
                       <div className="text-xs text-gray-500">User status: {p.user?.status ?? "N/A"}</div>
-                      <div className="text-xs text-gray-500">Submitted: {new Date(p.createdAt).toLocaleString()}</div>
+                      <div className="text-xs text-gray-500">Submitted: {formatDhaka(p.createdAt)}</div>
                       <div className="text-xs mt-1">Payment status: {p.status}</div>
                       <div className="mt-2 text-sm">
                         <div><strong>Transaction ID:</strong> {p.trxId}</div>
                         <div><strong>Sender:</strong> {p.senderNumber}</div>
                         <div><strong>Method:</strong> {p.paymentMethod}</div>
-                        <div><strong>Paid at:</strong> {p.paymentDate ? new Date(p.paymentDate).toLocaleString() : p.paymentTime || ""}</div>
+                        <div><strong>Paid at:</strong> {p.paymentDate ? formatDhaka(p.paymentDate) : p.paymentTime || ""}</div>
                         {p.proofUrl && (
                           <div className="mt-2"><a href={p.proofUrl} target="_blank" rel="noreferrer" className="text-blue-600">View proof</a></div>
                         )}
