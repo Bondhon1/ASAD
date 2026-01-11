@@ -13,60 +13,62 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const initialPayments = await prisma.initialPayment.findMany({
-      where: { status: "PENDING" },
-      select: {
-        id: true,
-        userId: true,
-        trxId: true,
-        paymentMethod: true,
-        senderNumber: true,
-        paymentDate: true,
-        paymentTime: true,
-        status: true,
-        createdAt: true,
-        proofUrl: true,
-        user: {
-          select: {
-            id: true,
-            fullName: true,
-            email: true,
-            phone: true,
-            volunteerId: true,
-            status: true,
+    const [initialPayments, finalPayments] = await Promise.all([
+      prisma.initialPayment.findMany({
+        where: { status: "PENDING" },
+        select: {
+          id: true,
+          userId: true,
+          trxId: true,
+          paymentMethod: true,
+          senderNumber: true,
+          paymentDate: true,
+          paymentTime: true,
+          status: true,
+          createdAt: true,
+          proofUrl: true,
+          user: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              phone: true,
+              volunteerId: true,
+              status: true,
+            },
           },
         },
-      },
-      orderBy: { createdAt: "desc" },
-    });
-
-    const finalPayments = await prisma.finalPayment.findMany({
-      where: { status: "PENDING" },
-      select: {
-        id: true,
-        userId: true,
-        trxId: true,
-        paymentMethod: true,
-        senderNumber: true,
-        paymentDate: true,
-        paymentTime: true,
-        status: true,
-        createdAt: true,
-        proofUrl: true,
-        user: {
-          select: {
-            id: true,
-            fullName: true,
-            email: true,
-            phone: true,
-            volunteerId: true,
-            status: true,
+        orderBy: { createdAt: "desc" },
+        take: 200,
+      }),
+      prisma.finalPayment.findMany({
+        where: { status: "PENDING" },
+        select: {
+          id: true,
+          userId: true,
+          trxId: true,
+          paymentMethod: true,
+          senderNumber: true,
+          paymentDate: true,
+          paymentTime: true,
+          status: true,
+          createdAt: true,
+          proofUrl: true,
+          user: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              phone: true,
+              volunteerId: true,
+              status: true,
+            },
           },
         },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 200, // safety cap
-    });
+        orderBy: { createdAt: "desc" },
+        take: 200, // safety cap
+      }),
+    ]);
 
     return NextResponse.json({ initialPayments, finalPayments });
   } catch (error) {
