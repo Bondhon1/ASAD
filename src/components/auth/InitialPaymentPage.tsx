@@ -589,7 +589,7 @@ export default function InitialPaymentPage() {
               className="mb-8 p-4 bg-amber-50 border border-amber-200 rounded-lg"
             >
               <p className="text-sm text-amber-800">
-                <strong>Note:</strong> Our admin team will verify your transaction within 24 hours. Once verified, you'll be able to access all features of your volunteer account.
+                <strong>Note:</strong> Our admin team will verify your transaction as soon as possible. Once verified, you'll be able to access all features of your volunteer account.
               </p>
             </motion.div>
 

@@ -177,7 +177,7 @@ export async function POST(request: NextRequest) {
       {
         success: true,
         message:
-          "Payment submitted successfully. Admin will verify within 24 hours.",
+          "Payment submitted successfully. Admin will verify in a very short time.",
         paymentId: payment.id,
       },
       { status: 201 }
