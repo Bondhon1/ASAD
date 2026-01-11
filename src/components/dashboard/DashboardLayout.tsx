@@ -45,6 +45,31 @@ export default function DashboardLayout({
   const [userStatus, setUserStatus] = useState<string | null>(initialUserStatus ?? null);
   const [finalPaymentStatus, setFinalPaymentStatus] = useState<string | null>(initialFinalPaymentStatus ?? null);
 
+  const formatStatusLabel = (status: string | null) => {
+    switch (status) {
+      case "APPLICANT":
+        return "Applicant";
+      case "INTERVIEW_REQUESTED":
+        return "Interview Requested";
+      case "INTERVIEW_SCHEDULED":
+        return "Interview Scheduled";
+      case "INTERVIEW_PASSED":
+        return "Interview Passed";
+      case "FINAL_PAYMENT_REJECTED":
+        return "Final Payment Rejected";
+      case "OFFICIAL":
+        return "Official";
+      case "REJECTED":
+        return "Rejected";
+      case "INACTIVE":
+        return "Inactive";
+      case "BANNED":
+        return "Banned";
+      default:
+        return "Volunteer";
+    }
+  };
+
   useEffect(() => {
     if (initialUserStatus !== undefined) {
       setUserStatus(initialUserStatus);
@@ -78,6 +103,9 @@ export default function DashboardLayout({
       }
     })();
   }, [userEmail, initialFinalPaymentStatus, initialUserStatus]);
+
+  const isStaff = userRole === "HR" || userRole === "MASTER";
+  const topbarLabel = isStaff ? userRole : formatStatusLabel(userStatus);
 
   const handleLogout = () => {
     localStorage.clear();
@@ -159,9 +187,7 @@ export default function DashboardLayout({
             </button>
             <div className="ml-2 px-3 py-2 bg-gray-100 rounded-lg hidden sm:block">
               <p className="text-sm font-semibold text-gray-900">{userName}</p>
-              <p className="text-xs text-gray-500">
-                {userStatus && userStatus !== "OFFICIAL" ? userStatus : userRole}
-              </p>
+              <p className="text-xs text-gray-500">{topbarLabel}</p>
             </div>
           </div>
         </div>

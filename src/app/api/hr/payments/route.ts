@@ -14,12 +14,12 @@ export async function GET() {
     }
 
     const initialPayments = await prisma.initialPayment.findMany({
-      include: { user: { select: { id: true, fullName: true, email: true, phone: true } } },
+      include: { user: { select: { id: true, fullName: true, email: true, phone: true, volunteerId: true, status: true } } },
       orderBy: { createdAt: "desc" },
     });
 
     const finalPayments = await prisma.finalPayment.findMany({
-      include: { user: { select: { id: true, fullName: true, email: true, phone: true } } },
+      include: { user: { select: { id: true, fullName: true, email: true, phone: true, volunteerId: true, status: true } } },
       orderBy: { createdAt: "desc" },
     });
 

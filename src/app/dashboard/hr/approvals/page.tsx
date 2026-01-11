@@ -170,21 +170,27 @@ export default function ApprovalsPage() {
           <h2 className="text-lg font-semibold mb-3">Final Payments (ID Card - 170 BDT)</h2>
           {isLoading ? (
             skeletonCards
+          ) : finalPayments.length === 0 ? (
+            <div className="text-sm text-gray-600 bg-white border rounded p-4">No pending final payments.</div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {finalPayments.map((p) => (
                 <div key={p.id} className="bg-white p-4 rounded border">
                   <div className="flex justify-between items-start">
                     <div>
-                      <div className="font-medium">{p.user?.fullName || p.user?.email}</div>
-                      <div className="text-sm text-gray-600">{p.user?.email} • {p.user?.phone}</div>
+                      <div className="font-medium">{p.user?.fullName || p.user?.email || "Unknown user"}</div>
+                      <div className="text-sm text-gray-600">{[p.user?.email, p.user?.phone].filter(Boolean).join(" • ") || "No contact info"}</div>
+                      {p.user?.volunteerId && (
+                        <div className="text-xs text-gray-500">Volunteer ID: {p.user.volunteerId}</div>
+                      )}
+                      <div className="text-xs text-gray-500">User status: {p.user?.status ?? "N/A"}</div>
                       <div className="text-xs text-gray-500">Submitted: {new Date(p.createdAt).toLocaleString()}</div>
-                      <div className="text-xs mt-1">Status: {p.status}</div>
+                      <div className="text-xs mt-1">Payment status: {p.status}</div>
                       <div className="mt-2 text-sm">
                         <div><strong>Transaction ID:</strong> {p.trxId}</div>
                         <div><strong>Sender:</strong> {p.senderNumber}</div>
                         <div><strong>Method:</strong> {p.paymentMethod}</div>
-                        <div><strong>Paid at:</strong> {p.paymentDate ? new Date(p.paymentDate).toLocaleString() : p.paymentTime || ''}</div>
+                        <div><strong>Paid at:</strong> {p.paymentDate ? new Date(p.paymentDate).toLocaleString() : p.paymentTime || ""}</div>
                         {p.proofUrl && (
                           <div className="mt-2"><a href={p.proofUrl} target="_blank" rel="noreferrer" className="text-blue-600">View proof</a></div>
                         )}
