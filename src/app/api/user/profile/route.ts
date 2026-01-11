@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 60; // Cache response for 60 seconds
+
+// In-memory cache for user profiles (reduces DB hits during the same session)
+const profileCache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL = 30000; // 30 seconds
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,16 +20,26 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Check in-memory cache first
+    const cached = profileCache.get(email);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      return NextResponse.json(cached.data, { 
+        status: 200,
+        headers: { 'X-Cache': 'HIT' }
+      });
+    }
+
+    // Fetch user with all includes in a single query
     const user = await prisma.user.findUnique({
       where: { email },
       include: {
         institute: true,
         volunteerProfile: { include: { rank: true } },
         initialPayment: true,
+        finalPayment: true,
         experiences: {
           orderBy: { startDate: 'desc' },
         },
-        // include recent task submissions and pending donations for dashboard
         taskSubmissions: {
           include: { task: true },
           orderBy: { submittedAt: 'desc' },
@@ -44,10 +59,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // fetch final payment separately (Prisma client may not have generated relation types locally)
-    const finalPayment = await prisma.finalPayment.findUnique({
-      where: { userId: user.id },
-    });
+    // Get follower/following counts in parallel
+    const [followersCount, followingCount] = await Promise.all([
+      prisma.friendList.count({ where: { friendId: user.id } }),
+      prisma.friendList.count({ where: { userId: user.id } }),
+    ]);
 
     // normalize rank to a name string for frontend
     const vp = user.volunteerProfile as any | null;
@@ -55,16 +71,15 @@ export async function GET(request: NextRequest) {
       vp.rank = vp.rank.name ?? vp.rank;
     }
 
-    const resultUser = { ...user, finalPayment };
+    const responseData = { user: { ...user, followersCount, followingCount } };
 
-    // compute social counts (followers / following)
-    const followersCount = await prisma.friendList.count({ where: { friendId: user.id } });
-    const followingCount = await prisma.friendList.count({ where: { userId: user.id } });
+    // Cache the response
+    profileCache.set(email, { data: responseData, timestamp: Date.now() });
 
-    return NextResponse.json(
-      { user: { ...resultUser, followersCount, followingCount } },
-      { status: 200 }
-    );
+    return NextResponse.json(responseData, { 
+      status: 200,
+      headers: { 'X-Cache': 'MISS' }
+    });
   } catch (error) {
     console.error("Error fetching user profile:", error);
     return NextResponse.json(
