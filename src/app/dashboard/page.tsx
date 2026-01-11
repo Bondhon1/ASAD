@@ -92,11 +92,22 @@ export default function DashboardPage() {
   }, [status, userEmail, user, userLoading, error, refresh, router]);
 
   useEffect(() => {
-    if (!userEmail || !user) return;
-    if ((session as any)?.user?.needsPayment && !user.initialPayment) {
-      router.push(`/payment?email=${encodeURIComponent(userEmail)}`);
-    }
-  }, [router, session, user, userEmail]);
+    const needsPayment = (session as any)?.user?.needsPayment;
+    if (status !== "authenticated") return;
+    if (!userEmail || !needsPayment) return;
+
+    // If we already have a payment record that is not rejected, keep the user on dashboard.
+    if (user?.initialPayment?.status && user.initialPayment.status !== "REJECTED") return;
+    if (userLoading) return;
+
+    (async () => {
+      const latestUser = await refresh();
+      const paymentStatus = latestUser?.initialPayment?.status ?? user?.initialPayment?.status;
+      if (!paymentStatus || paymentStatus === "REJECTED") {
+        router.push(`/payment?email=${encodeURIComponent(userEmail)}`);
+      }
+    })();
+  }, [refresh, router, session, status, user?.initialPayment?.status, userEmail, userLoading]);
 
   if (status === "unauthenticated") {
     return null;

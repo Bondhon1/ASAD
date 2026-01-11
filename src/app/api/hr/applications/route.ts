@@ -9,10 +9,14 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
+    const slotId = searchParams.get("slotId");
 
     const where: any = {};
     if (status) {
       where.status = status;
+    }
+    if (slotId) {
+      where.interviewSlotId = slotId;
     }
 
     const applications = await prisma.application.findMany({

@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const nextConfig: NextConfig = {
   // Disable React Compiler during production builds to save memory
@@ -18,8 +19,10 @@ const nextConfig: NextConfig = {
   // Disable source maps in production builds to save memory
   productionBrowserSourceMaps: false,
   
-  // Empty turbopack config to acknowledge we're using Turbopack
-  turbopack: {},
+  // Explicitly pin the Turbopack root to this project to avoid mis-detection
+  turbopack: {
+    root: path.join(__dirname),
+  },
 };
 
 export default nextConfig;
