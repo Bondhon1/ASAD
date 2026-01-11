@@ -26,7 +26,8 @@ export async function POST(request: NextRequest) {
 
     // Check if user already has final payment
     const existing = await prisma.finalPayment.findUnique({ where: { userId: user.id } });
-    const paymentDateTime = new Date(`${paymentDate}T${paymentTime}`);
+    // Interpret submitted date/time as Asia/Dhaka local time to avoid timezone shifts
+    const paymentDateTime = new Date(`${paymentDate}T${paymentTime}:00+06:00`);
 
     let payment;
     if (existing && existing.status !== "REJECTED") {

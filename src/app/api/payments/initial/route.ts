@@ -110,7 +110,8 @@ export async function POST(request: NextRequest) {
     });
 
     // Create payment record
-    const paymentDateTime = new Date(`${paymentDate}T${paymentTime}`);
+    // Interpret submitted date/time as Asia/Dhaka local time to avoid timezone shifts
+    const paymentDateTime = new Date(`${paymentDate}T${paymentTime}:00+06:00`);
 
     let payment;
     if (existingPayment) {
