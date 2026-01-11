@@ -39,10 +39,14 @@ export async function POST(
     }
 
     // Find the first available slot (not full, ordered by start time)
+    const now = new Date();
     const availableSlot = await prisma.interviewSlot.findFirst({
       where: {
         filledCount: {
           lt: prisma.interviewSlot.fields.capacity,
+        },
+        startTime: {
+          gt: now, // only pick upcoming slots
         },
       },
       orderBy: { startTime: "asc" },

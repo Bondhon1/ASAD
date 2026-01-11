@@ -59,8 +59,14 @@ export default function DashboardLayout({
 
   useEffect(() => {
     if (!userEmail) return;
-    // Skip fetching if caller already provided the status values.
-    if (initialUserStatus !== undefined || initialFinalPaymentStatus !== undefined) return;
+    // Fetch if status/final payment not provided or explicitly null (to hydrate from server).
+    const shouldFetch =
+      initialUserStatus === undefined ||
+      initialUserStatus === null ||
+      initialFinalPaymentStatus === undefined ||
+      initialFinalPaymentStatus === null;
+
+    if (!shouldFetch) return;
     (async () => {
       try {
         const res = await fetch(`/api/user/profile?email=${encodeURIComponent(userEmail)}`);
@@ -153,7 +159,9 @@ export default function DashboardLayout({
             </button>
             <div className="ml-2 px-3 py-2 bg-gray-100 rounded-lg hidden sm:block">
               <p className="text-sm font-semibold text-gray-900">{userName}</p>
-              <p className="text-xs text-gray-500">{userRole}</p>
+              <p className="text-xs text-gray-500">
+                {userStatus && userStatus !== "OFFICIAL" ? userStatus : userRole}
+              </p>
             </div>
           </div>
         </div>

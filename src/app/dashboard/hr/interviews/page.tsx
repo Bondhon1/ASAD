@@ -237,17 +237,19 @@ function InterviewSlotsContent() {
   };
 
   const handleApproveDecline = async (applicationId: string, action: "approve" | "decline") => {
+    if (!selectedSlotId) return;
     try {
-      const url = action === "approve" ? `/api/hr/applications/${applicationId}/approve` : `/api/hr/applications/${applicationId}/reject`;
-      const response = await fetch(url, { method: "POST" });
+      const response = await fetch(`/api/hr/interview-slots/${selectedSlotId}/participants`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ applicationId, action }),
+      });
       if (!response.ok) {
         const error = await response.json();
         alert(error.error || "Failed to update application");
         return;
       }
-      if (selectedSlotId) {
-        handleOpenParticipants(selectedSlotId);
-      }
+      await handleOpenParticipants(selectedSlotId);
     } catch (error) {
       console.error("Error updating application:", error);
     }
