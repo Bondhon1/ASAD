@@ -59,12 +59,24 @@ export async function GET(req: Request) {
       prisma.user.count({ where }),
       prisma.user.findMany({
         where,
-        include: {
-          volunteerProfile: { include: { rank: true } },
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
+          username: true,
+          status: true,
+          role: true,
+          volunteerId: true,
+          createdAt: true,
           institute: { select: { name: true } },
-          taskSubmissions: { include: { task: true } },
-          donations: true,
-          initialPayment: true,
+          volunteerProfile: { select: { points: true, isOfficial: true, rank: true } },
+          initialPayment: { select: { status: true } },
+          _count: {
+            select: {
+              taskSubmissions: true,
+              donations: true,
+            },
+          },
         },
         orderBy: { createdAt: 'desc' },
         skip,

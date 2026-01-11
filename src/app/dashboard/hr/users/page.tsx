@@ -114,7 +114,10 @@ export default function UsersManagementPage() {
         setLoading(true);
         const qParam = encodeURIComponent(query || '');
         const statusParam = statusFilter === 'ANY' ? '' : `status=${statusFilter}`;
-        const res = await fetch(`/api/hr/users?${statusParam ? statusParam + '&' : ''}page=${page}&pageSize=${pageSize}&q=${qParam}`, { signal: controller.signal });
+        const res = await fetch(`/api/hr/users?${statusParam ? statusParam + '&' : ''}page=${page}&pageSize=${pageSize}&q=${qParam}`, {
+          signal: controller.signal,
+          cache: "no-store",
+        });
         if (!res.ok) throw new Error(`Status ${res.status}`);
         const data = await res.json();
         if (!active) return;
@@ -128,15 +131,11 @@ export default function UsersManagementPage() {
       }
     };
 
-    // debounce quick query typing
-    const t = setTimeout(() => {
-      fetchUsers();
-    }, 250);
+    fetchUsers();
 
     return () => {
       active = false;
       controller.abort();
-      clearTimeout(t);
     };
   }, [page, pageSize, query, statusFilter, authChecked]);
 

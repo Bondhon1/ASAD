@@ -92,7 +92,8 @@ export default function ApprovalsPage() {
   const fetchPayments = async () => {
     try {
       setPaymentsLoading(true);
-      const res = await fetch(`/api/hr/payments`);
+      // Backend now returns only PENDING payments and a capped payload for speed
+      const res = await fetch(`/api/hr/payments`, { cache: "no-store" });
       const data = await res.json();
       // show only pending payments (exclude already processed)
       const finals = (data.finalPayments || []).filter((p: any) => p.status === 'PENDING');
