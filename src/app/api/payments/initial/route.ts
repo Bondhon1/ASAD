@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    
     // Check if email is verified
     if (!user.emailVerified) {
       return NextResponse.json(
@@ -54,6 +55,7 @@ export async function POST(request: NextRequest) {
     const existingPayment = await prisma.initialPayment.findUnique({
       where: { userId: user.id },
     });
+
 
     // Allow resubmission when previous payment was rejected OR when the user's status is REJECTED
     if (existingPayment && existingPayment.status !== "REJECTED" && user.status !== "REJECTED") {
