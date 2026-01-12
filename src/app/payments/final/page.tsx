@@ -8,6 +8,7 @@ import AppLoading from '@/components/ui/AppLoading';
 import useDelayedLoader from '@/lib/useDelayedLoader';
 
 interface User {
+  id: string;
   email: string;
   fullName?: string | null;
   username?: string | null;
@@ -53,8 +54,10 @@ export default function Page() {
   if (showLoader) return <AppLoading />;
   if (!user) return null;
 
+  const displayRole = (session as any)?.user?.role || (user.role as any) || "VOLUNTEER";
+
   return (
-    <DashboardLayout showStatusBanners={false} userRole={(user.role as any) || "VOLUNTEER"} userName={user.fullName || user.username || "User"} userEmail={user.email}>
+    <DashboardLayout showStatusBanners={false} userRole={displayRole} userName={user.fullName || user.username || "User"} userEmail={user.email} userId={user.id || ""}>
       <FinalPaymentPage userEmail={user.email} />
     </DashboardLayout>
   );

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { sendInterviewResultEmail } from "@/lib/email";
+import { publishNotification } from "@/lib/ably";
 
 // GET - list participants (applications) for a slot
 export async function GET(
@@ -62,10 +64,15 @@ export async function POST(
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
-    const application = await prisma.application.findUnique({ where: { id: applicationId } });
+    const application = await prisma.application.findUnique({ 
+      where: { id: applicationId },
+      include: { user: { select: { id: true, fullName: true, email: true } } }
+    });
     if (!application || application.interviewSlotId !== id) {
       return NextResponse.json({ error: "Application not found for this slot" }, { status: 404 });
     }
+
+    const applicantUser = application.user;
 
     if (action === "approve") {
       // Mark application as accepted / passed and update user status
@@ -75,6 +82,40 @@ export async function POST(
       });
 
       await prisma.user.update({ where: { id: application.userId }, data: { status: "INTERVIEW_PASSED" } });
+
+      // Create notification for the user
+      const notification = await prisma.notification.create({
+        data: {
+          userId: application.userId,
+          type: "INTERVIEW_PASSED",
+          title: "Interview Passed! 🎉",
+          message: "Congratulations! You have passed the interview. Please complete the final payment of ৳170 to become an official volunteer.",
+          link: "/payments/final",
+        },
+      });
+
+      // Publish real-time notification via Ably
+      await publishNotification(application.userId, {
+        id: notification.id,
+        type: notification.type,
+        title: notification.title,
+        message: notification.message,
+        link: notification.link,
+        createdAt: notification.createdAt,
+      });
+
+      // Send email notification
+      try {
+        await sendInterviewResultEmail({
+          email: applicantUser.email,
+          fullName: applicantUser.fullName || "Volunteer",
+          passed: true,
+          paymentLink: `${process.env.NEXTAUTH_URL}/payments/final`,
+        });
+      } catch (emailError) {
+        console.error("Failed to send interview passed email:", emailError);
+        // Don't fail the request if email fails
+      }
 
       return NextResponse.json({ application: updatedApp });
     }
@@ -88,6 +129,39 @@ export async function POST(
 
       // There's no explicit "DECLINED" user status in the schema; set the user's status to REJECTED to reflect decline.
       await prisma.user.update({ where: { id: application.userId }, data: { status: "REJECTED" } });
+
+      // Create notification for the user
+      const notification = await prisma.notification.create({
+        data: {
+          userId: application.userId,
+          type: "INTERVIEW_REJECTED",
+          title: "Interview Update",
+          message: "We regret to inform you that your interview was not successful. You may reapply in the future.",
+          link: "/dashboard",
+        },
+      });
+
+      // Publish real-time notification via Ably
+      await publishNotification(application.userId, {
+        id: notification.id,
+        type: notification.type,
+        title: notification.title,
+        message: notification.message,
+        link: notification.link,
+        createdAt: notification.createdAt,
+      });
+
+      // Send email notification
+      try {
+        await sendInterviewResultEmail({
+          email: applicantUser.email,
+          fullName: applicantUser.fullName || "Volunteer",
+          passed: false,
+        });
+      } catch (emailError) {
+        console.error("Failed to send interview rejected email:", emailError);
+        // Don't fail the request if email fails
+      }
 
       return NextResponse.json({ application: updatedApp });
     }

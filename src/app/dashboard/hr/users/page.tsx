@@ -56,7 +56,7 @@ export default function UsersManagementPage() {
   );
   const displayName = viewer?.fullName || viewer?.username || session?.user?.name || "HR";
   const displayEmail = viewer?.email || session?.user?.email || "";
-  const displayRole = (viewer?.role as "VOLUNTEER" | "HR" | "MASTER") || (session as any)?.user?.role || "HR";
+  const displayRole = (session as any)?.user?.role || (viewer?.role as "VOLUNTEER" | "HR" | "MASTER") || "HR";
   const [showPointsForm, setShowPointsForm] = useState(false);
   const [showRankForm, setShowRankForm] = useState(false);
   const [pointsInput, setPointsInput] = useState<number | ''>('');
@@ -157,6 +157,7 @@ export default function UsersManagementPage() {
       userRole={displayRole}
       userName={displayName}
       userEmail={displayEmail}
+      userId={viewer?.id || ""}
       initialUserStatus={viewer?.status ?? null}
       initialFinalPaymentStatus={(viewer as any)?.finalPayment?.status ?? null}
     >

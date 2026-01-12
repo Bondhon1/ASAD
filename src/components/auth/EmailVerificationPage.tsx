@@ -34,8 +34,13 @@ export default function EmailVerificationPage() {
   const [verified, setVerified] = useState(false);
   const [error, setError] = useState("");
   const [email, setEmail] = useState("");
+  const [hasAttemptedVerification, setHasAttemptedVerification] = useState(false);
 
   useEffect(() => {
+    // Prevent duplicate verification attempts
+    if (hasAttemptedVerification) return;
+    setHasAttemptedVerification(true);
+
     // Verify email token from URL
     const verifyEmail = async () => {
       const params = new URLSearchParams(window.location.search);
@@ -66,9 +71,9 @@ export default function EmailVerificationPage() {
         // Store email in localStorage for payment page
         localStorage.setItem("userEmail", data.email);
         
-        // Redirect to payment after 3 seconds
+        // Redirect to initial payment page after 3 seconds
         setTimeout(() => {
-          window.location.href = `/payment?email=${encodeURIComponent(data.email)}`;
+          window.location.href = `/payments/initial?email=${encodeURIComponent(data.email)}`;
         }, 3000);
       } catch (err) {
         setError(
@@ -172,7 +177,7 @@ export default function EmailVerificationPage() {
               className="space-y-3"
             >
               <Link
-                href="/payment"
+                href="/payments/initial"
                 className="block w-full px-4 py-3 bg-primary text-white rounded-lg font-semibold hover:bg-primary/90 transition-all"
               >
                 Proceed to Payment

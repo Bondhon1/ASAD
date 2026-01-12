@@ -82,7 +82,7 @@ export default function InitialPaymentPage() {
   const instituteInputRef = useRef<HTMLInputElement | null>(null);
 
   // Get user email from URL params or localStorage and check if previous payment was rejected
-  const { data: session, status } = useSession();
+  const { data: session, status, update: updateSession } = useSession();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -166,6 +166,8 @@ export default function InitialPaymentPage() {
       }
 
       setSuccess(true);
+      // Update session to refresh JWT needsPayment flag before redirect
+      await updateSession();
       setTimeout(() => {
         window.location.href = "/dashboard";
       }, 2000);

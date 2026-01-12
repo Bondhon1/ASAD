@@ -1,5 +1,4 @@
 import type { NextConfig } from "next";
-import path from "path";
 
 const nextConfig: NextConfig = {
   // Disable React Compiler during production builds to save memory
@@ -10,7 +9,7 @@ const nextConfig: NextConfig = {
   },
   
   experimental: {
-    optimizePackageImports: ["@prisma/client", "googleapis", "framer-motion", "lucide-react"],
+    optimizePackageImports: ["@prisma/client", "googleapis", "framer-motion", "lucide-react", "ably"],
     // Reduce memory usage during builds
     workerThreads: false,
     cpus: 1,
@@ -19,9 +18,9 @@ const nextConfig: NextConfig = {
   // Disable source maps in production builds to save memory
   productionBrowserSourceMaps: false,
   
-  // Explicitly pin the Turbopack root to this project to avoid mis-detection
+  // Explicitly set turbopack root to this project folder to prevent scanning parent directories
   turbopack: {
-    root: path.join(__dirname),
+    root: process.cwd(),
   },
 };
 

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { sendFinalPaymentStatusEmail } from "@/lib/email";
+import { publishNotification } from "@/lib/ably";
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -23,6 +25,28 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
       if (action === "approve") {
         await prisma.initialPayment.update({ where: { id }, data: { status: "VERIFIED", verifiedAt: new Date() } });
+        
+        // Create notification for initial payment approval
+        const notification = await prisma.notification.create({
+          data: {
+            userId: payment.userId,
+            type: "INITIAL_PAYMENT_ACCEPTED",
+            title: "Payment Verified ✓",
+            message: "Your initial payment has been verified. Your application is now under review.",
+            link: "/dashboard",
+          },
+        });
+        
+        // Publish real-time notification via Ably
+        await publishNotification(payment.userId, {
+          id: notification.id,
+          type: notification.type,
+          title: notification.title,
+          message: notification.message,
+          link: notification.link,
+          createdAt: notification.createdAt,
+        });
+        
         return NextResponse.json({ success: true });
       }
 
@@ -30,6 +54,28 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         await prisma.initialPayment.update({ where: { id }, data: { status: "REJECTED" } });
         // set user status to REJECTED so they can re-pay
         await prisma.user.update({ where: { id: payment.userId }, data: { status: "REJECTED" } });
+        
+        // Create notification for initial payment rejection
+        const notification = await prisma.notification.create({
+          data: {
+            userId: payment.userId,
+            type: "INITIAL_PAYMENT_REJECTED",
+            title: "Payment Issue",
+            message: "Your initial payment could not be verified. Please re-submit with correct details.",
+            link: "/payments/initial",
+          },
+        });
+        
+        // Publish real-time notification via Ably
+        await publishNotification(payment.userId, {
+          id: notification.id,
+          type: notification.type,
+          title: notification.title,
+          message: notification.message,
+          link: notification.link,
+          createdAt: notification.createdAt,
+        });
+        
         return NextResponse.json({ success: true });
       }
     }
@@ -77,12 +123,81 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         }
 
         await prisma.$transaction(ops);
+
+        // Create notification for final payment approval
+        const notification = await prisma.notification.create({
+          data: {
+            userId: payment.userId,
+            type: "FINAL_PAYMENT_ACCEPTED",
+            title: "Welcome to ASAD! 🎊",
+            message: `Congratulations! You are now an official volunteer. Your Volunteer ID is ${volunteerIdToUse}.`,
+            link: "/dashboard",
+          },
+        });
+
+        // Publish real-time notification via Ably
+        await publishNotification(payment.userId, {
+          id: notification.id,
+          type: notification.type,
+          title: notification.title,
+          message: notification.message,
+          link: notification.link,
+          createdAt: notification.createdAt,
+        });
+
+        // Send email notification
+        try {
+          await sendFinalPaymentStatusEmail({
+            email: payment.user.email,
+            fullName: payment.user.fullName || "Volunteer",
+            accepted: true,
+            volunteerId: volunteerIdToUse || undefined,
+          });
+        } catch (emailError) {
+          console.error("Failed to send final payment accepted email:", emailError);
+          // Don't fail the request if email fails
+        }
+
         return NextResponse.json({ success: true });
       }
 
       if (action === "reject") {
         await prisma.finalPayment.update({ where: { id }, data: { status: "REJECTED" } });
         await prisma.user.update({ where: { id: payment.userId }, data: { status: "FINAL_PAYMENT_REJECTED" } });
+
+        // Create notification for final payment rejection
+        const notification = await prisma.notification.create({
+          data: {
+            userId: payment.userId,
+            type: "FINAL_PAYMENT_REJECTED",
+            title: "Payment Issue",
+            message: "Your final payment could not be verified. Please re-submit the 170 BDT payment.",
+            link: "/payments/final",
+          },
+        });
+
+        // Publish real-time notification via Ably
+        await publishNotification(payment.userId, {
+          id: notification.id,
+          type: notification.type,
+          title: notification.title,
+          message: notification.message,
+          link: notification.link,
+          createdAt: notification.createdAt,
+        });
+
+        // Send email notification
+        try {
+          await sendFinalPaymentStatusEmail({
+            email: payment.user.email,
+            fullName: payment.user.fullName || "Volunteer",
+            accepted: false,
+          });
+        } catch (emailError) {
+          console.error("Failed to send final payment rejected email:", emailError);
+          // Don't fail the request if email fails
+        }
+
         return NextResponse.json({ success: true });
       }
     }

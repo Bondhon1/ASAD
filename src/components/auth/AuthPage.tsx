@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import clsx from "clsx";
 import Image from "next/image";
 import Link from "next/link";
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 
 type AuthMode = "login" | "signup";
@@ -58,6 +58,7 @@ const itemVariants = {
 
 function AuthPageContent() {
   const searchParams = useSearchParams();
+  const { data: session, status, update: updateSession } = useSession();
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -104,9 +105,10 @@ function AuthPageContent() {
 
       if (result?.ok) {
         setSuccess("Login successful! Redirecting...");
-        setTimeout(() => {
-          window.location.href = "/dashboard";
-        }, 1000);
+        // Update session to get latest data
+        await updateSession();
+        // Redirect to dashboard after successful login
+        window.location.href = "/dashboard";
       }
     } catch (err) {
       setError("Login failed. Please try again.");

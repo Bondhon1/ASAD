@@ -113,16 +113,23 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         token.email = user.email;
         
+        // Fetch user role and status from database
+        const dbUser = await prisma.user.findUnique({
+          where: { email: user.email! },
+          select: { role: true, status: true, initialPayment: true },
+        });
+        
+        if (dbUser) {
+          token.role = dbUser.role;
+          token.status = dbUser.status;
+          token.needsPayment = !dbUser.initialPayment;
+        }
+        
         // Check if new Google user needs payment
         if ((user as any).isNewGoogleUser) {
           token.needsPayment = true;
-        } else if (account?.provider === "credentials") {
-          // For credentials login, check payment status
-          const dbUser = await prisma.user.findUnique({
-            where: { email: user.email! },
-            include: { initialPayment: true },
-          });
-          token.needsPayment = !dbUser?.initialPayment;
+          token.role = "VOLUNTEER";
+          token.status = "APPLICANT";
         }
       }
       return token;
@@ -131,6 +138,8 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         (session.user as any).id = token.id;
         (session.user as any).needsPayment = token.needsPayment;
+        (session.user as any).role = token.role;
+        (session.user as any).status = token.status;
       }
       return session;
     },
@@ -142,13 +151,7 @@ export const authOptions: NextAuthOptions = {
   session: {
     strategy: "jwt",
   },
-  events: {
-    async signIn({ user, isNewUser }) {
-      if (isNewUser) {
-        console.log("New user signed up:", user.email);
-      }
-    },
-  },
+  events: {},
   secret: process.env.NEXTAUTH_SECRET,
 };
 

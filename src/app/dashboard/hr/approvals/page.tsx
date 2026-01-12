@@ -38,7 +38,7 @@ export default function ApprovalsPage() {
   );
   const displayName = user?.fullName || user?.username || session?.user?.name || "HR";
   const displayEmail = user?.email || session?.user?.email || "";
-  const displayRole = (user?.role as "VOLUNTEER" | "HR" | "MASTER") || (session as any)?.user?.role || "HR";
+  const displayRole = (session as any)?.user?.role || (user?.role as "VOLUNTEER" | "HR" | "MASTER") || "HR";
 
   const formatDhaka = (value?: string | null) => {
     if (!value) return "";
@@ -174,6 +174,7 @@ export default function ApprovalsPage() {
       userRole={displayRole}
       userName={displayName}
       userEmail={displayEmail}
+      userId={user?.id || ""}
       initialUserStatus={user?.status ?? null}
       initialFinalPaymentStatus={user?.finalPayment?.status ?? null}
     >

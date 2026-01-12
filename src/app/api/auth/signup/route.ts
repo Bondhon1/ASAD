@@ -45,8 +45,6 @@ export async function POST(request: NextRequest) {
     const verificationToken = generateEmailVerificationToken();
     const verificationExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-    console.log("Generated verification token:", verificationToken);
-
     // Create user
     const user = await prisma.user.create({
       data: {
@@ -58,8 +56,6 @@ export async function POST(request: NextRequest) {
         emailVerificationExpiry: verificationExpiry,
       },
     });
-
-    console.log("User created with ID:", user.id, "Token:", user.emailVerificationToken);
 
     // Create application record
     await prisma.application.create({

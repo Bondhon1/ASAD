@@ -77,6 +77,9 @@ model User {
   finalPayment          FinalPayment?
   leaves                Leave[]
   
+  // Notifications
+  notifications         Notification[]
+  
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
   
@@ -652,24 +655,46 @@ enum JobPostStatus {
 
 model Notification {
   id                    String           @id @default(cuid())
+  user                  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                String
   type                  NotificationType
   title                 String
-  description           String?
-  relatedUserId         String?
-  relatedPostId         String?
-  relatedTaskId         String?
+  message               String?
+  link                  String?          // Optional link to navigate to
   read                  Boolean          @default(false)
   createdAt             DateTime         @default(now())
+  
+  @@index([userId])
+  @@index([read])
+  @@index([createdAt])
 }
 
 enum NotificationType {
+  // Application & Payment
+  INTERVIEW_PASSED
+  INTERVIEW_REJECTED
+  FINAL_PAYMENT_ACCEPTED
+  FINAL_PAYMENT_REJECTED
+  INITIAL_PAYMENT_ACCEPTED
+  INITIAL_PAYMENT_REJECTED
+  APPLICATION_ACCEPTED
+  APPLICATION_REJECTED
+  
+  // Tasks
   NEW_TASK
   TASK_APPROVED
   TASK_REJECTED
+  
+  // Events & Donations
   NEW_EVENT
   DONATION_REQUIRED
+  
+  // Social
   RANK_UPDATE
   FRIEND_REQUEST
+  
+  // General
+  SYSTEM_ANNOUNCEMENT
   APPLICATION_UPDATE
 }
 

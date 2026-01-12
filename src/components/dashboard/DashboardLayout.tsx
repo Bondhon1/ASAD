@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { 
-  Bell, 
   MessageSquare, 
   Menu, 
   X, 
@@ -18,14 +17,27 @@ import {
   UserCheck,
   Briefcase,
   Ban,
-  FileText
+  FileText,
+  Bell
 } from "lucide-react";
+import { NotificationProvider } from "@/components/providers/NotificationProvider";
+import NotificationDropdown from "@/components/dashboard/NotificationDropdown";
+
+// Fallback bell button when notifications are not available
+function FallbackNotificationButton() {
+  return (
+    <button className="p-2 rounded-lg hover:bg-gray-100 relative" disabled>
+      <Bell size={20} className="text-gray-400" />
+    </button>
+  );
+}
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
   userRole: "VOLUNTEER" | "HR" | "MASTER";
   userName: string;
   userEmail: string;
+  userId: string;
   showStatusBanners?: boolean;
   initialUserStatus?: string | null;
   initialFinalPaymentStatus?: string | null;
@@ -36,6 +48,7 @@ export default function DashboardLayout({
   userRole,
   userName,
   userEmail,
+  userId,
   showStatusBanners = true,
   initialUserStatus,
   initialFinalPaymentStatus,
@@ -153,8 +166,11 @@ export default function DashboardLayout({
   };
 
   const menuItems = getMenuItems();
+  
+  // Check if userId is valid for notifications
+  const hasValidUserId = userId && userId !== "";
 
-  return (
+  const dashboardContent = (
     <div className="min-h-screen bg-gray-50">
       {/* Topbar */}
       <div className="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-30">
@@ -177,19 +193,16 @@ export default function DashboardLayout({
 
           {/* Right: Notifications, Chat, User */}
           <div className="flex items-center gap-2">
-            <button className="p-2 rounded-lg hover:bg-gray-100 relative">
-              <Bell size={20} />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-            </button>
-            <button className="p-2 rounded-lg hover:bg-gray-100 relative">
-              <MessageSquare size={20} />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-green-500 rounded-full"></span>
-            </button>
-            <div className="ml-2 px-3 py-2 bg-gray-100 rounded-lg hidden sm:block">
-              <p className="text-sm font-semibold text-gray-900">{userName}</p>
-              <p className="text-xs text-gray-500">{topbarLabel}</p>
+            {hasValidUserId ? <NotificationDropdown /> : <FallbackNotificationButton />}
+              <button className="p-2 rounded-lg hover:bg-gray-100 relative">
+                <MessageSquare size={20} />
+                <span className="absolute top-1 right-1 w-2 h-2 bg-green-500 rounded-full"></span>
+              </button>
+              <div className="ml-2 px-3 py-2 bg-gray-100 rounded-lg hidden sm:block">
+                <p className="text-sm font-semibold text-gray-900">{userName}</p>
+                <p className="text-xs text-gray-500">{topbarLabel}</p>
+              </div>
             </div>
-          </div>
         </div>
       </div>
 
@@ -299,4 +312,15 @@ export default function DashboardLayout({
       </div>
     </div>
   );
+
+  // Wrap with NotificationProvider only if we have a valid userId
+  if (hasValidUserId) {
+    return (
+      <NotificationProvider userId={userId}>
+        {dashboardContent}
+      </NotificationProvider>
+    );
+  }
+
+  return dashboardContent;
 }

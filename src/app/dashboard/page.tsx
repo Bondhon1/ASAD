@@ -92,22 +92,22 @@ export default function DashboardPage() {
   }, [status, userEmail, user, userLoading, error, refresh, router]);
 
   useEffect(() => {
-    const needsPayment = (session as any)?.user?.needsPayment;
     if (status !== "authenticated") return;
-    if (!userEmail || !needsPayment) return;
-
-    // If we already have a payment record that is not rejected, keep the user on dashboard.
-    if (user?.initialPayment?.status && user.initialPayment.status !== "REJECTED") return;
+    if (!userEmail) return;
+    // Wait for user data to load before making payment redirect decision
     if (userLoading) return;
 
-    (async () => {
-      const latestUser = await refresh();
-      const paymentStatus = latestUser?.initialPayment?.status ?? user?.initialPayment?.status;
-      if (!paymentStatus || paymentStatus === "REJECTED") {
-        router.push(`/payment?email=${encodeURIComponent(userEmail)}`);
-      }
-    })();
-  }, [refresh, router, session, status, user?.initialPayment?.status, userEmail, userLoading]);
+    // Prioritize actual payment status from database over JWT needsPayment flag
+    const paymentStatus = user?.initialPayment?.status;
+    
+    // If user has a payment record that is not rejected, stay on dashboard
+    if (paymentStatus && paymentStatus !== "REJECTED") return;
+
+    // Only redirect if we've confirmed no valid payment exists
+    if (user && (!paymentStatus || paymentStatus === "REJECTED")) {
+      router.push(`/payments/initial?email=${encodeURIComponent(userEmail)}`);
+    }
+  }, [router, status, user, userEmail, userLoading]);
 
   if (status === "unauthenticated") {
     return null;
@@ -117,7 +117,9 @@ export default function DashboardPage() {
 
   const displayUserName = user?.fullName || user?.username || session?.user?.name || "User";
   const displayEmail = user?.email || session?.user?.email || "";
-  const displayRole = (user?.role as "VOLUNTEER" | "HR" | "MASTER") || (session as any)?.user?.role || "VOLUNTEER";
+  // Prioritize session role (fetched at login) over cached user role to avoid flicker
+  const sessionRole = (session as any)?.user?.role;
+  const displayRole = (sessionRole as "VOLUNTEER" | "HR" | "MASTER") || (user?.role as "VOLUNTEER" | "HR" | "MASTER") || "VOLUNTEER";
 
   const skeletonPanel = (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-pulse">
@@ -248,6 +250,7 @@ export default function DashboardPage() {
       userRole={displayRole}
       userName={displayUserName}
       userEmail={displayEmail}
+      userId={user?.id || ""}
       initialUserStatus={user?.status ?? null}
       initialFinalPaymentStatus={user?.finalPayment?.status ?? null}
     >

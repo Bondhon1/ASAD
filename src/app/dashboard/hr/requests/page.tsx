@@ -48,7 +48,10 @@ export default function NewRequestsPage() {
   );
   const displayName = user?.fullName || user?.username || session?.user?.name || "HR";
   const displayEmail = user?.email || session?.user?.email || "";
-  const displayRole = (user?.role as "VOLUNTEER" | "HR" | "MASTER") || (session as any)?.user?.role || "HR";
+  const displayRole = (session as any)?.user?.role || (user?.role as "VOLUNTEER" | "HR" | "MASTER") || "HR";
+  
+  // Track if initial fetch has been done
+  const [hasFetched, setHasFetched] = useState(false);
 
   useEffect(() => {
     // Check authentication and fetch user
@@ -58,7 +61,7 @@ export default function NewRequestsPage() {
         return;
       }
 
-      if (status === "loading") return;
+      if (status === "loading" || hasFetched) return;
 
       if (!email) {
         router.push("/auth");
@@ -72,7 +75,9 @@ export default function NewRequestsPage() {
           router.push("/dashboard");
           return;
         }
-        setUser(currentUser);
+        
+        // Mark as fetched to prevent re-fetching
+        setHasFetched(true);
         
         // Fetch applications
         const response = await fetch("/api/hr/applications?status=INTERVIEW_REQUESTED");
@@ -91,7 +96,7 @@ export default function NewRequestsPage() {
     };
 
     fetchUserAndApplications();
-  }, [router, session, status, email, user, refreshUser, setUser]);
+  }, [router, status, email, hasFetched]);
 
   const fetchApplications = async () => {
     try {
@@ -162,6 +167,7 @@ export default function NewRequestsPage() {
       userRole={displayRole}
       userName={displayName}
       userEmail={displayEmail}
+      userId={user?.id || ""}
       initialUserStatus={user?.status ?? null}
       initialFinalPaymentStatus={user?.finalPayment?.status ?? null}
     >

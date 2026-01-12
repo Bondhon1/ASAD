@@ -167,8 +167,10 @@ export default function SettingsPage() {
 
   if (status === "unauthenticated") return null;
 
+  const displayRole = (session as any)?.user?.role || (user?.role as any) || 'VOLUNTEER';
+
   return (
-    <DashboardLayout userRole={(user?.role as any) || 'VOLUNTEER'} userName={user?.fullName || user?.username || 'User'} userEmail={user?.email || session?.user?.email}>
+    <DashboardLayout userRole={displayRole} userName={user?.fullName || user?.username || 'User'} userEmail={user?.email || session?.user?.email} userId={user?.id || ""}>
       {isLoading ? (
         skeleton
       ) : (
