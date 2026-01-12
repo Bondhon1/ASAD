@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Space_Grotesk, Poppins, Playfair_Display, DM_Sans, Nunito } from "next/font/google";
 import "./globals.css";
 import SessionProvider from "@/components/providers/SessionProvider";
+import { Analytics } from "@vercel/analytics/next";
 
 const display = Space_Grotesk({
   subsets: ["latin"],
@@ -154,6 +155,7 @@ export default function RootLayout({
         <SessionProvider>
           {children}
         </SessionProvider>
+        <Analytics />
       </body>
     </html>
   );
