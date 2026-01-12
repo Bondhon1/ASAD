@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import Link from "next/link";
+import Image from "next/image";
 import { 
   MessageSquare, 
   Menu, 
@@ -183,12 +185,22 @@ export default function DashboardLayout({
             >
               {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-[#1E3A5F] to-[#3B5998] rounded-lg flex items-center justify-center text-white font-bold">
-                A
+            <Link href="/" className="flex items-center gap-3 text-left">
+              <div className="relative h-10 w-10 overflow-hidden rounded-lg border border-border bg-white p-0.5 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
+                <Image
+                  src="/logo.jpg"
+                  alt="Amar Somoy Amar Desh logo"
+                  fill
+                  sizes="40px"
+                  className="object-cover"
+                  priority
+                />
               </div>
-              <span className="font-bold text-xl text-[#1E3A5F] hidden sm:block">ASAD</span>
-            </div>
+              <div className="text-sm font-extrabold leading-tight text-[#1E3A5F] hidden sm:block">
+                <span className="block">AMAR SOMOY</span>
+                <span className="block text-primary">AMAR DESH</span>
+              </div>
+            </Link>
           </div>
 
           {/* Right: Notifications, Chat, User */}

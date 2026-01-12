@@ -93,9 +93,9 @@ export const metadata: Metadata = {
     },
   },
   icons: {
-    icon: "/favicon.ico",
-    shortcut: "/favicon-16x16.png",
-    apple: "/apple-touch-icon.png",
+    icon: "/logo.jpg",
+    shortcut: "/logo.jpg",
+    apple: "/logo.jpg",
   },
   manifest: "/site.webmanifest",
   alternates: {
@@ -127,7 +127,7 @@ export default function RootLayout({
               name: "Amar Somoy Amar Desh",
               alternateName: "ASAD",
               url: siteUrl,
-              logo: `${siteUrl}/logo.png`,
+              logo: `${siteUrl}/logo.jpg`,
               description:
                 "A youth volunteer organization dedicated to community service, education, and social development in Bangladesh.",
               address: {
