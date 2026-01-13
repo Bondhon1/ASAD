@@ -11,7 +11,7 @@ export function Header() {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-md transition-all duration-300">
       <div className="mx-auto max-w-7xl px-6">
         <div className="flex h-20 items-center justify-between">
-          <Link href="#home" className="flex items-center gap-3 group">
+          <Link href="/" className="flex items-center gap-3 group">
             <div className="relative h-11 w-11 overflow-hidden rounded-xl shadow-md transition-transform duration-300 group-hover:scale-110">
               <Image src="/logo.jpg" alt="ASAD Logo" fill className="object-cover" />
             </div>
@@ -20,7 +20,7 @@ export function Header() {
 
           <div className="hidden md:flex items-center gap-8">
             {[
-              { label: 'Home', href: '/#home' },
+              { label: 'Home', href: '/' },
               { label: 'About', href: '/about' },
               { label: 'Sectors', href: '/#sectors' },
               { label: 'Activities', href: '/#activities' },
@@ -45,7 +45,7 @@ export function Header() {
       <div className={`md:hidden bg-white border-t border-gray-100 overflow-hidden transition-all duration-300 ${mobileMenuOpen ? 'max-h-96 py-4' : 'max-h-0'}`}>
         <div className="flex flex-col gap-4 px-6">
           {[
-            { label: 'Home', href: '/#home' },
+            { label: 'Home', href: '/' },
             { label: 'About', href: '/about' },
             { label: 'Sectors', href: '/#sectors' },
             { label: 'Activities', href: '/#activities' },

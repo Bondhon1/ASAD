@@ -229,6 +229,50 @@ export async function sendInitialPaymentEmail({
   }
 }
 
+interface PasswordResetEmailParams {
+  email: string;
+  fullName: string;
+  resetLink: string;
+}
+
+export async function sendPasswordResetEmail({ email, fullName, resetLink }: PasswordResetEmailParams): Promise<void> {
+  try {
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM,
+      to: email,
+      subject: "Reset your password - ASAD",
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="UTF-8">
+            <style>
+              body { font-family: Arial, sans-serif; color: #111827; }
+              .container { max-width: 600px; margin: 40px auto; background: #fff; padding: 24px; border-radius: 12px; }
+              .btn { display:inline-block; padding: 12px 24px; background:#1E3A5F; color:#fff; border-radius:8px; text-decoration:none; }
+              .muted { color: #6b7280; font-size: 14px; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <h2>Reset your password</h2>
+              <p>Hello <strong>${fullName}</strong>,</p>
+              <p>We received a request to reset your password. Click the button below to set a new password. This link will expire in 1 hour.</p>
+              <p style="text-align:center; margin:24px 0;"><a class="btn" href="${resetLink}">Reset password</a></p>
+              <p class="muted">If you didn't request a password reset, you can safely ignore this email.</p>
+              <p class="muted">If the button doesn't work, copy and paste this link into your browser:</p>
+              <div class="muted">${resetLink}</div>
+            </div>
+          </body>
+        </html>
+      `,
+    });
+  } catch (err) {
+    console.error('Error sending password reset email', err);
+    throw err;
+  }
+}
+
 export interface InterviewInvitation {
   applicantName: string;
   applicantEmail: string;

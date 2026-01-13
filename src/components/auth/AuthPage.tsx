@@ -67,6 +67,10 @@ function AuthPageContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotMessage, setForgotMessage] = useState('');
 
   useEffect(() => {
     // Check for OAuth errors in URL
@@ -380,13 +384,36 @@ function AuthPageContent() {
                         variants={itemVariants}
                         className="text-right"
                       >
-                        <a
-                          href="#"
+                        <button
+                          onClick={(e) => { e.preventDefault(); setShowForgot(true); setForgotMessage(''); }}
                           className="text-sm text-primary hover:text-primary/80 transition-colors"
                         >
                           Forgot password?
-                        </a>
+                        </button>
                       </motion.div>
+
+                      {showForgot && (
+                        <div className="p-4 bg-gray-50 rounded mt-3">
+                          <div className="text-sm mb-2">Enter your account email to receive a reset link.</div>
+                          <div className="flex gap-2">
+                            <input value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} type="email" placeholder="your@email.com" className="flex-1 px-3 py-2 border rounded" />
+                            <button disabled={forgotLoading} onClick={async () => {
+                              setForgotMessage(''); setForgotLoading(true);
+                              try {
+                                const res = await fetch('/api/auth/forgot-password', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: forgotEmail }) });
+                                await res.json();
+                                setForgotMessage('If an account exists, a reset link has been sent.');
+                              } catch (e) {
+                                setForgotMessage('Failed to send reset link');
+                              } finally { setForgotLoading(false); }
+                            }} className="px-3 py-2 bg-[#1E3A5F] text-white rounded">Send</button>
+                          </div>
+                          {forgotMessage && <div className="text-xs text-gray-600 mt-2">{forgotMessage}</div>}
+                          <div className="text-xs mt-2">
+                            <button onClick={() => setShowForgot(false)} className="text-primary">Close</button>
+                          </div>
+                        </div>
+                      )}
 
                       <motion.button
                         variants={itemVariants}
