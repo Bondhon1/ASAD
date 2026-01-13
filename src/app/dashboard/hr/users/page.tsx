@@ -39,7 +39,13 @@ export default function UsersManagementPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [total, setTotal] = useState(0);
-  const [statusFilter, setStatusFilter] = useState<'ANY' | 'UNOFFICIAL' | 'OFFICIAL'>('UNOFFICIAL');
+  const [statusFilter, setStatusFilter] = useState<'ANY' | 'UNOFFICIAL' | 'OFFICIAL'>('OFFICIAL');
+  const [stats, setStats] = useState<{ total?: number; officialCount?: number; rankCounts?: Array<{ rank: string; count: number }> }>({});
+  const [editingVolunteerUserId, setEditingVolunteerUserId] = useState<string | null>(null);
+  const [volunteerIdInput, setVolunteerIdInput] = useState<string>('');
+  const [editingVolunteerSaving, setEditingVolunteerSaving] = useState(false);
+  const [listLoading, setListLoading] = useState(false);
+  const [debouncedQuery, setDebouncedQuery] = useState(query);
 
   const isCheckingAuth = status === "loading" || !authChecked;
   const isLoading = loading || isCheckingAuth;
@@ -64,6 +70,45 @@ export default function UsersManagementPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    let active = true;
+    const controller = new AbortController();
+
+    if (!authChecked) return () => { controller.abort(); };
+
+    const fetchStats = async () => {
+      try {
+        const res = await fetch(`/api/hr/users/stats`, { signal: controller.signal, cache: 'no-store' });
+        if (!res.ok) throw new Error(`Status ${res.status}`);
+        const data = await res.json();
+        if (!active) return;
+        setStats({ total: data.total, officialCount: data.officialCount, rankCounts: data.rankCounts });
+      } catch (err: any) {
+        if (err.name === 'AbortError') return;
+        console.error('Failed to load stats', err);
+      }
+    };
+
+    fetchStats();
+    return () => { active = false; controller.abort(); };
+  }, [authChecked]);
+
+  // handle volunteerId save from list
+  const saveVolunteerId = async (userId: string) => {
+    setEditingVolunteerSaving(true);
+    try {
+      const res = await fetch(`/api/hr/users/${userId}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ volunteerId: volunteerIdInput === '' ? null : volunteerIdInput }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Failed to save volunteerId');
+      // update local list
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, volunteerId: volunteerIdInput || null } : u));
+      setSelected(prev => prev ? { ...prev, volunteerId: volunteerIdInput || null } : prev);
+      setEditingVolunteerUserId(null);
+    } catch (err: any) {
+      alert(err?.message || 'Error saving volunteerId');
+    } finally { setEditingVolunteerSaving(false); }
+  };
+
+    useEffect(() => {
     if (status === "loading") return;
 
     if (status === "unauthenticated") {
@@ -103,6 +148,12 @@ export default function UsersManagementPage() {
     setAuthChecked(true);
   }, [status, router, userEmail, cachedUser, userLoading, userError, refresh]);
 
+  // debounce query input to avoid firing on every keystroke
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(query), 300);
+    return () => clearTimeout(t);
+  }, [query]);
+
   useEffect(() => {
     let active = true;
     const controller = new AbortController();
@@ -111,8 +162,14 @@ export default function UsersManagementPage() {
 
     const fetchUsers = async () => {
       try {
-        setLoading(true);
-        const qParam = encodeURIComponent(query || '');
+        // keep full-page loading only for the very first load; subsequent requests show inline list loading
+        if (loading) {
+          setLoading(true);
+        } else {
+          setListLoading(true);
+        }
+
+        const qParam = encodeURIComponent(debouncedQuery || '');
         const statusParam = statusFilter === 'ANY' ? '' : `status=${statusFilter}`;
         const res = await fetch(`/api/hr/users?${statusParam ? statusParam + '&' : ''}page=${page}&pageSize=${pageSize}&q=${qParam}`, {
           signal: controller.signal,
@@ -127,7 +184,10 @@ export default function UsersManagementPage() {
         if (err.name === 'AbortError') return;
         setError(err.message || 'Failed to load users');
       } finally {
-        if (active) setLoading(false);
+        if (active) {
+          setLoading(false);
+          setListLoading(false);
+        }
       }
     };
 
@@ -137,7 +197,7 @@ export default function UsersManagementPage() {
       active = false;
       controller.abort();
     };
-  }, [page, pageSize, query, statusFilter, authChecked]);
+  }, [page, pageSize, debouncedQuery, statusFilter, authChecked]);
 
   if (status === "unauthenticated") return null;
   if (authError) return null;
@@ -161,11 +221,41 @@ export default function UsersManagementPage() {
       initialUserStatus={viewer?.status ?? null}
       initialFinalPaymentStatus={(viewer as any)?.finalPayment?.status ?? null}
     >
-      {isLoading ? (
+      {(status === "loading" || !authChecked || (loading && users.length === 0)) ? (
         skeletonPage
       ) : (
         <div className="max-w-6xl mx-auto px-6 py-8">
           <h2 className="text-2xl font-semibold text-[#0b2545] mb-4">User Management</h2>
+
+          {/* Top stats cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <div className="bg-white border border-gray-100 rounded-lg p-4 shadow-sm">
+              <div className="text-xs text-gray-500">Total users</div>
+              <div className="text-2xl font-bold text-[#0b2545]">{stats.total ?? total}</div>
+            </div>
+            <div className="bg-white border border-gray-100 rounded-lg p-4 shadow-sm">
+              <div className="text-xs text-gray-500">OFFICIAL members</div>
+              <div className="text-2xl font-bold text-green-700">{stats.officialCount ?? filtered.filter(u => u.status === 'OFFICIAL' || u.volunteerProfile?.isOfficial).length}</div>
+            </div>
+            <div className="bg-white border border-gray-100 rounded-lg p-4 shadow-sm">
+              <div className="text-xs text-gray-500">Top ranks</div>
+              <div className="text-sm mt-2 text-gray-700">
+                {stats.rankCounts && stats.rankCounts.length > 0 ? (
+                  stats.rankCounts.slice(0,4).map(r => <div key={r.rank} className="flex items-center justify-between"><span className="truncate">{r.rank}</span><span className="ml-2 text-xs text-gray-500">{r.count}</span></div>)
+                ) : (
+                  (() => {
+                    const rankCounts: Record<string, number> = {};
+                    filtered.forEach(u => {
+                      const r = (u.volunteerProfile?.rank || '—') as string;
+                      rankCounts[r] = (rankCounts[r] || 0) + 1;
+                    });
+                    const entries = Object.entries(rankCounts).sort((a, b) => b[1] - a[1]).slice(0,4);
+                    return entries.map(([r,c]) => <div key={r} className="flex items-center justify-between"><span className="truncate">{r}</span><span className="ml-2 text-xs text-gray-500">{c}</span></div>);
+                  })()
+                )}
+              </div>
+            </div>
+          </div>
 
           <div className="mb-4 flex flex-col md:flex-row items-start md:items-center gap-3">
             <input
@@ -174,12 +264,13 @@ export default function UsersManagementPage() {
               placeholder="Search by name, email, or volunteer ID"
               className="px-3 py-2 border rounded-md w-full md:max-w-sm"
             />
+            {listLoading && <div className="text-sm text-gray-500">Searching…</div>}
             <label className="flex items-center gap-2">
               <span className="text-sm text-gray-600">Status:</span>
               <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value as any); setPage(1); }} className="border rounded px-2 py-1">
                 <option value="ANY">Any</option>
-                <option value="UNOFFICIAL">Unofficial (not OFFICIAL)</option>
-                <option value="OFFICIAL">OFFICIAL</option>
+                <option value="UNOFFICIAL">Unofficial</option>
+                <option value="OFFICIAL">Official</option>
               </select>
             </label>
             <div className="flex items-center gap-2">
@@ -231,7 +322,24 @@ export default function UsersManagementPage() {
                                   <div className="text-xs text-gray-500">Role: {u.role}</div>
                                   <div className="text-xs text-gray-500">Status: {u.status}</div>
                                   <div className="text-xs text-gray-500">Institute: {u.institute?.name || 'Independent'}</div>
-                                  <div className="text-xs text-gray-500">Volunteer ID: {u.volunteerId || '—'}</div>
+                                  <div className="text-xs text-gray-500">Volunteer ID:
+                                    <span className="ml-1">
+                                      {editingVolunteerUserId === u.id ? (
+                                        <span className="flex items-center gap-2">
+                                          <input value={volunteerIdInput} onChange={(e) => setVolunteerIdInput(e.target.value)} className="px-2 py-1 border rounded w-40" />
+                                          <button disabled={editingVolunteerSaving} onClick={() => saveVolunteerId(u.id)} className="px-2 py-1 bg-[#1E90FF] text-white rounded">Save</button>
+                                          <button onClick={() => { setEditingVolunteerUserId(null); setVolunteerIdInput(''); }} className="px-2 py-1 border rounded">Cancel</button>
+                                        </span>
+                                      ) : (
+                                        <span className="inline-flex items-center gap-2">
+                                          <span>{u.volunteerId || '—'}</span>
+                                          {(displayRole === 'HR' || displayRole === 'MASTER') && u.status === 'OFFICIAL' && (
+                                            <button onClick={() => { setEditingVolunteerUserId(u.id); setVolunteerIdInput(u.volunteerId || ''); }} className="px-2 py-1 text-xs bg-gray-100 rounded">Edit</button>
+                                          )}
+                                        </span>
+                                      )}
+                                    </span>
+                                  </div>
                                   <div className="text-xs text-gray-500">Points: {u.volunteerProfile?.points ?? 0}</div>
                                   <div className="text-xs text-gray-500">Rank: {u.volunteerProfile?.rank ?? '—'}</div>
                                   {u.volunteerProfile?.isOfficial && <div className="text-xs text-green-700 font-medium">Official member</div>}
@@ -323,6 +431,17 @@ export default function UsersManagementPage() {
                                       </div>
                                     </div>
                                   )}
+                                  {/* Payment & management actions */}
+                                  <div className="mt-2 space-y-2">
+                                    <div className="text-xs text-gray-500">Initial payment: {u.initialPayment?.status ?? '—'}</div>
+                                    <div className="text-xs text-gray-500">Final payment: {(u as any).finalPayment?.status ?? '—'}</div>
+                                    <div className="text-xs text-gray-500">Initial approved by: {(u as any).initialPayment?.approvedBy ?? '—'}</div>
+                                    <div className="text-xs text-gray-500">Initial approved at: {(u as any).initialPayment?.approvedAt ? new Date((u as any).initialPayment.approvedAt).toLocaleString() : '—'}</div>
+                                    <div className="text-xs text-gray-500">Final approved by: {(u as any).finalPayment?.approvedBy ?? '—'}</div>
+                                    <div className="text-xs text-gray-500">Final approved at: {(u as any).finalPayment?.approvedAt ? new Date((u as any).finalPayment.approvedAt).toLocaleString() : '—'}</div>
+
+                                    {/* Manage route removed; editing handled inline */}
+                                  </div>
                                 </div>
                               </div>
                             </div>

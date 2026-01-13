@@ -30,18 +30,29 @@ export async function PATCH(req: Request, context: any) {
       return NextResponse.json({ error: 'Missing user id' }, { status: 400 });
     }
     const body = await req.json();
-    const { points, rank } = body as { points?: number; rank?: string };
+    const { points, rank, volunteerId } = body as { points?: number; rank?: string; volunteerId?: string | null };
 
     const hasPoints = typeof points === 'number';
     const hasRank = typeof rank === 'string' && rank.trim().length > 0;
+    const hasVolunteerId = Object.prototype.hasOwnProperty.call(body, 'volunteerId');
 
-    if (!hasPoints && !hasRank) return NextResponse.json({ error: 'No changes provided' }, { status: 400 });
+    if (!hasPoints && !hasRank && !hasVolunteerId) return NextResponse.json({ error: 'No changes provided' }, { status: 400 });
 
-    // Prepare prisma update/create payload
+    // If volunteerId update requested, update User model first (to validate uniqueness)
+    if (hasVolunteerId) {
+      try {
+        await prisma.user.update({ where: { id }, data: { volunteerId: volunteerId === null ? null : volunteerId } });
+      } catch (err: any) {
+        // likely uniqueness constraint or other DB error
+        console.error('PATCH /api/hr/users/[id] volunteerId update error', err);
+        return NextResponse.json({ error: err?.message || 'Failed to update volunteerId' }, { status: 500 });
+      }
+    }
+
+    // Prepare prisma update/create payload for volunteerProfile
     const prismaDataAny: any = {};
     if (hasPoints) prismaDataAny.points = points;
     if (hasRank) {
-      // rank is a relation to Rank model; use connectOrCreate by name
       prismaDataAny.rank = {
         connectOrCreate: {
           where: { name: rank! },
@@ -50,10 +61,16 @@ export async function PATCH(req: Request, context: any) {
       };
     }
 
+    // If no volunteerProfile changes were requested, return success for volunteerId update
+    if (!hasPoints && !hasRank) {
+      // return updated user and existing profile
+      const user = await prisma.user.findUnique({ where: { id }, include: { volunteerProfile: { include: { rank: true } }, initialPayment: true, finalPayment: true } });
+      return NextResponse.json({ ok: true, user });
+    }
+
     // Ensure volunteerProfile exists
     const profile = await prisma.volunteerProfile.findUnique({ where: { userId: id } });
     if (!profile) {
-      // create profile with provided values (including nested rank)
       const createData: any = { userId: id, points: hasPoints ? points : 0 };
       if (hasRank) createData.rank = prismaDataAny.rank;
       const created = await prisma.volunteerProfile.create({ data: createData, include: { rank: true } });
