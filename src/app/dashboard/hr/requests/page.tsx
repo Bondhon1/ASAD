@@ -48,7 +48,7 @@ export default function NewRequestsPage() {
   );
   const displayName = user?.fullName || user?.username || session?.user?.name || "HR";
   const displayEmail = user?.email || session?.user?.email || "";
-  const displayRole = (session as any)?.user?.role || (user?.role as "VOLUNTEER" | "HR" | "MASTER") || "HR";
+  const displayRole = (session as any)?.user?.role || (user?.role as "VOLUNTEER" | "HR" | "MASTER" | "ADMIN") || "HR";
   
   // Track if initial fetch has been done
   const [hasFetched, setHasFetched] = useState(false);
@@ -71,7 +71,7 @@ export default function NewRequestsPage() {
       try {
         const currentUser = user || (await refreshUser());
         if (!currentUser) return;
-        if (currentUser.role !== "HR" && currentUser.role !== "MASTER") {
+        if (currentUser.role !== "HR" && currentUser.role !== "MASTER" && currentUser.role !== "ADMIN") {
           router.push("/dashboard");
           return;
         }

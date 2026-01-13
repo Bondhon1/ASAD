@@ -16,7 +16,9 @@ interface User {
   volunteerId: string | null;
   institute: { name: string } | null;
   volunteerProfile?: { points: number; isOfficial?: boolean; rank?: string | null } | null;
-  initialPayment?: { status: string } | null;
+  initialPayment?: { status: string; verifiedAt?: string | null; approvedBy?: { id: string; fullName?: string | null; email?: string | null } } | null;
+  finalPayment?: { status: string; verifiedAt?: string | null; approvedBy?: { id: string; fullName?: string | null; email?: string | null } } | null;
+  interviewApprovedBy?: { id: string; fullName?: string | null; email?: string | null } | null;
   taskSubmissions?: Array<any>;
   donations?: Array<any>;
   followersCount?: number;
@@ -44,6 +46,9 @@ export default function UsersManagementPage() {
   const [editingVolunteerUserId, setEditingVolunteerUserId] = useState<string | null>(null);
   const [volunteerIdInput, setVolunteerIdInput] = useState<string>('');
   const [editingVolunteerSaving, setEditingVolunteerSaving] = useState(false);
+  const [editingRoleUserId, setEditingRoleUserId] = useState<string | null>(null);
+  const [roleInput, setRoleInput] = useState<string>('');
+  const [editingRoleSaving, setEditingRoleSaving] = useState(false);
   const [listLoading, setListLoading] = useState(false);
   const [debouncedQuery, setDebouncedQuery] = useState(query);
 
@@ -62,7 +67,7 @@ export default function UsersManagementPage() {
   );
   const displayName = viewer?.fullName || viewer?.username || session?.user?.name || "HR";
   const displayEmail = viewer?.email || session?.user?.email || "";
-  const displayRole = (session as any)?.user?.role || (viewer?.role as "VOLUNTEER" | "HR" | "MASTER") || "HR";
+  const displayRole = (session as any)?.user?.role || (viewer?.role as "VOLUNTEER" | "HR" | "MASTER" | "ADMIN") || "HR";
   const [showPointsForm, setShowPointsForm] = useState(false);
   const [showRankForm, setShowRankForm] = useState(false);
   const [pointsInput, setPointsInput] = useState<number | ''>('');
@@ -151,7 +156,7 @@ export default function UsersManagementPage() {
       return;
     }
 
-    if (!['HR', 'MASTER'].includes(cachedUser.role)) {
+    if (!['HR', 'MASTER', 'ADMIN'].includes(cachedUser.role)) {
       setAuthError("You do not have permission to view this page.");
       router.replace("/dashboard");
       return;
@@ -334,6 +339,39 @@ export default function UsersManagementPage() {
                                   <div className="text-gray-700 font-semibold">{u.fullName || u.username || u.email}</div>
                                   <div className="text-xs text-gray-500">Email: {u.email}</div>
                                   <div className="text-xs text-gray-500">Role: {u.role}</div>
+                                  <div className="text-xs mt-1">
+                                    {editingRoleUserId === u.id ? (
+                                      <div className="flex items-center gap-2">
+                                        <select value={roleInput} onChange={(e) => setRoleInput(e.target.value)} className="px-2 py-1 border rounded">
+                                          <option value="VOLUNTEER">VOLUNTEER</option>
+                                          <option value="HR">HR</option>
+                                          <option value="MASTER">MASTER</option>
+                                          <option value="ADMIN">ADMIN</option>
+                                        </select>
+                                        <button disabled={editingRoleSaving} onClick={async () => {
+                                          setEditingRoleSaving(true);
+                                          try {
+                                            const res = await fetch(`/api/hr/users/${u.id}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ role: roleInput }) });
+                                            const data = await res.json();
+                                            if (!res.ok) throw new Error(data?.error || 'Failed to update role');
+                                            setUsers(prev => prev.map(x => x.id === u.id ? { ...x, role: data.user.role } : x));
+                                            setSelected(prev => prev ? { ...prev, role: data.user.role } : prev);
+                                            setEditingRoleUserId(null);
+                                          } catch (err: any) {
+                                            alert(err?.message || 'Error updating role');
+                                          } finally { setEditingRoleSaving(false); }
+                                        }} className="px-2 py-1 bg-[#1E90FF] text-white rounded">Save</button>
+                                        <button onClick={() => { setEditingRoleUserId(null); setRoleInput(''); }} className="px-2 py-1 border rounded">Cancel</button>
+                                      </div>
+                                    ) : (
+                                      (displayRole === 'ADMIN' || displayRole === 'MASTER') && u.status === 'OFFICIAL' && (
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-xs text-gray-700">{u.role}</span>
+                                          <button onClick={() => { setEditingRoleUserId(u.id); setRoleInput(u.role || 'VOLUNTEER'); }} className="px-2 py-1 text-xs bg-gray-100 rounded">Edit role</button>
+                                        </div>
+                                      )
+                                    )}
+                                  </div>
                                   <div className="text-xs text-gray-500">Status: {u.status}</div>
                                   <div className="text-xs text-gray-500">Institute: {u.institute?.name || 'Independent'}</div>
                                   <div className="text-xs text-gray-500">Volunteer ID:
@@ -347,7 +385,7 @@ export default function UsersManagementPage() {
                                       ) : (
                                         <span className="inline-flex items-center gap-2">
                                           <span>{u.volunteerId || '—'}</span>
-                                          {(displayRole === 'HR' || displayRole === 'MASTER') && u.status === 'OFFICIAL' && (
+                                          {(displayRole === 'HR' || displayRole === 'MASTER' || displayRole === 'ADMIN') && u.status === 'OFFICIAL' && (
                                             <button onClick={() => { setEditingVolunteerUserId(u.id); setVolunteerIdInput(u.volunteerId || ''); }} className="px-2 py-1 text-xs bg-gray-100 rounded">Edit</button>
                                           )}
                                         </span>
@@ -449,10 +487,11 @@ export default function UsersManagementPage() {
                                   <div className="mt-2 space-y-2">
                                     <div className="text-xs text-gray-500">Initial payment: {u.initialPayment?.status ?? '—'}</div>
                                     <div className="text-xs text-gray-500">Final payment: {(u as any).finalPayment?.status ?? '—'}</div>
-                                    <div className="text-xs text-gray-500">Initial approved by: {(u as any).initialPayment?.approvedBy ?? '—'}</div>
-                                    <div className="text-xs text-gray-500">Initial approved at: {(u as any).initialPayment?.approvedAt ? new Date((u as any).initialPayment.approvedAt).toLocaleString() : '—'}</div>
-                                    <div className="text-xs text-gray-500">Final approved by: {(u as any).finalPayment?.approvedBy ?? '—'}</div>
-                                    <div className="text-xs text-gray-500">Final approved at: {(u as any).finalPayment?.approvedAt ? new Date((u as any).finalPayment.approvedAt).toLocaleString() : '—'}</div>
+                                    <div className="text-xs text-gray-500">Initial approved by: {(u as any).initialPayment?.approvedBy?.fullName || (u as any).initialPayment?.approvedBy?.email || '—'}</div>
+                                    <div className="text-xs text-gray-500">Initial approved at: {(u as any).initialPayment?.verifiedAt ? new Date((u as any).initialPayment.verifiedAt).toLocaleString() : '—'}</div>
+                                    <div className="text-xs text-gray-500">Final approved by: {(u as any).finalPayment?.approvedBy?.fullName || (u as any).finalPayment?.approvedBy?.email || '—'}</div>
+                                    <div className="text-xs text-gray-500">Final approved at: {(u as any).finalPayment?.verifiedAt ? new Date((u as any).finalPayment.verifiedAt).toLocaleString() : '—'}</div>
+                                    <div className="text-xs text-gray-500">Interview approved by: {(u as any).interviewApprovedBy?.fullName || (u as any).interviewApprovedBy?.email || '—'}</div>
 
                                     {/* Manage route removed; editing handled inline */}
                                   </div>

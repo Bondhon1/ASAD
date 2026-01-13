@@ -40,7 +40,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!['HR', 'MASTER'].includes(requester.role)) {
+    if (!['HR', 'MASTER', 'ADMIN'].includes(requester.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -103,8 +103,10 @@ async function fetchUsersData(
         volunteerId: true,
         createdAt: true,
         institute: { select: { name: true } },
-        volunteerProfile: { select: { points: true, isOfficial: true, rank: true } },
-        initialPayment: { select: { status: true } },
+            volunteerProfile: { select: { points: true, isOfficial: true, rank: true } },
+            initialPayment: { select: { status: true, verifiedAt: true, approvedBy: { select: { id: true, fullName: true, email: true } } } },
+            finalPayment: { select: { status: true, verifiedAt: true, approvedBy: { select: { id: true, fullName: true, email: true } } } },
+            interviewApprovedBy: { select: { id: true, fullName: true, email: true } },
         _count: {
           select: {
             taskSubmissions: true,

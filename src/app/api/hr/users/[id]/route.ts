@@ -11,7 +11,7 @@ export async function PATCH(req: Request, context: any) {
 
     const requester = await prisma.user.findUnique({ where: { email: session.user.email }, select: { role: true, status: true } });
     if (!requester || requester.status === 'BANNED') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    if (!['HR', 'MASTER'].includes(requester.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (!['HR', 'MASTER', 'ADMIN'].includes(requester.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     // `params` may be a Promise in Next.js app routes — await it safely
     const params = await context.params;
@@ -31,14 +31,15 @@ export async function PATCH(req: Request, context: any) {
       return NextResponse.json({ error: 'Missing user id' }, { status: 400 });
     }
     const body = await req.json();
-    const { points, rank, volunteerId, status } = body as { points?: number; rank?: string; volunteerId?: string | null; status?: string };
+    const { points, rank, volunteerId, status, role } = body as { points?: number; rank?: string; volunteerId?: string | null; status?: string; role?: string };
 
     const hasPoints = typeof points === 'number';
     const hasRank = typeof rank === 'string' && rank.trim().length > 0;
     const hasVolunteerId = Object.prototype.hasOwnProperty.call(body, 'volunteerId');
     const hasStatus = Object.prototype.hasOwnProperty.call(body, 'status');
+    const hasRole = Object.prototype.hasOwnProperty.call(body, 'role');
 
-    if (!hasPoints && !hasRank && !hasVolunteerId && !hasStatus) return NextResponse.json({ error: 'No changes provided' }, { status: 400 });
+    if (!hasPoints && !hasRank && !hasVolunteerId && !hasStatus && !hasRole) return NextResponse.json({ error: 'No changes provided' }, { status: 400 });
 
     // If volunteerId update requested, update User model first (to validate uniqueness)
     if (hasVolunteerId) {
@@ -68,6 +69,21 @@ export async function PATCH(req: Request, context: any) {
       } catch (err: any) {
         console.error('PATCH /api/hr/users/[id] status update error', err);
         return NextResponse.json({ error: err?.message || 'Failed to update status' }, { status: 500 });
+      }
+    }
+
+    // If role change requested, only ADMIN (and MASTER) can change user roles
+    if (hasRole) {
+      try {
+        if (requester.role !== 'ADMIN' && requester.role !== 'MASTER') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        // Only allow role changes when the requester is an OFFICIAL user
+        if (requester.status !== 'OFFICIAL') return NextResponse.json({ error: 'Forbidden - requester must be OFFICIAL' }, { status: 403 });
+        const updatedUser = await prisma.user.update({ where: { id }, data: { role: role as any } });
+        try { invalidateAll(); } catch (e) { /* ignore */ }
+        return NextResponse.json({ ok: true, user: updatedUser });
+      } catch (err: any) {
+        console.error('PATCH /api/hr/users/[id] role update error', err);
+        return NextResponse.json({ error: err?.message || 'Failed to update role' }, { status: 500 });
       }
     }
 
@@ -114,7 +130,7 @@ export async function DELETE(req: Request, context: any) {
 
     const requester = await prisma.user.findUnique({ where: { email: session.user.email }, select: { role: true, status: true } });
     if (!requester || requester.status === 'BANNED') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    if (!['HR', 'MASTER'].includes(requester.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (!['HR', 'MASTER', 'ADMIN'].includes(requester.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     const params = await context.params;
     let id = params?.id as string | undefined;

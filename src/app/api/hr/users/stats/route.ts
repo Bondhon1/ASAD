@@ -10,7 +10,7 @@ export async function GET(req: Request) {
 
     const requester = await prisma.user.findUnique({ where: { email: session.user.email }, select: { role: true, status: true } });
     if (!requester || requester.status === 'BANNED') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    if (!['HR', 'MASTER'].includes(requester.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (!['HR', 'MASTER', 'ADMIN'].includes(requester.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     // overall totals (exclude BANNED users)
     const total = await prisma.user.count({ where: { NOT: { status: 'BANNED' } } });

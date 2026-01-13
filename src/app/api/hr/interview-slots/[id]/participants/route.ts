@@ -17,7 +17,7 @@ export async function GET(
     }
 
     const user = await prisma.user.findUnique({ where: { email: session.user.email } });
-    if (!user || (user.role !== "HR" && user.role !== "MASTER")) {
+    if (!user || (user.role !== "HR" && user.role !== "MASTER" && user.role !== "ADMIN")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -52,7 +52,7 @@ export async function POST(
     }
 
     const user = await prisma.user.findUnique({ where: { email: session.user.email } });
-    if (!user || (user.role !== "HR" && user.role !== "MASTER")) {
+    if (!user || (user.role !== "HR" && user.role !== "MASTER" && user.role !== "ADMIN")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -78,10 +78,10 @@ export async function POST(
       // Mark application as accepted / passed and update user status
       const updatedApp = await prisma.application.update({
         where: { id: applicationId },
-        data: { status: "ACCEPTED", interviewResult: "PASSED" },
+        data: { status: "ACCEPTED", interviewResult: "PASSED", reviewedById: user.id },
       });
 
-      await prisma.user.update({ where: { id: application.userId }, data: { status: "INTERVIEW_PASSED" } });
+      await prisma.user.update({ where: { id: application.userId }, data: { status: "INTERVIEW_PASSED", interviewApprovedById: user.id } });
 
       // Create notification for the user
       const notification = await prisma.notification.create({
@@ -124,7 +124,7 @@ export async function POST(
       // Mark application as rejected/failed. Map 'declined' to REJECTED + FAILED
       const updatedApp = await prisma.application.update({
         where: { id: applicationId },
-        data: { status: "REJECTED", interviewResult: "FAILED" },
+        data: { status: "REJECTED", interviewResult: "FAILED", reviewedById: user.id },
       });
 
       // There's no explicit "DECLINED" user status in the schema; set the user's status to REJECTED to reflect decline.

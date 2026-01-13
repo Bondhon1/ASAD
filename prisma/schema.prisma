@@ -50,7 +50,8 @@ model User {
   
   // Volunteer specific
   volunteerProfile      VolunteerProfile?
-  application           Application?
+  application           Application?          @relation("Applicant")
+  reviewedApplications  Application[]         @relation("ApplicationReviewedBy")
   taskSubmissions       TaskSubmission[]
   donations             Donation[]
   createdTasks          Task[]                 @relation("TaskCreator")
@@ -73,12 +74,17 @@ model User {
   committeeMemberships  CommitteeMember[]
   
   // Payment related
-  initialPayment        InitialPayment?
-  finalPayment          FinalPayment?
+  initialPayment        InitialPayment?      @relation("InitialPaymentOwner")
+  finalPayment          FinalPayment?        @relation("FinalPaymentOwner")
+  initialPaymentsApproved InitialPayment[]    @relation("InitialPaymentApprovedBy")
+  finalPaymentsApproved   FinalPayment[]      @relation("FinalPaymentApprovedBy")
   leaves                Leave[]
   
   // Notifications
   notifications         Notification[]
+  interviewApprovedById String?
+  interviewApprovedBy   User?             @relation("InterviewApprovedBy", fields: [interviewApprovedById], references: [id], onDelete: SetNull)
+  interviewApprovedUsers User[]            @relation("InterviewApprovedBy")
   
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
@@ -105,6 +111,7 @@ enum UserRole {
   VOLUNTEER
   HR
   MASTER
+  ADMIN
 }
 
 model Account {
@@ -190,7 +197,7 @@ model CommitteeMember {
 
 model Application {
   id                    String           @id @default(cuid())
-  user                  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                  User             @relation("Applicant", fields: [userId], references: [id], onDelete: Cascade)
   userId                String           @unique
   trxId                 String
   paymentMethod         String           // bkash, nagad, visa, mastercard
@@ -200,6 +207,8 @@ model Application {
   interviewResult       InterviewResult?
   interviewSlot         InterviewSlot?   @relation(fields: [interviewSlotId], references: [id], onDelete: SetNull)
   interviewSlotId       String?
+  reviewedById          String?
+  reviewedBy            User?            @relation("ApplicationReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
   appliedAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
   
@@ -419,7 +428,7 @@ enum DonationStatus {
 
 model InitialPayment {
   id                    String           @id @default(cuid())
-  user                  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                  User             @relation("InitialPaymentOwner", fields: [userId], references: [id], onDelete: Cascade)
   userId                String           @unique
   amount                Float            @default(30)
   trxId                 String
@@ -430,6 +439,8 @@ model InitialPayment {
   proofUrl              String?
   status                PaymentStatus    @default(PENDING)
   verifiedAt            DateTime?
+  approvedById          String?
+  approvedBy            User?            @relation("InitialPaymentApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
   
@@ -438,7 +449,7 @@ model InitialPayment {
 
 model FinalPayment {
   id                    String           @id @default(cuid())
-  user                  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                  User             @relation("FinalPaymentOwner", fields: [userId], references: [id], onDelete: Cascade)
   userId                String           @unique
   amount                Float            @default(170)
   trxId                 String
@@ -449,6 +460,8 @@ model FinalPayment {
   proofUrl              String?
   status                PaymentStatus    @default(PENDING)
   verifiedAt            DateTime?
+  approvedById          String?
+  approvedBy            User?            @relation("FinalPaymentApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
 

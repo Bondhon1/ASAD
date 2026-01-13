@@ -29,7 +29,7 @@ export async function GET() {
       select: { role: true },
     });
 
-    if (!user || (user.role !== "HR" && user.role !== "MASTER")) {
+    if (!user || (user.role !== "HR" && user.role !== "MASTER" && user.role !== "ADMIN")) {
       return NextResponse.json(
         { error: "Only HR and MASTER can connect Google Calendar" },
         { status: 403 }

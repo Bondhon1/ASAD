@@ -36,7 +36,7 @@ function FallbackNotificationButton() {
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
-  userRole: "VOLUNTEER" | "HR" | "MASTER";
+  userRole: "VOLUNTEER" | "HR" | "MASTER" | "ADMIN";
   userName: string;
   userEmail: string;
   userId: string;
@@ -115,7 +115,7 @@ export default function DashboardLayout({
     })();
   }, [userEmail, initialFinalPaymentStatus, initialUserStatus]);
 
-  const isStaff = userRole === "HR" || userRole === "MASTER";
+  const isStaff = userRole === "HR" || userRole === "MASTER" || userRole === "ADMIN";
   const topbarLabel = isStaff ? userRole : formatStatusLabel(userStatus);
 
   const handleLogout = () => {
@@ -159,7 +159,7 @@ export default function DashboardLayout({
     ];
 
     if (userRole === "MASTER") return masterItems;
-    if (userRole === "HR") return hrItems;
+    if (userRole === "HR" || userRole === "ADMIN") return hrItems;
     return commonItems;
   };
 

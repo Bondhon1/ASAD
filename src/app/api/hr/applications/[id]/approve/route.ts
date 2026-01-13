@@ -19,7 +19,7 @@ export async function POST(
       where: { email: session.user.email },
     });
 
-    if (!hrUser || (hrUser.role !== "HR" && hrUser.role !== "MASTER")) {
+    if (!hrUser || (hrUser.role !== "HR" && hrUser.role !== "MASTER" && hrUser.role !== "ADMIN")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

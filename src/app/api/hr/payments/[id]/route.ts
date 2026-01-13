@@ -24,7 +24,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       if (!payment) return NextResponse.json({ error: "Payment not found" }, { status: 404 });
 
       if (action === "approve") {
-        await prisma.initialPayment.update({ where: { id }, data: { status: "VERIFIED", verifiedAt: new Date() } });
+        await prisma.initialPayment.update({ where: { id }, data: { status: "VERIFIED", verifiedAt: new Date(), approvedById: hr.id } });
         
         // Create notification for initial payment approval
         const notification = await prisma.notification.create({
@@ -51,7 +51,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       }
 
       if (action === "reject") {
-        await prisma.initialPayment.update({ where: { id }, data: { status: "REJECTED" } });
+        await prisma.initialPayment.update({ where: { id }, data: { status: "REJECTED", approvedById: hr.id } });
         // set user status to REJECTED so they can re-pay
         await prisma.user.update({ where: { id: payment.userId }, data: { status: "REJECTED" } });
         
@@ -112,7 +112,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
         const ops: any[] = [];
         // mark final payment verified
-        ops.push(prisma.finalPayment.update({ where: { id }, data: { status: "VERIFIED", verifiedAt: new Date() } }));
+        ops.push(prisma.finalPayment.update({ where: { id }, data: { status: "VERIFIED", verifiedAt: new Date(), approvedById: hr.id } }));
 
         // update user to OFFICIAL (only increment institute count if user wasn't already OFFICIAL)
         ops.push(prisma.user.update({ where: { id: payment.userId }, data: { status: "OFFICIAL", volunteerId: volunteerIdToUse } }));
@@ -162,7 +162,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       }
 
       if (action === "reject") {
-        await prisma.finalPayment.update({ where: { id }, data: { status: "REJECTED" } });
+      await prisma.finalPayment.update({ where: { id }, data: { status: "REJECTED", approvedById: hr.id } });
         await prisma.user.update({ where: { id: payment.userId }, data: { status: "FINAL_PAYMENT_REJECTED" } });
 
         // Create notification for final payment rejection

@@ -28,7 +28,7 @@ export async function GET() {
     ]);
 
     // Authorization check
-    if (!user || (user.role !== "HR" && user.role !== "MASTER")) {
+    if (!user || (user.role !== "HR" && user.role !== "MASTER" && user.role !== "ADMIN")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

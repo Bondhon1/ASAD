@@ -17,7 +17,7 @@ export async function GET() {
       where: { email: session.user.email },
     });
 
-    if (!user || (user.role !== "HR" && user.role !== "MASTER")) {
+    if (!user || (user.role !== "HR" && user.role !== "MASTER" && user.role !== "ADMIN")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
       },
     });
 
-    if (!user || (user.role !== "HR" && user.role !== "MASTER")) {
+    if (!user || (user.role !== "HR" && user.role !== "MASTER" && user.role !== "ADMIN")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
