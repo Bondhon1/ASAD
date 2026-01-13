@@ -4,6 +4,7 @@
 /node_modules
 /.pnp
 .pnp.*
+
 .yarn/*
 !.yarn/patches
 !.yarn/plugins
@@ -41,3 +42,4 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+*.txt
