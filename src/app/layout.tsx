@@ -19,7 +19,7 @@ const playfair = Playfair_Display({ subsets: ["latin"], variable: "--font-playfa
 const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-dm-sans" });
 const nunito = Nunito({ subsets: ["latin"], variable: "--font-nunito" });
 
-const siteUrl = process.env.NEXTAUTH_URL || "https://asadofficial.org";
+const siteUrl = process.env.NEXTAUTH_URL || "https://amarsomoyamardesh.org";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -119,6 +119,10 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link rel="canonical" href={siteUrl} />
+        <link rel="icon" href="/favicon.ico" />
+        <link rel="icon" type="image/jpeg" href="/logo.jpg" />
+        <link rel="shortcut icon" href="/favicon.ico" />
+        <link rel="apple-touch-icon" href="/logo.jpg" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

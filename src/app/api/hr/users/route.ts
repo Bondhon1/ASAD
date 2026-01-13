@@ -2,10 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
-
-// In-memory cache for users data
-const usersCache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_TTL = 15000; // 15 seconds
+import { getCache, setCache, CACHE_TTL, invalidateAll } from '@/lib/hrUsersCache';
 
 export async function GET(req: Request) {
   try {
@@ -25,7 +22,7 @@ export async function GET(req: Request) {
     const cacheKey = `${statusParam}-${isOfficialParam}-${q}-${page}-${pageSize}`;
 
     // Check cache first
-    const cached = usersCache.get(cacheKey);
+    const cached = getCache(cacheKey);
     const now = Date.now();
 
     // Run authorization check in parallel with data fetch
@@ -66,13 +63,15 @@ async function fetchUsersData(
   cacheKey: string
 ) {
   const where: any = {};
-
+  // By default exclude BANNED users from listings unless explicitly requested
   if (statusParam) {
     if (statusParam === 'UNOFFICIAL') {
       where.NOT = { status: 'OFFICIAL' };
     } else {
       where.status = statusParam;
     }
+  } else {
+    where.NOT = { status: 'BANNED' };
   }
 
   if (isOfficialParam === 'true') {
@@ -130,7 +129,7 @@ async function fetchUsersData(
   const data = { users: usersNormalized, total, page, pageSize };
 
   // Update cache
-  usersCache.set(cacheKey, { data, timestamp: Date.now() });
+  setCache(cacheKey, { data, timestamp: Date.now() });
 
   return { ...data, fromCache: false };
 }

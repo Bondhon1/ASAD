@@ -12,15 +12,20 @@ export async function GET(req: Request) {
     if (!requester || requester.status === 'BANNED') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     if (!['HR', 'MASTER'].includes(requester.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-    // overall totals
-    const total = await prisma.user.count();
+    // overall totals (exclude BANNED users)
+    const total = await prisma.user.count({ where: { NOT: { status: 'BANNED' } } });
 
-    // OFFICIAL count (either status OFFICIAL or volunteerProfile.isOfficial)
+    // OFFICIAL count (either status OFFICIAL or volunteerProfile.isOfficial) — exclude BANNED
     const officialCount = await prisma.user.count({
       where: {
-        OR: [
-          { status: 'OFFICIAL' },
-          { volunteerProfile: { isOfficial: true } },
+        AND: [
+          { NOT: { status: 'BANNED' } },
+          {
+            OR: [
+              { status: 'OFFICIAL' },
+              { volunteerProfile: { isOfficial: true } },
+            ],
+          },
         ],
       },
     });

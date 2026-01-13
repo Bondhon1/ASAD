@@ -68,6 +68,7 @@ export default function UsersManagementPage() {
   const [pointsInput, setPointsInput] = useState<number | ''>('');
   const [rankInput, setRankInput] = useState<string>('');
   const [saving, setSaving] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -91,6 +92,18 @@ export default function UsersManagementPage() {
     fetchStats();
     return () => { active = false; controller.abort(); };
   }, [authChecked]);
+
+  // Helper to refresh stats after actions
+  const refreshStats = async () => {
+    try {
+      const res = await fetch(`/api/hr/users/stats`, { cache: 'no-store' });
+      if (!res.ok) return;
+      const data = await res.json();
+      setStats({ total: data.total, officialCount: data.officialCount, rankCounts: data.rankCounts });
+    } catch (e) {
+      // ignore
+    }
+  };
 
   // handle volunteerId save from list
   const saveVolunteerId = async (userId: string) => {
@@ -271,6 +284,7 @@ export default function UsersManagementPage() {
                 <option value="ANY">Any</option>
                 <option value="UNOFFICIAL">Unofficial</option>
                 <option value="OFFICIAL">Official</option>
+                <option value="BANNED">Banned</option>
               </select>
             </label>
             <div className="flex items-center gap-2">
@@ -441,6 +455,54 @@ export default function UsersManagementPage() {
                                     <div className="text-xs text-gray-500">Final approved at: {(u as any).finalPayment?.approvedAt ? new Date((u as any).finalPayment.approvedAt).toLocaleString() : '—'}</div>
 
                                     {/* Manage route removed; editing handled inline */}
+                                  </div>
+                                  <div className="mt-2 flex gap-2">
+                                    {u.status === 'BANNED' ? (
+                                      <button disabled={actionLoading} onClick={async () => {
+                                        if (!confirm('Unban this user?')) return;
+                                        setActionLoading(true);
+                                        try {
+                                          const res = await fetch(`/api/hr/users/${u.id}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ status: 'APPLICANT' }) });
+                                          const data = await res.json();
+                                          if (!res.ok) throw new Error(data?.error || 'Failed to unban');
+                                          setUsers(prev => prev.map(x => x.id === u.id ? { ...x, status: 'APPLICANT' } : x));
+                                          setSelected(prev => prev ? { ...prev, status: 'APPLICANT' } : prev);
+                                          await refreshStats();
+                                        } catch (err: any) {
+                                          alert(err?.message || 'Error');
+                                        } finally { setActionLoading(false); }
+                                      }} className="px-3 py-1 bg-green-600 text-white rounded">Unban</button>
+                                    ) : (
+                                      <button disabled={actionLoading} onClick={async () => {
+                                        if (!confirm('Ban this user? They will be immediately logged out.')) return;
+                                        setActionLoading(true);
+                                        try {
+                                          const res = await fetch(`/api/hr/users/${u.id}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ status: 'BANNED' }) });
+                                          const data = await res.json();
+                                          if (!res.ok) throw new Error(data?.error || 'Failed to ban');
+                                          setUsers(prev => prev.map(x => x.id === u.id ? { ...x, status: 'BANNED' } : x));
+                                          setSelected(prev => prev ? { ...prev, status: 'BANNED' } : prev);
+                                          await refreshStats();
+                                        } catch (err: any) {
+                                          alert(err?.message || 'Error');
+                                        } finally { setActionLoading(false); }
+                                      }} className="px-3 py-1 bg-red-600 text-white rounded">Ban</button>
+                                    )}
+
+                                    <button disabled={actionLoading} onClick={async () => {
+                                      if (!confirm('Delete this user and all related data? This cannot be undone.')) return;
+                                      setActionLoading(true);
+                                      try {
+                                        const res = await fetch(`/api/hr/users/${u.id}`, { method: 'DELETE' });
+                                        const data = await res.json();
+                                        if (!res.ok) throw new Error(data?.error || 'Failed to delete');
+                                        setUsers(prev => prev.filter(x => x.id !== u.id));
+                                        setSelected(null);
+                                        await refreshStats();
+                                      } catch (err: any) {
+                                        alert(err?.message || 'Error');
+                                      } finally { setActionLoading(false); }
+                                    }} className="px-3 py-1 border rounded">Delete</button>
                                   </div>
                                 </div>
                               </div>

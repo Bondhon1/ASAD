@@ -74,7 +74,11 @@ export const authOptions: NextAuthOptions = {
           });
 
           if (existingUser) {
-            // Existing user - just allow sign in
+            // Existing user - disallow sign-in if banned
+            if (existingUser.status === 'BANNED') {
+              console.warn('Banned user attempted Google sign-in:', user.email);
+              return false;
+            }
             return true;
           } else {
             // New Google user - create account
