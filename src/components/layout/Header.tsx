@@ -1,96 +1,60 @@
-'use client';
+"use client";
 
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
-import { cn } from '@/lib/cn';
-
-const navItems = [
-  { label: 'Home', href: '#home' },
-  { label: 'About Us', href: '#about' },
-  { label: 'Activities', href: '#activities' },
-  { label: 'Contact', href: '#contact' },
-  { label: 'Become a Volunteer', href: '#join', isButton: true },
-  { label: 'Notice', href: '#notice' },
-  { label: 'Volunteers', href: '#volunteers' },
-];
 
 export function Header() {
-  const [open, setOpen] = useState(false);
-
-  const handleNavigate = () => setOpen(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 border-b border-border/60 bg-white/90 shadow-[0_4px_30px_rgba(0,0,0,0.06)] backdrop-blur-md">
-      <div className="content-width flex h-20 items-center justify-between gap-4 lg:h-24">
-        <Link
-          href="#home"
-          className="flex items-center gap-4 text-left"
-          onClick={handleNavigate}
-        >
-          <div className="relative h-14 w-14 overflow-hidden rounded-2xl border border-border bg-white p-1 shadow-[0_12px_30px_rgba(0,0,0,0.12)]">
-            <Image
-              src="/logo.jpg"
-              alt="Amar Somoy Amar Desh logo"
-              fill
-              sizes="56px"
-              className="object-cover"
-              priority
-            />
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-md transition-all duration-300">
+      <div className="mx-auto max-w-7xl px-6">
+        <div className="flex h-20 items-center justify-between">
+          <Link href="#home" className="flex items-center gap-3 group">
+            <div className="relative h-11 w-11 overflow-hidden rounded-xl shadow-md transition-transform duration-300 group-hover:scale-110">
+              <Image src="/logo.jpg" alt="ASAD Logo" fill className="object-cover" />
+            </div>
+            <span className="text-lg font-bold text-[#1E3A5F]">ASAD</span>
+          </Link>
+
+          <div className="hidden md:flex items-center gap-8">
+            {[
+              { label: 'Home', href: '/#home' },
+              { label: 'About', href: '/about' },
+              { label: 'Sectors', href: '/#sectors' },
+              { label: 'Activities', href: '/#activities' },
+            ].map((item) => (
+              <Link key={item.label} href={item.href} className="text-sm font-semibold text-gray-600 hover:text-[#1E3A5F] transition-colors duration-300">{item.label}</Link>
+            ))}
+            <Link href="/auth" className="rounded-lg bg-[#1E3A5F] px-7 py-3 text-sm font-semibold text-white hover:bg-[#2a4d75] transition-all duration-300">Join Now</Link>
           </div>
-          <div className="text-xs font-black uppercase tracking-[0.4em] text-ink">
-            <span className="block leading-tight">Amar Somoy</span>
-            <span className="block text-primary">Amar Desh</span>
-          </div>
-        </Link>
-        <nav className="hidden items-center gap-6 text-sm font-semibold uppercase tracking-[0.2em] lg:flex">
-          {navItems.map((item) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              className={cn(
-                'transition-colors duration-200 hover:text-primary',
-                item.isButton &&
-                  'rounded-full bg-primary px-5 py-3 text-white hover:bg-primary/90'
-              )}
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-        <button
-          className="lg:hidden"
-          aria-label="Toggle navigation"
-          onClick={() => setOpen((prev) => !prev)}
-        >
-          <span className="block h-0.5 w-7 bg-ink"></span>
-          <span className="my-1 block h-0.5 w-7 bg-ink"></span>
-          <span className="block h-0.5 w-7 bg-ink"></span>
-        </button>
+
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden flex flex-col gap-1.5 p-2"
+            aria-label="Toggle menu"
+          >
+            <span className={`block h-0.5 w-6 bg-[#1E3A5F] transition-all duration-300 ${mobileMenuOpen ? 'rotate-45 translate-y-2' : ''}`} />
+            <span className={`block h-0.5 w-6 bg-[#1E3A5F] transition-all duration-300 ${mobileMenuOpen ? 'opacity-0' : ''}`} />
+            <span className={`block h-0.5 w-6 bg-[#1E3A5F] transition-all duration-300 ${mobileMenuOpen ? '-rotate-45 -translate-y-2' : ''}`} />
+          </button>
+        </div>
       </div>
-      <div
-        className={cn(
-          'overflow-hidden border-t border-border/60 transition-[max-height] duration-300 lg:hidden',
-          open ? 'max-h-96' : 'max-h-0'
-        )}
-      >
-        <nav className="content-width flex flex-col gap-4 py-6 text-sm font-semibold uppercase tracking-[0.2em]">
-          {navItems.map((item) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              className={cn(
-                'rounded-full border border-transparent px-4 py-3 text-center transition-colors duration-200 hover:text-primary',
-                item.isButton &&
-                  'border-primary bg-primary text-white hover:bg-primary/90'
-              )}
-              onClick={handleNavigate}
-            >
-              {item.label}
-            </Link>
+
+      <div className={`md:hidden bg-white border-t border-gray-100 overflow-hidden transition-all duration-300 ${mobileMenuOpen ? 'max-h-96 py-4' : 'max-h-0'}`}>
+        <div className="flex flex-col gap-4 px-6">
+          {[
+            { label: 'Home', href: '/#home' },
+            { label: 'About', href: '/about' },
+            { label: 'Sectors', href: '/#sectors' },
+            { label: 'Activities', href: '/#activities' },
+          ].map((item) => (
+            <Link key={item.label} href={item.href} onClick={() => setMobileMenuOpen(false)} className="text-base font-semibold text-gray-600 hover:text-[#1E3A5F] transition-colors duration-300">{item.label}</Link>
           ))}
-        </nav>
+          <Link href="/auth" onClick={() => setMobileMenuOpen(false)} className="rounded-lg bg-[#1E3A5F] px-7 py-3 text-center text-sm font-semibold text-white transition-all duration-300">Join Now</Link>
+        </div>
       </div>
-    </header>
+    </nav>
   );
 }

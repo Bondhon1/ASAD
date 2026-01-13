@@ -24,7 +24,7 @@ export const aboutContent = {
   ],
   mission: 'Equip Bangladeshi youth with real-world leadership experiences through structured volunteering, mentorship, and national service.',
   vision: 'Create a disciplined, compassionate volunteer network that elevates every community through education, creativity, and care.',
-  learnMore: { label: 'Learn More →', href: '#about' },
+  learnMore: { label: 'Learn More →', href: '/about' },
 };
 
 export const sectors = [

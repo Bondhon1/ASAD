@@ -138,14 +138,14 @@ export default function RootLayout({
               },
               contactPoint: {
                 "@type": "ContactPoint",
-                email: "hello@asadofficial.org",
+                email: "amarsomoyamardesh.it@gmail.com",
                 contactType: "customer service",
               },
               sameAs: [
-                "https://www.facebook.com/asadofficial",
-                "https://twitter.com/asadofficial",
-                "https://www.instagram.com/asadofficial",
-                "https://www.linkedin.com/company/asadofficial",
+                "https://www.facebook.com/amarsomoyamardesh",
+                "https://www.linkedin.com/company/amar-somoy-amar-desh",
+                "https://www.instagram.com/amarsomoyamardesh/?hl=en",
+                "https://www.youtube.com/@amarsomoyamardesh3268",
               ],
             }),
           }}

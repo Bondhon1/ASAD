@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import clsx from "clsx";
 import Image from "next/image";
 import Link from "next/link";
+import { Header } from '@/components/layout/Header';
+import { Footer } from '@/components/layout/Footer';
 import { signIn, useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 
@@ -152,42 +154,7 @@ function AuthPageContent() {
 
   return (
     <div className="min-h-screen bg-white" style={{ fontFamily: 'var(--font-dm-sans), system-ui, sans-serif' }}>
-      {/* Themed Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-md transition-all duration-300">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="flex h-20 items-center justify-between">
-            <Link href="/" className="flex items-center gap-3 group">
-              <div className="relative h-11 w-11 overflow-hidden rounded-xl shadow-md transition-transform duration-300 group-hover:scale-110">
-                <Image src="/logo.jpg" alt="ASAD Logo" fill className="object-cover" />
-              </div>
-              <span className="text-lg font-bold text-[#1E3A5F]">ASAD</span>
-            </Link>
-            <div className="hidden md:flex items-center gap-8">
-              {['Home', 'About', 'Sectors', 'Activities'].map((item) => (
-                <Link key={item} href="/" className="text-sm font-semibold text-gray-600 hover:text-[#1E3A5F] transition-colors duration-300">{item}</Link>
-              ))}
-              <Link href="/auth" className="rounded-lg bg-[#1E3A5F] px-7 py-3 text-sm font-semibold text-white hover:bg-[#2a4d75] transition-all duration-300">Join Now</Link>
-            </div>
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden flex flex-col gap-1.5 p-2"
-              aria-label="Toggle menu"
-            >
-              <span className={`block h-0.5 w-6 bg-[#1E3A5F] transition-all duration-300 ${mobileMenuOpen ? 'rotate-45 translate-y-2' : ''}`} />
-              <span className={`block h-0.5 w-6 bg-[#1E3A5F] transition-all duration-300 ${mobileMenuOpen ? 'opacity-0' : ''}`} />
-              <span className={`block h-0.5 w-6 bg-[#1E3A5F] transition-all duration-300 ${mobileMenuOpen ? '-rotate-45 -translate-y-2' : ''}`} />
-            </button>
-          </div>
-        </div>
-        <div className={`md:hidden bg-white border-t border-gray-100 overflow-hidden transition-all duration-300 ${mobileMenuOpen ? 'max-h-96 py-4' : 'max-h-0'}`}>
-          <div className="flex flex-col gap-4 px-6">
-            {['Home', 'About', 'Sectors', 'Activities'].map((item) => (
-              <Link key={item} href="/" onClick={() => setMobileMenuOpen(false)} className="text-base font-semibold text-gray-600 hover:text-[#1E3A5F] transition-colors duration-300">{item}</Link>
-            ))}
-            <Link href="/auth" onClick={() => setMobileMenuOpen(false)} className="rounded-lg bg-[#1E3A5F] px-7 py-3 text-center text-sm font-semibold text-white transition-all duration-300">Join Now</Link>
-          </div>
-        </div>
-      </nav>
+      <Header />
 
     <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 flex items-center justify-center p-4 md:p-8 overflow-hidden relative" style={{ paddingTop: '8rem' }}>
       {/* Decorative background elements */}
@@ -577,37 +544,7 @@ function AuthPageContent() {
       </div>
     </div>
 
-      {/* Footer */}
-      <footer className="bg-[#1E3A5F] px-6 py-20 text-white">
-        <div className="mx-auto max-w-7xl">
-          <div className="grid gap-12 md:grid-cols-3">
-            <div>
-              <h3 className="text-2xl font-bold">ASAD</h3>
-              <p className="mt-1 text-[#4A90D9] font-semibold">Amar Somoy Amar Desh</p>
-              <p className="mt-4 text-white/60">Building a stronger Bangladesh through dedicated youth volunteerism.</p>
-            </div>
-            <div>
-              <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-[#4A90D9]">Explore</h4>
-              <div className="mt-6 flex flex-col gap-3 text-white/60">
-                <Link href="/" className="hover:text-white transition-colors duration-300">Home</Link>
-                <Link href="/" className="hover:text-white transition-colors duration-300">About Us</Link>
-                <Link href="/" className="hover:text-white transition-colors duration-300">Sectors</Link>
-                <Link href="/auth" className="hover:text-white transition-colors duration-300">Join Us</Link>
-              </div>
-            </div>
-            <div>
-              <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-[#4A90D9]">Contact</h4>
-              <div className="mt-6 space-y-3 text-white/60">
-                <p>FB: Asadian Asad</p>
-                <p>hello@asadofficial.org</p>
-              </div>
-            </div>
-          </div>
-          <div className="mt-16 border-t border-white/10 pt-8 text-center text-sm text-white/40">
-            © {new Date().getFullYear()} Amar Somoy Amar Desh. All rights reserved.
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

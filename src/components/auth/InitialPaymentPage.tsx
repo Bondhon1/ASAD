@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
+import { Footer } from '@/components/layout/Footer';
 import clsx from "clsx";
 
 type PaymentMethod = "bkash" | "nagad";
@@ -661,37 +662,7 @@ export default function InitialPaymentPage() {
       </div>
     </div>
 
-      {/* Footer */}
-      <footer className="bg-[#1E3A5F] px-6 py-20 text-white">
-        <div className="mx-auto max-w-7xl">
-          <div className="grid gap-12 md:grid-cols-3">
-            <div>
-              <h3 className="text-2xl font-bold">ASAD</h3>
-              <p className="mt-1 text-[#4A90D9] font-semibold">Amar Somoy Amar Desh</p>
-              <p className="mt-4 text-white/60">Building a stronger Bangladesh through dedicated youth volunteerism.</p>
-            </div>
-            <div>
-              <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-[#4A90D9]">Explore</h4>
-              <div className="mt-6 flex flex-col gap-3 text-white/60">
-                <Link href="/" className="hover:text-white transition-colors duration-300">Home</Link>
-                <Link href="/" className="hover:text-white transition-colors duration-300">About Us</Link>
-                <Link href="/" className="hover:text-white transition-colors duration-300">Sectors</Link>
-                <Link href="/auth" className="hover:text-white transition-colors duration-300">Join Us</Link>
-              </div>
-            </div>
-            <div>
-              <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-[#4A90D9]">Contact</h4>
-              <div className="mt-6 space-y-3 text-white/60">
-                <p>FB: Asadian Asad</p>
-                <p>hello@asadofficial.org</p>
-              </div>
-            </div>
-          </div>
-          <div className="mt-16 border-t border-white/10 pt-8 text-center text-sm text-white/40">
-            © {new Date().getFullYear()} Amar Somoy Amar Desh. All rights reserved.
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
