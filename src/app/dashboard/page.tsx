@@ -251,8 +251,8 @@ export default function DashboardPage() {
       userName={displayUserName}
       userEmail={displayEmail}
       userId={user?.id || ""}
-      initialUserStatus={user?.status ?? null}
-      initialFinalPaymentStatus={user?.finalPayment?.status ?? null}
+      initialUserStatus={user?.status}
+      initialFinalPaymentStatus={user?.finalPayment?.status}
     >
       {isLoading || !user ? (
         skeletonPage

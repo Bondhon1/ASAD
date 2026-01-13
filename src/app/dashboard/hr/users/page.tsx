@@ -218,8 +218,8 @@ export default function UsersManagementPage() {
       userName={displayName}
       userEmail={displayEmail}
       userId={viewer?.id || ""}
-      initialUserStatus={viewer?.status ?? null}
-      initialFinalPaymentStatus={(viewer as any)?.finalPayment?.status ?? null}
+      initialUserStatus={viewer?.status}
+      initialFinalPaymentStatus={(viewer as any)?.finalPayment?.status}
     >
       {(status === "loading" || !authChecked || (loading && users.length === 0)) ? (
         skeletonPage

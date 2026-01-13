@@ -298,8 +298,8 @@ function InterviewSlotsContent() {
       userName={displayName}
       userEmail={displayEmail}
       userId={user?.id || ""}
-      initialUserStatus={user?.status ?? null}
-      initialFinalPaymentStatus={user?.finalPayment?.status ?? null}
+      initialUserStatus={user?.status}
+      initialFinalPaymentStatus={user?.finalPayment?.status}
     >
       {isLoading || !user ? skeletonPage : (
         <div className="max-w-7xl mx-auto">

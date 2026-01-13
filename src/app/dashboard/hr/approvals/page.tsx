@@ -175,8 +175,8 @@ export default function ApprovalsPage() {
       userName={displayName}
       userEmail={displayEmail}
       userId={user?.id || ""}
-      initialUserStatus={user?.status ?? null}
-      initialFinalPaymentStatus={user?.finalPayment?.status ?? null}
+      initialUserStatus={user?.status}
+      initialFinalPaymentStatus={user?.finalPayment?.status}
     >
       <div className="max-w-6xl mx-auto p-6">
         <h1 className="text-2xl font-bold mb-4">Payments Approvals</h1>

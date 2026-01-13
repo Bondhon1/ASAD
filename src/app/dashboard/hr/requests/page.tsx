@@ -168,8 +168,8 @@ export default function NewRequestsPage() {
       userName={displayName}
       userEmail={displayEmail}
       userId={user?.id || ""}
-      initialUserStatus={user?.status ?? null}
-      initialFinalPaymentStatus={user?.finalPayment?.status ?? null}
+      initialUserStatus={user?.status}
+      initialFinalPaymentStatus={user?.finalPayment?.status}
     >
     <div>
       <div className="mb-6">

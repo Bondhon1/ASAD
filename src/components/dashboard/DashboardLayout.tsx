@@ -99,12 +99,8 @@ export default function DashboardLayout({
 
   useEffect(() => {
     if (!userEmail) return;
-    // Fetch if status/final payment not provided or explicitly null (to hydrate from server).
-    const shouldFetch =
-      initialUserStatus === undefined ||
-      initialUserStatus === null ||
-      initialFinalPaymentStatus === undefined ||
-      initialFinalPaymentStatus === null;
+    // Only fetch when parent did not provide any initial values (both undefined)
+    const shouldFetch = initialUserStatus === undefined && initialFinalPaymentStatus === undefined;
 
     if (!shouldFetch) return;
     (async () => {
@@ -229,14 +225,15 @@ export default function DashboardLayout({
             {menuItems.map((item) => {
               const Icon = item.icon;
               return (
-                <a
+                <Link
                   key={item.href}
                   href={item.href}
                   className="flex items-center gap-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-[#1E3A5F]/10 hover:text-[#1E3A5F] transition-colors"
+                  onClick={() => setSidebarOpen(false)}
                 >
                   <Icon size={20} />
                   <span className="font-medium">{item.label}</span>
-                </a>
+                </Link>
               );
             })}
           </nav>
