@@ -24,6 +24,8 @@ export function Footer() {
               <Link href="/about" className="hover:text-white transition-colors duration-300">About Us</Link>
               <Link href="/#sectors" className="hover:text-white transition-colors duration-300">Sectors</Link>
               <Link href="/auth" className="hover:text-white transition-colors duration-300">Join Us</Link>
+              <Link href="/terms" className="hover:text-white transition-colors duration-300">Terms of Service</Link>
+              <Link href="/privacy" className="hover:text-white transition-colors duration-300">Privacy Policy</Link>
             </div>
           </div>
           <div>
