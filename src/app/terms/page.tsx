@@ -6,113 +6,84 @@ export default function TermsPage() {
   return (
     <>
       <Header />
-      <main className="mx-auto max-w-4xl px-6 py-12 pt-28">
-        <h1 className="text-3xl font-bold">Terms of Service</h1>
-        <p className="mt-4 text-sm text-neutral-600">Last updated: January 2026</p>
+      <main className="mx-auto max-w-5xl px-6 py-16 pt-28">
+        <div className="bg-white shadow-sm rounded-lg overflow-hidden">
+          <div className="px-8 py-10">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+              <div>
+                <h1 className="text-3xl font-semibold text-gray-900">Terms of Service</h1>
+                <p className="mt-2 text-sm text-gray-500">Last updated: January 2026</p>
+              </div>
+            </div>
 
-        <section className="mt-8 prose">
-        <p>
-          These Terms of Service ("Terms") govern your use of the website and services
-          provided by Amar Somoy, Amar Desh (ASAD). By accessing
-          or using our website, mobile site, or services you agree to these Terms. If
-          you do not agree, do not use the services.
-        </p>
+            <div className="mt-8 sm:mt-10 lg:flex lg:gap-8">
+              <nav className="hidden lg:block w-56 shrink-0">
+                <ul className="sticky top-28 space-y-2 text-sm text-gray-600">
+                  <li><a href="#services" className="hover:text-gray-900">Services</a></li>
+                  <li><a href="#eligibility" className="hover:text-gray-900">Eligibility</a></li>
+                  <li><a href="#accounts" className="hover:text-gray-900">Accounts & Security</a></li>
+                  <li><a href="#payments" className="hover:text-gray-900">Payments</a></li>
+                  <li><a href="#conduct" className="hover:text-gray-900">Content & Conduct</a></li>
+                  <li><a href="#termination" className="hover:text-gray-900">Termination</a></li>
+                </ul>
+              </nav>
 
-        <h2>1. Services</h2>
-        <p>ASAD provides a public website and a member portal for volunteers, administrators, and the public.</p>
-        <ul>
-          <li>Volunteer applications and interview scheduling.</li>
-          <li>Official volunteer upgrades (payment, verification, ID issuance).</li>
-          <li>Task creation, submission reviews, and an automated points & ranking system.</li>
-          <li>Donation campaigns with admin approval and reporting.</li>
-          <li>Event pages, posts, galleries, and private messaging features.</li>
-          <li>Admin tools for reviewing applications, submissions, and donations.</li>
-        </ul>
+              <article className="prose prose-neutral max-w-none lg:flex-1">
+                <p>
+                  These Terms of Service ("Terms") govern your use of the website and services
+                  provided by Amar Somoy, Amar Desh (ASAD). By accessing or using our website or
+                  services you agree to these Terms. If you do not agree, do not use the services.
+                </p>
 
-        <h2>2. Eligibility</h2>
-        <p>You must be at least 13 years old to access public content. Access to member-only features may require additional verification such as an interview or fee payment.</p>
-        <p>By registering you represent that the information you submit is accurate and that you are authorized to provide it.</p>
+                <section id="services">
+                  <h3>Services</h3>
+                  <p>ASAD provides a public website and a member portal for volunteers and administrators. Key features include:</p>
+                  <ul>
+                    <li>Volunteer applications, interview scheduling and status tracking.</li>
+                    <li>Official upgrades (payments, verification and ID issuance).</li>
+                    <li>Tasks, submissions, points and ranking systems.</li>
+                    <li>Donation campaigns, event pages and messaging features.</li>
+                  </ul>
+                </section>
 
-        <h2>3. Accounts, Security & Credentials</h2>
-        <p>
-          When you create an account you must provide accurate information. Keep your password
-          secure and notify us promptly of any unauthorized use. We are not responsible for
-          losses caused by unauthorized access when account credentials are compromised.
-        </p>
+                <section id="eligibility">
+                  <h3>Eligibility</h3>
+                  <p>You must be at least 13 years old to use public content. Member features may require additional verification. By registering you confirm the information you provide is accurate.</p>
+                </section>
 
-        <h2>4. Payments, Fees & Transaction IDs</h2>
-        <p>Some actions require payments (application fee, official conversion fee, donations). For the MVP these payments are submitted manually via third‑party mobile providers (for example, bKash or Nagad).</p>
-        <p>When you submit a payment you will provide a transaction ID ("trx ID") and may upload a proof image. Submission of a trx ID does not guarantee acceptance — all payments are subject to manual verification by ASAD administrators.</p>
-        <p>Refunds, cancellations, and disputes are handled on a case‑by‑case basis. We are not responsible for failed external transfers or disputes with payment providers; please retain receipts and follow the guidance shown on the relevant page.</p>
+                <section id="accounts">
+                  <h3>Accounts &amp; Security</h3>
+                  <p>Keep your credentials secure. Notify us immediately of unauthorized access. We are not liable for losses from compromised accounts when credentials are not kept secure.</p>
+                </section>
 
-        <h2>5. User Content & Conduct</h2>
-        <p>You are solely responsible for content you post or submit (profiles, posts, task submissions, messages, images).</p>
-        <p>You must not post illegal, defamatory, infringing, hateful, or sexually explicit material. ASAD may remove content that violates these Terms and may suspend or terminate accounts for violations.</p>
+                <section id="payments">
+                  <h3>Payments &amp; Transaction IDs</h3>
+                  <p>Payments for some actions are processed off-platform (e.g., bKash, Nagad). You must provide transaction IDs and optional proof images; these are verified manually. We are not responsible for third-party transfer failures — keep receipts.</p>
+                </section>
 
-        <h2>6. Task Submissions, Approvals & Points</h2>
-        <p>
-          Tasks created by secretaries or admins may award or deduct points based on approved
-          submissions. Approval decisions are made by authorized reviewers; ASAD is not liable
-          for point allocation disputes beyond our internal review processes. Ranks and points
-          are subject to the rules published by ASAD and may be changed by administrators.
-        </p>
+                <section id="conduct">
+                  <h3>User Content &amp; Conduct</h3>
+                  <p>You are responsible for the content you post. Do not post illegal, infringing, defamatory or hateful material. We may remove content and suspend or terminate accounts for violations.</p>
+                </section>
 
-        <h2>7. Donations</h2>
-        <p>
-          Donations submitted through the site are recorded with the provided trx ID and proof
-          and must be approved by an admin to be marked complete. Donation campaigns have
-          deadlines and may be closed or archived. Donation receipts and reporting follow
-          administrative procedures; we may provide confirmation emails after manual approval.
-        </p>
+                <section id="termination">
+                  <h3>Termination</h3>
+                  <p>We may suspend or terminate accounts for violations or operational reasons. Upon termination some content or features may be disabled or removed.</p>
+                </section>
 
-        <h2>8. Intellectual Property</h2>
-        <p>
-          All content, trademarks, logos and code on the site are our property or used with
-          permission. You may not reproduce or redistribute our content without express consent.
-        </p>
+                <section>
+                  <h3>Other Terms</h3>
+                  <p>Intellectual property, disclaimers, indemnification and governing law are set out in the full Terms above. These Terms are governed by the laws of Bangladesh unless otherwise required by law.</p>
+                </section>
 
-        <h2>9. Disclaimers & Limitation of Liability</h2>
-        <p>
-          The site and services are provided "as is". We disclaim all warranties to the fullest
-          extent permitted by law. ASAD and its affiliates are not liable for indirect,
-          incidental, special, punitive or consequential damages arising from your use of the
-          site, including disputes over payments processed off-platform.
-        </p>
-
-        <h2>10. Indemnification</h2>
-        <p>
-          You agree to indemnify and hold ASAD harmless from claims, losses, liabilities,
-          damages, and expenses (including legal fees) arising from your breach of these Terms
-          or your user content.
-        </p>
-
-        <h2>11. Termination</h2>
-        <p>
-          We may suspend or terminate access for users who violate these Terms or for operational
-          reasons. Upon termination certain content or features may be disabled or removed.
-        </p>
-
-        <h2>12. Changes to Terms</h2>
-        <p>
-          We may modify these Terms; we will post updates and a "last updated" date. Continued
-          use after changes constitutes acceptance.
-        </p>
-
-        <h2>13. Governing Law</h2>
-        <p>
-          These Terms are governed by the laws of Bangladesh (unless otherwise required by law).
-          Disputes will be handled under applicable law and venue.
-        </p>
-
-        <h2>14. Contact</h2>
-        <p>
-          For questions about these Terms or to reach our admin team, email: amarsomoyamardesh.it@gmail.com
-        </p>
-
-        <p>
-          <Link href="/privacy">Read our Privacy Policy</Link>
-        </p>
-        </section>
+                <div className="mt-6">
+                  <p>Questions or requests: <a className="text-blue-600" href="mailto:amarsomoyamardesh.it@gmail.com">amarsomoyamardesh.it@gmail.com</a></p>
+                  <p className="mt-3"><Link href="/privacy" className="text-sm text-blue-600 hover:underline">Read our Privacy Policy</Link></p>
+                </div>
+              </article>
+            </div>
+          </div>
+        </div>
       </main>
       <Footer />
     </>
