@@ -30,7 +30,7 @@ export default function PrivacyPage() {
               </nav>
 
               <article className="max-w-none lg:flex-1 space-y-6 text-gray-700 leading-normal">
-                <section id="intro">
+                <section id="intro" className="scroll-mt-28">
                   <h2 className="text-2xl font-bold text-gray-900">Introduction</h2>
                   <p>
                     Amar Somoy, Amar Desh (ASAD) respects your privacy. This Privacy Policy
@@ -39,10 +39,10 @@ export default function PrivacyPage() {
                   </p>
                 </section>
 
-                <section id="data">
+                <section id="data" className="scroll-mt-28">
                   <h3 className="text-lg font-semibold text-gray-900">Data We Collect</h3>
                   <p>We collect the information necessary to run the platform and provide services, including:</p>
-                  <ul className="list-disc list-inside space-y-2 leading-normal">
+                  <ul className="list-disc ml-6 space-y-2 leading-normal">
                     <li>Contact details: name, email, and phone number.</li>
                     <li>Account information: profile, credentials (securely stored), preferences.</li>
                     <li>Application data: institute, semester, application timestamps and status.</li>
@@ -52,10 +52,10 @@ export default function PrivacyPage() {
                   </ul>
                 </section>
 
-                <section id="use">
+                <section id="use" className="scroll-mt-28">
                   <h3 className="text-lg font-semibold text-gray-900">How We Use Your Data</h3>
                   <p>We use data to deliver and improve services, for example:</p>
-                  <ul className="list-disc list-inside space-y-2 leading-normal">
+                  <ul className="list-disc ml-6 space-y-2 leading-normal">
                     <li>Process applications, verify payments and schedule interviews.</li>
                     <li>Enable member features (tasks, messaging, leaderboards).</li>
                     <li>Send important notifications and administrative messages.</li>
@@ -63,17 +63,17 @@ export default function PrivacyPage() {
                   </ul>
                 </section>
 
-                <section id="sharing">
+                <section id="sharing" className="scroll-mt-28">
                   <h3 className="text-lg font-semibold text-gray-900">Sharing &amp; Disclosure</h3>
                   <p>We only share personal data when necessary:</p>
-                  <ul className="list-disc list-inside space-y-2 leading-normal">
+                  <ul className="list-disc ml-6 space-y-2 leading-normal">
                     <li>With ASAD administrators for review and verification.</li>
                     <li>With service providers (hosting, email, analytics) under contract.</li>
                     <li>When required by law or to protect rights and safety.</li>
                   </ul>
                 </section>
 
-                <section id="security">
+                <section id="security" className="scroll-mt-28">
                   <h3>Security</h3>
                   <p>
                     We follow standard security practices (encryption in transit, hashed passwords,
@@ -82,7 +82,7 @@ export default function PrivacyPage() {
                   </p>
                 </section>
 
-                <section id="rights">
+                <section id="rights" className="scroll-mt-28">
                   <h3>Your Rights</h3>
                   <p>
                     Depending on applicable law, you may request access, correction, deletion or portability
@@ -91,7 +91,7 @@ export default function PrivacyPage() {
                   </p>
                 </section>
 
-                <section id="contact">
+                <section id="contact" className="scroll-mt-28">
                   <h3>Contact</h3>
                   <p>If you have questions or requests about this policy, email us at <a className="text-blue-600" href="mailto:amarsomoyamardesh.it@gmail.com">amarsomoyamardesh.it@gmail.com</a>.</p>
                 </section>
