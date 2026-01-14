@@ -29,9 +29,9 @@ export default function PrivacyPage() {
                 </ul>
               </nav>
 
-              <article className="max-w-none lg:flex-1 space-y-6 text-gray-700 leading-relaxed">
+              <article className="max-w-none lg:flex-1 space-y-6 text-gray-700 leading-normal">
                 <section id="intro">
-                  <h2>Introduction</h2>
+                  <h2 className="text-2xl font-bold text-gray-900">Introduction</h2>
                   <p>
                     Amar Somoy, Amar Desh (ASAD) respects your privacy. This Privacy Policy
                     explains what personal data we collect, how we use it, who we share it with,
@@ -40,9 +40,9 @@ export default function PrivacyPage() {
                 </section>
 
                 <section id="data">
-                  <h3>Data We Collect</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Data We Collect</h3>
                   <p>We collect the information necessary to run the platform and provide services, including:</p>
-                  <ul className="list-disc pl-6 space-y-2">
+                  <ul className="list-disc list-inside space-y-2 leading-normal">
                     <li>Contact details: name, email, and phone number.</li>
                     <li>Account information: profile, credentials (securely stored), preferences.</li>
                     <li>Application data: institute, semester, application timestamps and status.</li>
@@ -53,9 +53,9 @@ export default function PrivacyPage() {
                 </section>
 
                 <section id="use">
-                  <h3>How We Use Your Data</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">How We Use Your Data</h3>
                   <p>We use data to deliver and improve services, for example:</p>
-                  <ul className="list-disc pl-6 space-y-2">
+                  <ul className="list-disc list-inside space-y-2 leading-normal">
                     <li>Process applications, verify payments and schedule interviews.</li>
                     <li>Enable member features (tasks, messaging, leaderboards).</li>
                     <li>Send important notifications and administrative messages.</li>
@@ -64,9 +64,9 @@ export default function PrivacyPage() {
                 </section>
 
                 <section id="sharing">
-                  <h3>Sharing &amp; Disclosure</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Sharing &amp; Disclosure</h3>
                   <p>We only share personal data when necessary:</p>
-                  <ul className="list-disc pl-6 space-y-2">
+                  <ul className="list-disc list-inside space-y-2 leading-normal">
                     <li>With ASAD administrators for review and verification.</li>
                     <li>With service providers (hosting, email, analytics) under contract.</li>
                     <li>When required by law or to protect rights and safety.</li>

@@ -28,7 +28,7 @@ export default function TermsPage() {
                 </ul>
               </nav>
 
-              <article className="max-w-none lg:flex-1 space-y-6 text-gray-700 leading-relaxed">
+              <article className="max-w-none lg:flex-1 space-y-6 text-gray-700 leading-normal">
                 <p>
                   These Terms of Service ("Terms") govern your use of the website and services
                   provided by Amar Somoy, Amar Desh (ASAD). By accessing or using our website or
@@ -36,9 +36,9 @@ export default function TermsPage() {
                 </p>
 
                 <section id="services">
-                  <h3>Services</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Services</h3>
                   <p>ASAD provides a public website and a member portal for volunteers and administrators. Key features include:</p>
-                  <ul className="list-disc pl-6 space-y-2">
+                  <ul className="list-disc list-inside space-y-2 leading-normal">
                     <li>Volunteer applications, interview scheduling and status tracking.</li>
                     <li>Official upgrades (payments, verification and ID issuance).</li>
                     <li>Tasks, submissions, points and ranking systems.</li>
@@ -47,32 +47,32 @@ export default function TermsPage() {
                 </section>
 
                 <section id="eligibility">
-                  <h3>Eligibility</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Eligibility</h3>
                   <p>You must be at least 13 years old to use public content. Member features may require additional verification. By registering you confirm the information you provide is accurate.</p>
                 </section>
 
                 <section id="accounts">
-                  <h3>Accounts &amp; Security</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Accounts &amp; Security</h3>
                   <p>Keep your credentials secure. Notify us immediately of unauthorized access. We are not liable for losses from compromised accounts when credentials are not kept secure.</p>
                 </section>
 
                 <section id="payments">
-                  <h3>Payments &amp; Transaction IDs</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Payments &amp; Transaction IDs</h3>
                   <p>Payments for some actions are processed off-platform (e.g., bKash, Nagad). You must provide transaction IDs and optional proof images; these are verified manually. We are not responsible for third-party transfer failures — keep receipts.</p>
                 </section>
 
                 <section id="conduct">
-                  <h3>User Content &amp; Conduct</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">User Content &amp; Conduct</h3>
                   <p>You are responsible for the content you post. Do not post illegal, infringing, defamatory or hateful material. We may remove content and suspend or terminate accounts for violations.</p>
                 </section>
 
                 <section id="termination">
-                  <h3>Termination</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Termination</h3>
                   <p>We may suspend or terminate accounts for violations or operational reasons. Upon termination some content or features may be disabled or removed.</p>
                 </section>
 
                 <section>
-                  <h3>Other Terms</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Other Terms</h3>
                   <p>Intellectual property, disclaimers, indemnification and governing law are set out in the full Terms above. These Terms are governed by the laws of Bangladesh unless otherwise required by law.</p>
                 </section>
 
