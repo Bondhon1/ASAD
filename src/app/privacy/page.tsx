@@ -29,7 +29,7 @@ export default function PrivacyPage() {
                 </ul>
               </nav>
 
-              <article className="prose prose-neutral max-w-none lg:flex-1">
+              <article className="max-w-none lg:flex-1 space-y-6 text-gray-700 leading-relaxed">
                 <section id="intro">
                   <h2>Introduction</h2>
                   <p>
@@ -42,7 +42,7 @@ export default function PrivacyPage() {
                 <section id="data">
                   <h3>Data We Collect</h3>
                   <p>We collect the information necessary to run the platform and provide services, including:</p>
-                  <ul>
+                  <ul className="list-disc pl-6 space-y-2">
                     <li>Contact details: name, email, and phone number.</li>
                     <li>Account information: profile, credentials (securely stored), preferences.</li>
                     <li>Application data: institute, semester, application timestamps and status.</li>
@@ -55,7 +55,7 @@ export default function PrivacyPage() {
                 <section id="use">
                   <h3>How We Use Your Data</h3>
                   <p>We use data to deliver and improve services, for example:</p>
-                  <ul>
+                  <ul className="list-disc pl-6 space-y-2">
                     <li>Process applications, verify payments and schedule interviews.</li>
                     <li>Enable member features (tasks, messaging, leaderboards).</li>
                     <li>Send important notifications and administrative messages.</li>
@@ -66,7 +66,7 @@ export default function PrivacyPage() {
                 <section id="sharing">
                   <h3>Sharing &amp; Disclosure</h3>
                   <p>We only share personal data when necessary:</p>
-                  <ul>
+                  <ul className="list-disc pl-6 space-y-2">
                     <li>With ASAD administrators for review and verification.</li>
                     <li>With service providers (hosting, email, analytics) under contract.</li>
                     <li>When required by law or to protect rights and safety.</li>

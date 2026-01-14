@@ -28,7 +28,7 @@ export default function TermsPage() {
                 </ul>
               </nav>
 
-              <article className="prose prose-neutral max-w-none lg:flex-1">
+              <article className="max-w-none lg:flex-1 space-y-6 text-gray-700 leading-relaxed">
                 <p>
                   These Terms of Service ("Terms") govern your use of the website and services
                   provided by Amar Somoy, Amar Desh (ASAD). By accessing or using our website or
@@ -38,7 +38,7 @@ export default function TermsPage() {
                 <section id="services">
                   <h3>Services</h3>
                   <p>ASAD provides a public website and a member portal for volunteers and administrators. Key features include:</p>
-                  <ul>
+                  <ul className="list-disc pl-6 space-y-2">
                     <li>Volunteer applications, interview scheduling and status tracking.</li>
                     <li>Official upgrades (payments, verification and ID issuance).</li>
                     <li>Tasks, submissions, points and ranking systems.</li>
