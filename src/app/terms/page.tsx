@@ -1,35 +1,37 @@
 import Link from 'next/link';
+import { Header } from '@/components/layout/Header';
+import { Footer } from '@/components/layout/Footer';
 
 export default function TermsPage() {
   return (
-    <main className="mx-auto max-w-4xl px-6 py-12">
-      <h1 className="text-3xl font-bold">Terms of Service</h1>
-      <p className="mt-4 text-sm text-neutral-600">Last updated: January 2026</p>
+    <>
+      <Header />
+      <main className="mx-auto max-w-4xl px-6 py-12 pt-28">
+        <h1 className="text-3xl font-bold">Terms of Service</h1>
+        <p className="mt-4 text-sm text-neutral-600">Last updated: January 2026</p>
 
-      <section className="mt-8 prose">
+        <section className="mt-8 prose">
         <p>
           These Terms of Service ("Terms") govern your use of the website and services
-          provided by Amar Somoy, Amar Desh ("ASAD", "we", "us", "our"). By accessing
+          provided by Amar Somoy, Amar Desh (ASAD). By accessing
           or using our website, mobile site, or services you agree to these Terms. If
           you do not agree, do not use the services.
         </p>
 
         <h2>1. Services</h2>
-        <p>
-          ASAD provides a public website and a member portal for volunteers, administrators,
-          and the public. Features include volunteer applications, interview scheduling,
-          official volunteer upgrades, a task and ranking system, donation campaigns,
-          events, posts, and messaging features. Admins and secretaries may create tasks,
-          approve submissions, and manage donation campaigns.
-        </p>
+        <p>ASAD provides a public website and a member portal for volunteers, administrators, and the public.</p>
+        <ul>
+          <li>Volunteer applications and interview scheduling.</li>
+          <li>Official volunteer upgrades (payment, verification, ID issuance).</li>
+          <li>Task creation, submission reviews, and an automated points & ranking system.</li>
+          <li>Donation campaigns with admin approval and reporting.</li>
+          <li>Event pages, posts, galleries, and private messaging features.</li>
+          <li>Admin tools for reviewing applications, submissions, and donations.</li>
+        </ul>
 
         <h2>2. Eligibility</h2>
-        <p>
-          You must be at least 13 years old to access public content. Becoming a registered
-          volunteer or using member features may require additional eligibility and verification
-          (e.g., interview, payment). By registering you represent that the information you
-          submit is accurate and that you have authority to submit it.
-        </p>
+        <p>You must be at least 13 years old to access public content. Access to member-only features may require additional verification such as an interview or fee payment.</p>
+        <p>By registering you represent that the information you submit is accurate and that you are authorized to provide it.</p>
 
         <h2>3. Accounts, Security & Credentials</h2>
         <p>
@@ -39,26 +41,13 @@ export default function TermsPage() {
         </p>
 
         <h2>4. Payments, Fees & Transaction IDs</h2>
-        <p>
-          Certain flows require payments (application fee, official volunteer conversion,
-          donations). For our MVP these are paid manually via third-party mobile providers
-          (e.g., bKash, Nagad). You will provide a transaction ID ("trx ID") and may upload
-          a proof image. Submission of a trx ID does not guarantee acceptance — payments
-          are subject to manual verification by admins.
-        </p>
-        <p>
-          Refunds, cancellations and disputes are handled case-by-case. We are not responsible
-          for failed external transfers or disputes with payment providers; keep receipts and
-          follow the guidance on the donation or application page.
-        </p>
+        <p>Some actions require payments (application fee, official conversion fee, donations). For the MVP these payments are submitted manually via third‑party mobile providers (for example, bKash or Nagad).</p>
+        <p>When you submit a payment you will provide a transaction ID ("trx ID") and may upload a proof image. Submission of a trx ID does not guarantee acceptance — all payments are subject to manual verification by ASAD administrators.</p>
+        <p>Refunds, cancellations, and disputes are handled on a case‑by‑case basis. We are not responsible for failed external transfers or disputes with payment providers; please retain receipts and follow the guidance shown on the relevant page.</p>
 
         <h2>5. User Content & Conduct</h2>
-        <p>
-          You are solely responsible for the content you post, upload, or submit through the
-          site (profiles, posts, task submissions, messages, images). You agree not to post
-          illegal, libelous, infringing, hateful, or sexually explicit content. We may remove
-          content that violates these Terms and suspend or terminate accounts.
-        </p>
+        <p>You are solely responsible for content you post or submit (profiles, posts, task submissions, messages, images).</p>
+        <p>You must not post illegal, defamatory, infringing, hateful, or sexually explicit material. ASAD may remove content that violates these Terms and may suspend or terminate accounts for violations.</p>
 
         <h2>6. Task Submissions, Approvals & Points</h2>
         <p>
@@ -123,7 +112,9 @@ export default function TermsPage() {
         <p>
           <Link href="/privacy">Read our Privacy Policy</Link>
         </p>
-      </section>
-    </main>
+        </section>
+      </main>
+      <Footer />
+    </>
   );
 }
