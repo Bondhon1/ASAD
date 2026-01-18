@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { paymentMethod, senderNumber, trxId, paymentDate, paymentTime, email, fullName, phone, instituteName, educationLevel } =
+    const { paymentMethod, senderNumber, trxId, paymentDate, paymentTime, email, fullName, phone, instituteName, educationLevel, reference } =
       validation.data;
 
     // Find user by email (email should be provided in the request)
@@ -126,6 +126,7 @@ export async function POST(request: NextRequest) {
           paymentMethod,
           senderNumber,
           trxId,
+          reference,
           paymentDate: paymentDateTime,
           paymentTime,
           status: "PENDING",
@@ -140,6 +141,7 @@ export async function POST(request: NextRequest) {
           paymentMethod,
           senderNumber,
           trxId,
+          reference,
           paymentDate: paymentDateTime,
           paymentTime,
           status: "PENDING",

@@ -49,6 +49,7 @@ async function fetchPaymentsData() {
         id: true,
         userId: true,
         trxId: true,
+        reference: true,
         paymentMethod: true,
         senderNumber: true,
         paymentDate: true,

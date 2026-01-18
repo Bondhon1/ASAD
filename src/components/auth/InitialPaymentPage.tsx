@@ -66,6 +66,7 @@ export default function InitialPaymentPage() {
   const [trxId, setTrxId] = useState("");
   const [paymentDate, setPaymentDate] = useState("");
   const [paymentTime, setPaymentTime] = useState("");
+  const [reference, setReference] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -155,6 +156,7 @@ export default function InitialPaymentPage() {
           paymentMethod: selectedMethod,
           senderNumber,
           trxId,
+          reference,
           paymentDate,
           paymentTime,
         }),
@@ -557,6 +559,20 @@ export default function InitialPaymentPage() {
               <p className="text-xs text-muted mt-1">
                 Usually found in your transaction receipt or SMS confirmation
               </p>
+            </motion.div>
+
+            <motion.div variants={itemVariants} className="mb-6">
+              <label className="block text-sm font-semibold text-ink mb-2">
+                Reference (optional)
+              </label>
+              <input
+                type="text"
+                value={reference}
+                onChange={(e) => setReference(e.target.value)}
+                placeholder="Any bank/reference note (optional)"
+                className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/50 focus:border-[#1E3A5F] transition-all"
+              />
+              <p className="text-xs text-muted mt-1">Optional reference or note from the payment provider</p>
             </motion.div>
 
             <motion.div variants={itemVariants} className="grid grid-cols-2 gap-4 mb-6">

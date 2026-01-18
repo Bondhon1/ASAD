@@ -432,6 +432,7 @@ model InitialPayment {
   userId                String           @unique
   amount                Float            @default(30)
   trxId                 String
+  reference             String?
   paymentMethod         String           // bkash, nagad, visa, mastercard
   senderNumber          String
   paymentDate           DateTime
