@@ -12,12 +12,13 @@ export async function GET(request: NextRequest) {
     const slotId = searchParams.get("slotId");
 
     const where: any = {};
-    // Use user.status instead of application.status per new convention
     if (status) {
-      // when listing INTERVIEW_REQUESTED applications for HR, only show those
-      // whose initial payment is still pending
       if (status === "INTERVIEW_REQUESTED") {
+        // still pending payment verification
         where.user = { status, initialPayment: { status: "PENDING" } };
+      } else if (status === "INTERVIEW_SCHEDULED") {
+        // use application status so older approvals (that didn't set user.status) still appear
+        where.status = "INTERVIEW_SCHEDULED";
       } else {
         where.user = { status };
       }

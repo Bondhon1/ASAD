@@ -75,6 +75,11 @@ export async function POST(
           status: "INTERVIEW_SCHEDULED",
         },
       }),
+      // Update user status to reflect scheduling
+      prisma.user.update({
+        where: { id: application.userId },
+        data: { status: "INTERVIEW_SCHEDULED" },
+      }),
       // Increment slot's filled count
       prisma.interviewSlot.update({
         where: { id: availableSlot.id },
@@ -107,6 +112,7 @@ export async function POST(
         success: true, 
         message: "Application approved! Interview invitation sent to applicant.",
         slot: {
+          id: availableSlot.id,
           startTime: availableSlot.startTime,
           endTime: availableSlot.endTime,
           meetLink: availableSlot.meetLink,
