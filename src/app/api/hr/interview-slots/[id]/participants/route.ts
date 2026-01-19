@@ -75,10 +75,10 @@ export async function POST(
     const applicantUser = application.user;
 
     if (action === "approve") {
-      // Mark application as accepted / passed and update user status
+      // Update interview result and use user.status as source of truth
       const updatedApp = await prisma.application.update({
         where: { id: applicationId },
-        data: { status: "ACCEPTED", interviewResult: "PASSED", reviewedById: user.id },
+        data: { interviewResult: "PASSED", reviewedById: user.id },
       });
 
       await prisma.user.update({ where: { id: application.userId }, data: { status: "INTERVIEW_PASSED", interviewApprovedById: user.id } });
@@ -124,10 +124,10 @@ export async function POST(
       // Mark application as rejected/failed. Map 'declined' to REJECTED + FAILED
       const updatedApp = await prisma.application.update({
         where: { id: applicationId },
-        data: { status: "REJECTED", interviewResult: "FAILED", reviewedById: user.id },
+        data: { interviewResult: "FAILED", reviewedById: user.id },
       });
 
-      // There's no explicit "DECLINED" user status in the schema; set the user's status to REJECTED to reflect decline.
+      // Set the user's status to REJECTED to reflect decline.
       await prisma.user.update({ where: { id: application.userId }, data: { status: "REJECTED" } });
 
       // Create notification for the user

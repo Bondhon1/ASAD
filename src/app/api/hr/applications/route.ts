@@ -12,8 +12,15 @@ export async function GET(request: NextRequest) {
     const slotId = searchParams.get("slotId");
 
     const where: any = {};
+    // Use user.status instead of application.status per new convention
     if (status) {
-      where.status = status;
+      // when listing INTERVIEW_REQUESTED applications for HR, only show those
+      // whose initial payment is still pending
+      if (status === "INTERVIEW_REQUESTED") {
+        where.user = { status, initialPayment: { status: "PENDING" } };
+      } else {
+        where.user = { status };
+      }
     }
     if (slotId) {
       where.interviewSlotId = slotId;
@@ -25,6 +32,7 @@ export async function GET(request: NextRequest) {
         user: {
           include: {
             institute: true,
+            initialPayment: true,
           },
         },
       },

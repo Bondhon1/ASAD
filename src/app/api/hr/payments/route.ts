@@ -32,7 +32,18 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return NextResponse.json(paymentsData, {
+    // Enforce server-side filtering as a safeguard: only return payments with status 'PENDING'
+    const filtered = {
+      initialPayments: (paymentsData.initialPayments || []).filter((p: any) => p.status === "PENDING"),
+      finalPayments: (paymentsData.finalPayments || []).filter((p: any) => p.status === "PENDING"),
+    };
+
+    // If cache was not used, update the cache with the filtered result for consistency
+    if (!useCache) {
+      paymentsCache = { data: filtered, timestamp: Date.now() };
+    }
+
+    return NextResponse.json(filtered, {
       headers: { 'X-Cache': useCache ? 'HIT' : 'MISS' }
     });
   } catch (error) {
@@ -101,9 +112,14 @@ async function fetchPaymentsData() {
   ]);
 
   const data = { initialPayments, finalPayments };
-  
-  // Update cache
-  paymentsCache = { data, timestamp: Date.now() };
-  
-  return data;
+  // Filter to only pending payments before caching/returning
+  const filtered = {
+    initialPayments: (initialPayments || []).filter((p: any) => p.status === "PENDING"),
+    finalPayments: (finalPayments || []).filter((p: any) => p.status === "PENDING"),
+  };
+
+  // Update cache with filtered data
+  paymentsCache = { data: filtered, timestamp: Date.now() };
+
+  return filtered;
 }
