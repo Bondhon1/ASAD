@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { sendInterviewInvitation } from "@/lib/email";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -38,19 +39,15 @@ export async function POST(
       );
     }
 
-    // Find the first available slot (not full, ordered by start time)
+    // Find the first available slot (upcoming, with remaining capacity)
     const now = new Date();
-    const availableSlot = await prisma.interviewSlot.findFirst({
-      where: {
-        filledCount: {
-          lt: prisma.interviewSlot.fields.capacity,
-        },
-        startTime: {
-          gt: now, // only pick upcoming slots
-        },
-      },
+    const candidateSlots = await prisma.interviewSlot.findMany({
+      where: { startTime: { gt: now } },
       orderBy: { startTime: "asc" },
+      take: 20,
     });
+
+    const availableSlot = candidateSlots.find((s) => s.filledCount < s.capacity) || null;
 
     if (!availableSlot) {
       return NextResponse.json(
