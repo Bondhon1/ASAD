@@ -222,7 +222,8 @@ function InterviewSlotsContent() {
     try {
       const response = await fetch(`/api/hr/applications?status=INTERVIEW_SCHEDULED&slotId=${slotId}`);
       const data = await response.json();
-      setParticipants(data.applications || []);
+      const filtered = (data.applications || []).filter((app: any) => app.user?.status === "INTERVIEW_SCHEDULED");
+      setParticipants(filtered);
     } catch (error) {
       console.error("Error loading participants:", error);
     } finally {

@@ -34,12 +34,15 @@ export default function EmailVerificationPage() {
   const [verified, setVerified] = useState(false);
   const [error, setError] = useState("");
   const [email, setEmail] = useState("");
-  const [hasAttemptedVerification, setHasAttemptedVerification] = useState(false);
+
+  const scheduleRedirect = (targetEmail: string) => {
+    setTimeout(() => {
+      window.location.href = `/payments/initial?email=${encodeURIComponent(targetEmail)}`;
+    }, 3000);
+  };
 
   useEffect(() => {
-    // Prevent duplicate verification attempts
-    if (hasAttemptedVerification) return;
-    setHasAttemptedVerification(true);
+    let cancelled = false;
 
     // Verify email token from URL
     const verifyEmail = async () => {
@@ -50,6 +53,20 @@ export default function EmailVerificationPage() {
         setError("Invalid verification link");
         setVerifying(false);
         return;
+      }
+
+      // Guard against duplicate requests (e.g., React Strict Mode double mount)
+      const verificationKey = `emailVerification:${token}`;
+      const storedEmail = localStorage.getItem("userEmail");
+
+      if (sessionStorage.getItem(verificationKey)) {
+        if (storedEmail) {
+          setEmail(storedEmail);
+          setVerified(true);
+          setVerifying(false);
+          scheduleRedirect(storedEmail);
+          return;
+        }
       }
 
       try {
@@ -65,26 +82,34 @@ export default function EmailVerificationPage() {
         }
 
         const data = await response.json();
+        if (cancelled) return;
         setEmail(data.email);
         setVerified(true);
+        sessionStorage.setItem(verificationKey, "true");
         
         // Store email in localStorage for payment page
         localStorage.setItem("userEmail", data.email);
         
         // Redirect to initial payment page after 3 seconds
-        setTimeout(() => {
-          window.location.href = `/payments/initial?email=${encodeURIComponent(data.email)}`;
-        }, 3000);
+        if (!cancelled) {
+          scheduleRedirect(data.email);
+        }
       } catch (err) {
         setError(
           "Email verification failed. The link may have expired."
         );
       } finally {
-        setVerifying(false);
+        if (!cancelled) {
+          setVerifying(false);
+        }
       }
     };
 
     verifyEmail();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (

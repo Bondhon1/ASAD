@@ -16,6 +16,7 @@ interface Application {
     phone: string;
     institute: { name: string } | null;
     joiningSemester: string;
+    initialPayment?: { reference?: string | null } | null;
   };
   trxId: string;
   paymentMethod: string;
@@ -130,6 +131,10 @@ export default function NewRequestsPage() {
       
       if (response.ok) {
         alert(`Application approved! Assigned to interview on ${new Date(data.slot.startTime).toLocaleString()}\n\nMeet Link: ${data.slot.meetLink}`);
+        setApplications((prev) => prev.filter((app) => app.id !== applicationId));
+        if (selectedApp?.id === applicationId) {
+          setSelectedApp(null);
+        }
         fetchApplications();
       } else {
         alert(data.error || "Failed to approve application");
@@ -153,6 +158,10 @@ export default function NewRequestsPage() {
       
       if (response.ok) {
         alert("Application rejected.");
+        setApplications((prev) => prev.filter((app) => app.id !== applicationId));
+        if (selectedApp?.id === applicationId) {
+          setSelectedApp(null);
+        }
         fetchApplications();
       }
     } catch (error) {
@@ -235,6 +244,9 @@ export default function NewRequestsPage() {
                           <div>
                             <p className="font-medium">{app.paymentMethod.toUpperCase()}</p>
                             <p className="text-xs text-gray-500">TRX: {app.trxId}</p>
+                            {app.user.initialPayment?.reference && (
+                              <p className="text-xs text-gray-500">Ref: {app.user.initialPayment.reference}</p>
+                            )}
                           </div>
                         </td>
                         <td className="px-4 py-4 text-sm">
