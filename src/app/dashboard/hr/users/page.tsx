@@ -43,6 +43,9 @@ export default function UsersManagementPage() {
   const [total, setTotal] = useState(0);
   const [statusFilter, setStatusFilter] = useState<'ANY' | 'UNOFFICIAL' | 'OFFICIAL'>('OFFICIAL');
   const [stats, setStats] = useState<{ total?: number; officialCount?: number; rankCounts?: Array<{ rank: string; count: number }> }>({});
+  // final payment date range filter (YYYY-MM-DD)
+  const [finalFrom, setFinalFrom] = useState<string>('');
+  const [finalTo, setFinalTo] = useState<string>('');
   const [editingVolunteerUserId, setEditingVolunteerUserId] = useState<string | null>(null);
   const [volunteerIdInput, setVolunteerIdInput] = useState<string>('');
   const [editingVolunteerSaving, setEditingVolunteerSaving] = useState(false);
@@ -189,7 +192,10 @@ export default function UsersManagementPage() {
 
         const qParam = encodeURIComponent(debouncedQuery || '');
         const statusParam = statusFilter === 'ANY' ? '' : `status=${statusFilter}`;
-        const res = await fetch(`/api/hr/users?${statusParam ? statusParam + '&' : ''}page=${page}&pageSize=${pageSize}&q=${qParam}`, {
+        const finalFromParam = finalFrom ? `finalFrom=${encodeURIComponent(finalFrom)}` : '';
+        const finalToParam = finalTo ? `finalTo=${encodeURIComponent(finalTo)}` : '';
+        const dateParams = [finalFromParam, finalToParam].filter(Boolean).join('&');
+        const res = await fetch(`/api/hr/users?${statusParam ? statusParam + '&' : ''}page=${page}&pageSize=${pageSize}&q=${qParam}${dateParams ? '&' + dateParams : ''}`, {
           signal: controller.signal,
           cache: "no-store",
         });
@@ -216,12 +222,36 @@ export default function UsersManagementPage() {
       controller.abort();
     };
   }, [page, pageSize, debouncedQuery, statusFilter, authChecked]);
+  // Re-fetch when date filters change (applies only for OFFICIAL filter)
+  useEffect(() => {
+    // reset page when date range changes
+    setPage(1);
+  }, [finalFrom, finalTo]);
 
   if (status === "unauthenticated") return null;
   if (authError) return null;
 
   // API returns users already filtered by status=UNOFFICIAL & isOfficial=true
-  const filtered = users;
+  // Apply client-side final payment verifiedAt date-range filter when OFFICIAL is selected
+  const filtered = users.filter(u => {
+    if (statusFilter === 'OFFICIAL' && (finalFrom || finalTo)) {
+      const v = (u as any).finalPayment?.verifiedAt;
+      if (!v) return false;
+      const d = new Date(v);
+      if (finalFrom) {
+        const sf = new Date(finalFrom);
+        if (!isNaN(sf.getTime()) && d < sf) return false;
+      }
+      if (finalTo) {
+        const tf = new Date(finalTo);
+        if (!isNaN(tf.getTime())) {
+          tf.setHours(23,59,59,999);
+          if (d > tf) return false;
+        }
+      }
+    }
+    return true;
+  });
 
   const grouped = filtered.reduce<Record<string, User[]>>((acc, u) => {
     const key = u.role || 'UNKNOWN';
@@ -275,30 +305,48 @@ export default function UsersManagementPage() {
             </div>
           </div>
 
-          <div className="mb-4 flex flex-col md:flex-row items-start md:items-center gap-3">
-            <input
-              value={query}
-              onChange={(e) => { setQuery(e.target.value); setPage(1); }}
-              placeholder="Search by name, email, or volunteer ID"
-              className="px-3 py-2 border rounded-md w-full md:max-w-sm"
-            />
-            {listLoading && <div className="text-sm text-gray-500">Searching…</div>}
-            <label className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">Status:</span>
-              <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value as any); setPage(1); }} className="border rounded px-2 py-1">
-                <option value="ANY">Any</option>
-                <option value="UNOFFICIAL">Unofficial</option>
-                <option value="OFFICIAL">Official</option>
-                <option value="BANNED">Banned</option>
-              </select>
-            </label>
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-600">Page size:</label>
-              <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }} className="border rounded px-2 py-1">
-                <option value={10}>10</option>
-                <option value={20}>20</option>
-                <option value={50}>50</option>
-              </select>
+          <div className="mb-4 bg-white border border-gray-100 rounded-lg p-4 flex flex-col md:flex-row md:items-center gap-3">
+            <div className="flex-1">
+              <input
+                value={query}
+                onChange={(e) => { setQuery(e.target.value); setPage(1); }}
+                placeholder="Search by name, email, or volunteer ID"
+                className="px-3 py-2 border rounded-md w-full md:max-w-md"
+              />
+              {listLoading && <div className="text-sm text-gray-500 mt-2">Searching…</div>}
+            </div>
+
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600">Status</label>
+                <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value as any); setPage(1); }} className="border rounded px-2 py-1">
+                  <option value="ANY">Any</option>
+                  <option value="UNOFFICIAL">Unofficial</option>
+                  <option value="OFFICIAL">Official</option>
+                  <option value="BANNED">Banned</option>
+                </select>
+              </div>
+
+              {statusFilter === 'OFFICIAL' && (
+                <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded">
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-gray-600">Final verified</label>
+                    <input type="date" value={finalFrom} onChange={(e) => { setFinalFrom(e.target.value); setPage(1); }} className="border rounded px-2 py-1" />
+                    <span className="text-sm text-gray-500">to</span>
+                    <input type="date" value={finalTo} onChange={(e) => { setFinalTo(e.target.value); setPage(1); }} className="border rounded px-2 py-1" />
+                    <button onClick={() => { setFinalFrom(''); setFinalTo(''); setPage(1); }} className="px-2 py-1 border rounded text-sm">Clear</button>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600">Page size</label>
+                <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }} className="border rounded px-2 py-1">
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
             </div>
           </div>
 

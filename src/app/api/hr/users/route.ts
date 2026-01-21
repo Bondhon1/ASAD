@@ -14,12 +14,14 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const statusParam = url.searchParams.get('status');
     const isOfficialParam = url.searchParams.get('isOfficial');
+    const finalFrom = url.searchParams.get('finalFrom');
+    const finalTo = url.searchParams.get('finalTo');
     const q = url.searchParams.get('q') || '';
     const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
     const pageSize = Math.min(200, Math.max(1, parseInt(url.searchParams.get('pageSize') || '20', 10)));
 
-    // Create cache key from query params
-    const cacheKey = `${statusParam}-${isOfficialParam}-${q}-${page}-${pageSize}`;
+    // Create cache key from query params (include date filters)
+    const cacheKey = `${statusParam}-${isOfficialParam}-${finalFrom || ''}-${finalTo || ''}-${q}-${page}-${pageSize}`;
 
     // Check cache first
     const cached = getCache(cacheKey);
@@ -33,7 +35,7 @@ export async function GET(req: Request) {
       }),
       cached && (now - cached.timestamp < CACHE_TTL)
         ? Promise.resolve({ ...cached.data, fromCache: true })
-        : fetchUsersData(statusParam, isOfficialParam, q, page, pageSize, cacheKey),
+        : fetchUsersData(statusParam, isOfficialParam, q, page, pageSize, finalFrom, finalTo, cacheKey),
     ]);
 
     if (!requester || requester.status === 'BANNED') {
@@ -60,6 +62,8 @@ async function fetchUsersData(
   q: string,
   page: number,
   pageSize: number,
+  finalFrom: string | null,
+  finalTo: string | null,
   cacheKey: string
 ) {
   const where: any = {};
@@ -76,6 +80,24 @@ async function fetchUsersData(
 
   if (isOfficialParam === 'true') {
     where.volunteerProfile = { isOfficial: true };
+  }
+
+  // Filter by finalPayment.verifiedAt when date range provided
+  if (finalFrom || finalTo) {
+    const finalFilter: any = {};
+    if (finalFrom) {
+      const d = new Date(finalFrom);
+      if (!isNaN(d.getTime())) finalFilter.gte = d;
+    }
+    if (finalTo) {
+      const d = new Date(finalTo);
+      if (!isNaN(d.getTime())) {
+        d.setHours(23, 59, 59, 999);
+        finalFilter.lte = d;
+      }
+    }
+    // ensure finalPayment exists and its verifiedAt is within range
+    where.finalPayment = { verifiedAt: finalFilter };
   }
 
   if (q) {
