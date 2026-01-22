@@ -96,26 +96,14 @@ function AuthPageContent() {
     setLoading(true);
 
     try {
-      // Use NextAuth signIn for credentials
-      const result = await signIn("credentials", {
+      // Use NextAuth signIn and let it perform a full redirect so cookies are set reliably
+      // (avoids race where cookie set via XHR isn't available for immediate session fetch)
+      await signIn("credentials", {
         email,
         password,
-        redirect: false,
+        redirect: true,
+        callbackUrl: "/dashboard",
       });
-
-      if (result?.error) {
-        setError("Invalid email or password");
-        setLoading(false);
-        return;
-      }
-
-      if (result?.ok) {
-        setSuccess("Login successful! Redirecting...");
-        // Update session to get latest data
-        await updateSession();
-        // Redirect to dashboard after successful login
-        window.location.href = "/dashboard";
-      }
     } catch (err) {
       setError("Login failed. Please try again.");
       setLoading(false);
