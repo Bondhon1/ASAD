@@ -6,8 +6,8 @@ import { motion, AnimatePresence } from "framer-motion";
 interface Props { userEmail?: string }
 
 const paymentMethods = [
-  { id: "bkash", name: "bKash", dummy: "01730123456" },
-  { id: "nagad", name: "Nagad", dummy: "01829123456" },
+  { id: "bkash", name: "bKash", dummy: "01989254157" },
+  { id: "nagad", name: "Nagad", dummy: "01989254157" },
   // Visa and Mastercard removed
 ];
 

@@ -10,7 +10,7 @@ export async function PATCH(req: Request) {
 
     const requester = await prisma.user.findUnique({ where: { email: session.user.email }, select: { role: true, status: true } });
     if (!requester || requester.status === 'BANNED') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    if (!['HR', 'MASTER', 'ADMIN', 'DATABASE_DEPT'].includes(requester.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (!['HR', 'MASTER', 'ADMIN', 'DIRECTOR', 'DATABASE_DEPT'].includes(requester.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     const body = await req.json();
     const { name, thresholdPoints } = body as { name?: string; thresholdPoints?: number };

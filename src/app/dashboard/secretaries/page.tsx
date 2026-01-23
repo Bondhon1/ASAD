@@ -93,7 +93,7 @@ export default function SecretariesPage() {
 
   const displayName = viewer?.fullName || viewer?.username || (session as any)?.user?.name || 'Secretaries';
   const displayEmail = viewer?.email || (session as any)?.user?.email || '';
-  const displayRole = (session as any)?.user?.role || (viewer?.role as "VOLUNTEER" | "HR" | "MASTER" | "ADMIN" | "DATABASE_DEPT" | "SECRETARIES") || "HR";
+  const displayRole = (session as any)?.user?.role || (viewer?.role as "VOLUNTEER" | "HR" | "MASTER" | "ADMIN" | "DIRECTOR" | "DATABASE_DEPT" | "SECRETARIES") || "HR";
 
   // allow only MASTER or SECRETARIES (MASTER should still have access)
   if (displayRole !== 'MASTER' && displayRole !== 'SECRETARIES') {

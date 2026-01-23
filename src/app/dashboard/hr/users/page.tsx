@@ -71,7 +71,7 @@ export default function UsersManagementPage() {
   );
   const displayName = viewer?.fullName || viewer?.username || session?.user?.name || "HR";
   const displayEmail = viewer?.email || session?.user?.email || "";
-  const displayRole = (session as any)?.user?.role || (viewer?.role as "VOLUNTEER" | "HR" | "MASTER" | "ADMIN" | "DATABASE_DEPT" | "SECRETARIES") || "HR";
+  const displayRole = (session as any)?.user?.role || (viewer?.role as "VOLUNTEER" | "HR" | "MASTER" | "ADMIN" | "DIRECTOR" | "DATABASE_DEPT" | "SECRETARIES") || "HR";
   const [showPointsForm, setShowPointsForm] = useState(false);
   const [showRankForm, setShowRankForm] = useState(false);
   const [editingOrgUserId, setEditingOrgUserId] = useState<string | null>(null);
@@ -165,7 +165,7 @@ export default function UsersManagementPage() {
       return;
     }
 
-    if (!['HR', 'MASTER', 'ADMIN'].includes(cachedUser.role)) {
+    if (!['HR', 'MASTER', 'ADMIN', 'DIRECTOR'].includes(cachedUser.role)) {
       setAuthError("You do not have permission to view this page.");
       router.replace("/dashboard");
       return;
@@ -399,6 +399,7 @@ export default function UsersManagementPage() {
                                         <select value={roleInput} onChange={(e) => setRoleInput(e.target.value)} className="px-2 py-1 border rounded">
                                           <option value="VOLUNTEER">VOLUNTEER</option>
                                           <option value="HR">HR</option>
+                                          <option value="DIRECTOR">DIRECTOR</option>
                                           <option value="DATABASE_DEPT">Database Dept</option>
                                           <option value="SECRETARIES">Secretaries</option>
                                           <option value="ADMIN">ADMIN</option>
@@ -575,7 +576,9 @@ export default function UsersManagementPage() {
                                   </div>
                                   {/* Service / Sector / Club management */}
                                   <div className="mt-3">
-                                    <div className="text-sm font-medium mb-2">Service / Sector / Club</div>
+                                    {displayRole === 'DIRECTOR' && (
+                                      <div className="text-sm font-medium mb-2">Service / Sector / Club</div>
+                                    )}
                                     {editingOrgUserId === u.id ? (
                                       <div className="space-y-3">
                                         <div>
@@ -625,7 +628,7 @@ export default function UsersManagementPage() {
                                         </div>
                                       </div>
                                     ) : (
-                                      (displayRole === 'HR' || displayRole === 'MASTER' || displayRole === 'ADMIN') && (u.status === 'OFFICIAL' || u.volunteerProfile?.isOfficial) && (
+                                      (displayRole === 'DIRECTOR') && (u.status === 'OFFICIAL' || u.volunteerProfile?.isOfficial) && (
                                         <div className="flex items-center gap-2">
                                           <button onClick={() => {
                                             setEditingOrgUserId(u.id);
@@ -637,54 +640,56 @@ export default function UsersManagementPage() {
                                       )
                                     )}
                                   </div>
-                                  <div className="mt-2 flex gap-2">
-                                    {u.status === 'BANNED' ? (
-                                      <button disabled={actionLoading} onClick={async () => {
-                                        if (!confirm('Unban this user?')) return;
-                                        setActionLoading(true);
-                                        try {
-                                          const res = await fetch(`/api/hr/users/${u.id}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ status: 'APPLICANT' }) });
-                                          const data = await res.json();
-                                          if (!res.ok) throw new Error(data?.error || 'Failed to unban');
-                                          setUsers(prev => prev.map(x => x.id === u.id ? { ...x, status: 'APPLICANT' } : x));
-                                          setSelected(prev => prev ? { ...prev, status: 'APPLICANT' } : prev);
-                                          await refreshStats();
-                                        } catch (err: any) {
-                                          alert(err?.message || 'Error');
-                                        } finally { setActionLoading(false); }
-                                      }} className="px-3 py-1 bg-green-600 text-white rounded">Unban</button>
-                                    ) : (
-                                      <button disabled={actionLoading} onClick={async () => {
-                                        if (!confirm('Ban this user? They will be immediately logged out.')) return;
-                                        setActionLoading(true);
-                                        try {
-                                          const res = await fetch(`/api/hr/users/${u.id}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ status: 'BANNED' }) });
-                                          const data = await res.json();
-                                          if (!res.ok) throw new Error(data?.error || 'Failed to ban');
-                                          setUsers(prev => prev.map(x => x.id === u.id ? { ...x, status: 'BANNED' } : x));
-                                          setSelected(prev => prev ? { ...prev, status: 'BANNED' } : prev);
-                                          await refreshStats();
-                                        } catch (err: any) {
-                                          alert(err?.message || 'Error');
-                                        } finally { setActionLoading(false); }
-                                      }} className="px-3 py-1 bg-red-600 text-white rounded">Ban</button>
-                                    )}
+                                  {(displayRole === 'HR' || displayRole === 'MASTER' || displayRole === 'ADMIN') && (
+                                    <div className="mt-2 flex gap-2">
+                                      {u.status === 'BANNED' ? (
+                                        <button disabled={actionLoading} onClick={async () => {
+                                          if (!confirm('Unban this user?')) return;
+                                          setActionLoading(true);
+                                          try {
+                                            const res = await fetch(`/api/hr/users/${u.id}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ status: 'APPLICANT' }) });
+                                            const data = await res.json();
+                                            if (!res.ok) throw new Error(data?.error || 'Failed to unban');
+                                            setUsers(prev => prev.map(x => x.id === u.id ? { ...x, status: 'APPLICANT' } : x));
+                                            setSelected(prev => prev ? { ...prev, status: 'APPLICANT' } : prev);
+                                            await refreshStats();
+                                          } catch (err: any) {
+                                            alert(err?.message || 'Error');
+                                          } finally { setActionLoading(false); }
+                                        }} className="px-3 py-1 bg-green-600 text-white rounded">Unban</button>
+                                      ) : (
+                                        <button disabled={actionLoading} onClick={async () => {
+                                          if (!confirm('Ban this user? They will be immediately logged out.')) return;
+                                          setActionLoading(true);
+                                          try {
+                                            const res = await fetch(`/api/hr/users/${u.id}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ status: 'BANNED' }) });
+                                            const data = await res.json();
+                                            if (!res.ok) throw new Error(data?.error || 'Failed to ban');
+                                            setUsers(prev => prev.map(x => x.id === u.id ? { ...x, status: 'BANNED' } : x));
+                                            setSelected(prev => prev ? { ...prev, status: 'BANNED' } : prev);
+                                            await refreshStats();
+                                          } catch (err: any) {
+                                            alert(err?.message || 'Error');
+                                          } finally { setActionLoading(false); }
+                                        }} className="px-3 py-1 bg-red-600 text-white rounded">Ban</button>
+                                      )}
 
-                                    <button disabled={actionLoading} onClick={async () => {
-                                      if (!confirm('Delete this user and all related data? This cannot be undone.')) return;
-                                      setActionLoading(true);
-                                      try {
-                                        const res = await fetch(`/api/hr/users/${u.id}`, { method: 'DELETE' });
-                                        const data = await res.json();
-                                        if (!res.ok) throw new Error(data?.error || 'Failed to delete');
-                                        setUsers(prev => prev.filter(x => x.id !== u.id));
-                                        setSelected(null);
-                                        await refreshStats();
-                                      } catch (err: any) {
-                                        alert(err?.message || 'Error');
-                                      } finally { setActionLoading(false); }
-                                    }} className="px-3 py-1 border rounded">Delete</button>
-                                  </div>
+                                      <button disabled={actionLoading} onClick={async () => {
+                                        if (!confirm('Delete this user and all related data? This cannot be undone.')) return;
+                                        setActionLoading(true);
+                                        try {
+                                          const res = await fetch(`/api/hr/users/${u.id}`, { method: 'DELETE' });
+                                          const data = await res.json();
+                                          if (!res.ok) throw new Error(data?.error || 'Failed to delete');
+                                          setUsers(prev => prev.filter(x => x.id !== u.id));
+                                          setSelected(null);
+                                          await refreshStats();
+                                        } catch (err: any) {
+                                          alert(err?.message || 'Error');
+                                        } finally { setActionLoading(false); }
+                                      }} className="px-3 py-1 border rounded">Delete</button>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </div>

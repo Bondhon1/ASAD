@@ -12,7 +12,7 @@ export async function PATCH(req: Request, context: any) {
     const requester = await prisma.user.findUnique({ where: { email: session.user.email }, select: { role: true, status: true } });
     if (!requester || requester.status === 'BANNED') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     // Allow Database Dept to call this endpoint for profile/points/rank edits; other operations are guarded below.
-    if (!['HR', 'MASTER', 'ADMIN', 'DATABASE_DEPT'].includes(requester.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (!['HR', 'MASTER', 'ADMIN', 'DIRECTOR', 'DATABASE_DEPT'].includes(requester.role as string)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     // `params` may be a Promise in Next.js app routes — await it safely
     const params = await context.params;
@@ -47,7 +47,7 @@ export async function PATCH(req: Request, context: any) {
 
     // If volunteerId update requested, only HR/MASTER/ADMIN can change volunteerId
     if (hasVolunteerId) {
-      if (requester.role !== 'HR' && requester.role !== 'MASTER' && requester.role !== 'ADMIN') {
+      if (!['HR', 'MASTER', 'ADMIN'].includes(requester.role as string)) {
         return NextResponse.json({ error: 'Forbidden - cannot update volunteerId' }, { status: 403 });
       }
       try {
@@ -61,7 +61,7 @@ export async function PATCH(req: Request, context: any) {
 
     // If status change requested, only HR/MASTER/ADMIN can change status (Database Dept cannot)
     if (hasStatus) {
-      if (requester.role !== 'HR' && requester.role !== 'MASTER' && requester.role !== 'ADMIN') {
+      if (!['HR', 'MASTER', 'ADMIN'].includes(requester.role as string)) {
         return NextResponse.json({ error: 'Forbidden - cannot update status' }, { status: 403 });
       }
       try {
@@ -103,9 +103,9 @@ export async function PATCH(req: Request, context: any) {
       }
     }
 
-    // Prevent Database Dept from updating org assignments
-    if (requester.role === 'DATABASE_DEPT' && (hasService || hasSectors || hasClubs)) {
-      return NextResponse.json({ error: 'Forbidden - cannot update service/sectors/clubs' }, { status: 403 });
+    // Only DIRECTOR may update service/sectors/clubs assignments
+    if ((hasService || hasSectors || hasClubs) && requester.role !== 'DIRECTOR') {
+      return NextResponse.json({ error: 'Forbidden - only DIRECTOR can update service/sectors/clubs' }, { status: 403 });
     }
 
     // Prepare prisma update/create payload for volunteerProfile
@@ -158,7 +158,7 @@ export async function DELETE(req: Request, context: any) {
 
     const requester = await prisma.user.findUnique({ where: { email: session.user.email }, select: { role: true, status: true } });
     if (!requester || requester.status === 'BANNED') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    if (!['HR', 'MASTER', 'ADMIN'].includes(requester.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (!['HR', 'MASTER', 'ADMIN', 'DIRECTOR'].includes(requester.role as string)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     const params = await context.params;
     let id = params?.id as string | undefined;

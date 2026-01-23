@@ -23,14 +23,14 @@ const paymentMethods: PaymentMethodInfo[] = [
     id: "bkash",
     name: "bKash",
     icon: "🏦",
-    dummyNumber: "01730123456",
+    dummyNumber: "01989254157",
     description: "Digital wallet service",
   },
   {
     id: "nagad",
     name: "Nagad",
     icon: "📱",
-    dummyNumber: "01829123456",
+    dummyNumber: "01989254157",
     description: "Mobile banking service",
   },
 ];

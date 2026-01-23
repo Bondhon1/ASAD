@@ -36,7 +36,7 @@ function FallbackNotificationButton() {
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
-  userRole: "VOLUNTEER" | "HR" | "MASTER" | "ADMIN" | "DATABASE_DEPT" | "SECRETARIES";
+  userRole: "VOLUNTEER" | "HR" | "MASTER" | "ADMIN" | "DIRECTOR" | "DATABASE_DEPT" | "SECRETARIES";
   userName: string;
   userEmail: string;
   userId: string;
@@ -115,7 +115,7 @@ export default function DashboardLayout({
     })();
   }, [userEmail, initialFinalPaymentStatus, initialUserStatus]);
 
-  const isStaff = userRole === "HR" || userRole === "MASTER" || userRole === "ADMIN" || userRole === "DATABASE_DEPT" || userRole === "SECRETARIES";
+  const isStaff = userRole === "HR" || userRole === "MASTER" || userRole === "ADMIN" || userRole === "DIRECTOR" || userRole === "DATABASE_DEPT" || userRole === "SECRETARIES";
   const topbarLabel = isStaff ? userRole : formatStatusLabel(userStatus);
 
   const handleLogout = () => {
@@ -143,6 +143,20 @@ export default function DashboardLayout({
       { icon: Ban, label: "User Management", href: "/dashboard/hr/users" },
       { icon: Settings, label: "Settings", href: "/dashboard/settings" },
     ];
+
+    const directorItems = hrItems;
+
+    // Merge role-specific items with common items, preserving role items order and avoiding duplicates by `href`.
+    const mergeWithCommon = (items: { icon: any; label: string; href: string }[]) => {
+      const map = new Map<string, { icon: any; label: string; href: string }>();
+      // role-specific items first
+      for (const it of items) map.set(it.href, it);
+      // append common items if not already present
+      for (const it of commonItems) {
+        if (!map.has(it.href)) map.set(it.href, it);
+      }
+      return Array.from(map.values());
+    };
 
     const databaseItems = [
       { icon: Home, label: "Dashboard", href: "/dashboard" },
@@ -174,10 +188,11 @@ export default function DashboardLayout({
       { icon: Settings, label: "Settings", href: "/dashboard/settings" },
     ];
 
-    if (userRole === "MASTER") return masterItems;
-    if (userRole === "HR" || userRole === "ADMIN") return hrItems;
-    if (userRole === "DATABASE_DEPT") return databaseItems;
-    if (userRole === "SECRETARIES") return secretariesItems;
+    if (userRole === "MASTER") return mergeWithCommon(masterItems);
+    if (userRole === "DIRECTOR") return mergeWithCommon(directorItems);
+    if (userRole === "HR" || userRole === "ADMIN") return mergeWithCommon(hrItems);
+    if (userRole === "DATABASE_DEPT") return mergeWithCommon(databaseItems);
+    if (userRole === "SECRETARIES") return mergeWithCommon(secretariesItems);
     return commonItems;
   };
 

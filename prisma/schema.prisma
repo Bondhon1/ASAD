@@ -112,6 +112,7 @@ enum UserRole {
   HR
   MASTER
   ADMIN
+  DIRECTOR
   DATABASE_DEPT
   SECRETARIES
 }

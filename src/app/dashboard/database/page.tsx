@@ -94,7 +94,7 @@ export default function DatabaseDeptPage() {
 
   const displayName = viewer?.fullName || viewer?.username || (session as any)?.user?.name || 'Database Dept';
   const displayEmail = viewer?.email || (session as any)?.user?.email || '';
-  const displayRole = (session as any)?.user?.role || (viewer?.role as "VOLUNTEER" | "HR" | "MASTER" | "ADMIN" | "DATABASE_DEPT" | "SECRETARIES") || "HR";
+  const displayRole = (session as any)?.user?.role || (viewer?.role as "VOLUNTEER" | "HR" | "MASTER" | "ADMIN" | "DIRECTOR" | "DATABASE_DEPT" | "SECRETARIES") || "HR";
 
   const content = (
     <div className="max-w-4xl mx-auto px-6 py-8">

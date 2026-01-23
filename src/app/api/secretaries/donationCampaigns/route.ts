@@ -10,7 +10,7 @@ export async function POST(req: Request) {
 
     const requester = await prisma.user.findUnique({ where: { email: session.user.email }, select: { id: true, role: true, status: true } });
     if (!requester || requester.status === 'BANNED') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    if (!['SECRETARIES', 'HR', 'MASTER', 'ADMIN'].includes(requester.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (!['SECRETARIES', 'HR', 'MASTER', 'ADMIN', 'DIRECTOR'].includes(requester.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     const body = await req.json();
     const { title, purpose, amount, expireAt, points, isPublic } = body as { title?: string; purpose?: string; amount?: number; expireAt?: string; points?: number; isPublic?: boolean };

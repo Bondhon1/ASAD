@@ -42,7 +42,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!['HR', 'MASTER', 'ADMIN'].includes(requester.role)) {
+    if (!['HR', 'MASTER', 'ADMIN', 'DIRECTOR'].includes(requester.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
