@@ -449,9 +449,29 @@ export default function UsersManagementPage() {
                                   </div>
                                   <div className="text-xs text-gray-500">Points: {u.volunteerProfile?.points ?? 0}</div>
                                   <div className="text-xs text-gray-500">Rank: {u.volunteerProfile?.rank ?? '—'}</div>
-                                  <div className="text-xs text-gray-500">Service: {u.volunteerProfile?.service ?? '—'}</div>
-                                  <div className="text-xs text-gray-500">Sectors: {(u.volunteerProfile?.sectors || []).join(', ') || '—'}</div>
-                                  <div className="text-xs text-gray-500">Clubs: {(u.volunteerProfile?.clubs || []).join(', ') || '—'}</div>
+
+                                  {/* Service / Sectors / Clubs as tag-like buttons */}
+                                  <div className="mt-2 flex flex-wrap gap-2">
+                                    {u.volunteerProfile?.service ? (
+                                      <span className="px-3 py-1 rounded-full bg-gray-100 text-xs font-medium text-gray-800">{u.volunteerProfile.service}</span>
+                                    ) : null}
+
+                                    {(u.volunteerProfile?.sectors || []).length > 0 ? (
+                                      (u.volunteerProfile?.sectors || []).map(s => (
+                                        <span key={`sector-${s}`} className="px-3 py-1 rounded-full bg-gray-100 text-xs font-medium text-gray-800">{s}</span>
+                                      ))
+                                    ) : null}
+
+                                    {(u.volunteerProfile?.clubs || []).length > 0 ? (
+                                      (u.volunteerProfile?.clubs || []).map(c => (
+                                        <span key={`club-${c}`} className="px-3 py-1 rounded-full bg-gray-100 text-xs font-medium text-gray-800">{c}</span>
+                                      ))
+                                    ) : null}
+
+                                    {(!u.volunteerProfile?.service && !(u.volunteerProfile?.sectors || []).length && !(u.volunteerProfile?.clubs || []).length) && (
+                                      <span className="text-xs text-gray-500">—</span>
+                                    )}
+                                  </div>
                                   {u.volunteerProfile?.isOfficial && <div className="text-xs text-green-700 font-medium">Official member</div>}
                                 </div>
 
@@ -605,7 +625,7 @@ export default function UsersManagementPage() {
                                         </div>
                                       </div>
                                     ) : (
-                                      (displayRole === 'HR' || displayRole === 'MASTER' || displayRole === 'ADMIN') && (
+                                      (displayRole === 'HR' || displayRole === 'MASTER' || displayRole === 'ADMIN') && (u.status === 'OFFICIAL' || u.volunteerProfile?.isOfficial) && (
                                         <div className="flex items-center gap-2">
                                           <button onClick={() => {
                                             setEditingOrgUserId(u.id);
