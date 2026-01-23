@@ -111,13 +111,13 @@ export async function PATCH(req: Request, context: any) {
     // Prepare prisma update/create payload for volunteerProfile
     const prismaDataAny: any = {};
     if (hasPoints) prismaDataAny.points = points;
+    // Resolve or create Rank and store rankId to avoid nested write issues
     if (hasRank) {
-      prismaDataAny.rank = {
-        connectOrCreate: {
-          where: { name: rank! },
-          create: { name: rank!, thresholdPoints: 0 },
-        },
-      };
+      let rankRecord = await prisma.rank.findUnique({ where: { name: rank! } });
+      if (!rankRecord) {
+        rankRecord = await prisma.rank.create({ data: { name: rank!, thresholdPoints: 0 } });
+      }
+      prismaDataAny.rankId = rankRecord.id;
     }
     // service/sectors/clubs updates - only HR/ADMIN/MASTER allowed (Database Dept cannot change these)
     if (hasService) prismaDataAny.service = service === null ? null : service;
@@ -135,7 +135,7 @@ export async function PATCH(req: Request, context: any) {
     const profile = await prisma.volunteerProfile.findUnique({ where: { userId: id } });
     if (!profile) {
       const createData: any = { userId: id, points: hasPoints ? points : 0 };
-      if (hasRank) createData.rank = prismaDataAny.rank;
+      if (hasRank) createData.rankId = prismaDataAny.rankId;
       if (hasService) createData.service = prismaDataAny.service;
       if (hasSectors) createData.sectors = prismaDataAny.sectors;
       if (hasClubs) createData.clubs = prismaDataAny.clubs;
