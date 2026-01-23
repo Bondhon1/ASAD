@@ -103,9 +103,9 @@ export async function PATCH(req: Request, context: any) {
       }
     }
 
-    // Only DIRECTOR may update service/sectors/clubs assignments
-    if ((hasService || hasSectors || hasClubs) && requester.role !== 'DIRECTOR') {
-      return NextResponse.json({ error: 'Forbidden - only DIRECTOR can update service/sectors/clubs' }, { status: 403 });
+    // Only MASTER or DIRECTOR may update service/sectors/clubs assignments
+    if ((hasService || hasSectors || hasClubs) && !['MASTER', 'DIRECTOR'].includes(requester.role as string)) {
+      return NextResponse.json({ error: 'Forbidden - only MASTER or DIRECTOR can update service/sectors/clubs' }, { status: 403 });
     }
 
     // Prepare prisma update/create payload for volunteerProfile
@@ -119,7 +119,7 @@ export async function PATCH(req: Request, context: any) {
       }
       prismaDataAny.rankId = rankRecord.id;
     }
-    // service/sectors/clubs updates - only HR/ADMIN/MASTER allowed (Database Dept cannot change these)
+    // service/sectors/clubs updates - only MASTER or DIRECTOR allowed (Database Dept cannot change these)
     if (hasService) prismaDataAny.service = service === null ? null : service;
     if (hasSectors) prismaDataAny.sectors = sectors === null ? [] : sectors;
     if (hasClubs) prismaDataAny.clubs = clubs === null ? [] : clubs;

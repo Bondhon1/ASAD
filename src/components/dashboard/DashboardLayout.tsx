@@ -144,7 +144,11 @@ export default function DashboardLayout({
       { icon: Settings, label: "Settings", href: "/dashboard/settings" },
     ];
 
-    const directorItems = hrItems;
+    const directorItems = [
+      { icon: Home, label: "Dashboard", href: "/dashboard" },
+      { icon: Ban, label: "User Management", href: "/dashboard/hr/users" },
+      { icon: Settings, label: "Settings", href: "/dashboard/settings" },
+    ];
 
     // Merge role-specific items with common items, preserving role items order and avoiding duplicates by `href`.
     const mergeWithCommon = (items: { icon: any; label: string; href: string }[]) => {

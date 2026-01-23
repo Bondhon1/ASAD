@@ -477,7 +477,7 @@ export default function UsersManagementPage() {
                                 </div>
 
                                 <div className="space-y-3">
-                                  { (u.status === 'OFFICIAL' || u.volunteerProfile?.isOfficial) && (
+                                  { (u.status === 'OFFICIAL' || u.volunteerProfile?.isOfficial) && (displayRole === 'HR' || displayRole === 'MASTER' || displayRole === 'ADMIN') && (
                                     <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2 flex-wrap">
                                       <button onClick={() => { setShowRankForm(s => !s); setRankInput(u.volunteerProfile?.rank || ''); setSelected(u); }} className="px-3 py-1 bg-[#0b2545] text-white rounded flex-shrink-0">Set Rank</button>
                                       <button onClick={() => { setShowPointsForm(s => !s); setPointsInput(u.volunteerProfile?.points ?? 0); setSelected(u); }} className="px-3 py-1 bg-gray-100 text-gray-800 rounded flex-shrink-0">Set Points</button>
@@ -576,7 +576,7 @@ export default function UsersManagementPage() {
                                   </div>
                                   {/* Service / Sector / Club management */}
                                   <div className="mt-3">
-                                    {displayRole === 'DIRECTOR' && (
+                                    {(displayRole === 'DIRECTOR' || displayRole === 'MASTER') && (
                                       <div className="text-sm font-medium mb-2">Service / Sector / Club</div>
                                     )}
                                     {editingOrgUserId === u.id ? (
@@ -628,7 +628,7 @@ export default function UsersManagementPage() {
                                         </div>
                                       </div>
                                     ) : (
-                                      (displayRole === 'DIRECTOR') && (u.status === 'OFFICIAL' || u.volunteerProfile?.isOfficial) && (
+                                      (displayRole === 'DIRECTOR' || displayRole === 'MASTER') && (u.status === 'OFFICIAL' || u.volunteerProfile?.isOfficial) && (
                                         <div className="flex items-center gap-2">
                                           <button onClick={() => {
                                             setEditingOrgUserId(u.id);
