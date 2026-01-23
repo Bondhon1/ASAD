@@ -287,6 +287,31 @@ export default function DashboardPage() {
                 <span className="inline-flex items-center px-4 py-2 rounded-full bg-gray-100 text-sm font-medium text-gray-800">{user.volunteerProfile?.rank ?? '—'}</span>
                 <span className="inline-flex items-center px-3 py-2 rounded-full bg-gradient-to-r from-[#0b2545] to-[#07223f] text-white text-sm font-medium">Points: {user.volunteerProfile?.points ?? 0}</span>
               </div>
+            
+            {/* Service / Sectors / Clubs tags - show only for OFFICIAL users */}
+            {(user.status === 'OFFICIAL' || user.volunteerProfile?.isOfficial) && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {user.volunteerProfile?.service ? (
+                  <span className="px-3 py-1 rounded-full bg-gray-100 text-xs font-medium text-gray-800">{user.volunteerProfile.service}</span>
+                ) : null}
+
+                {(user.volunteerProfile?.sectors || []).length > 0 ? (
+                  (user.volunteerProfile?.sectors || []).map(s => (
+                    <span key={`sector-${s}`} className="px-3 py-1 rounded-full bg-gray-100 text-xs font-medium text-gray-800">{s}</span>
+                  ))
+                ) : null}
+
+                {(user.volunteerProfile?.clubs || []).length > 0 ? (
+                  (user.volunteerProfile?.clubs || []).map(c => (
+                    <span key={`club-${c}`} className="px-3 py-1 rounded-full bg-gray-100 text-xs font-medium text-gray-800">{c}</span>
+                  ))
+                ) : null}
+
+                {(!user.volunteerProfile?.service && !(user.volunteerProfile?.sectors || []).length && !(user.volunteerProfile?.clubs || []).length) && (
+                  <span className="text-xs text-gray-500">—</span>
+                )}
+              </div>
+            )}
             </div>
           </div>
 
