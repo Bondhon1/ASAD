@@ -15,7 +15,7 @@ interface User {
   role: string;
   volunteerId: string | null;
   institute: { name: string } | null;
-  volunteerProfile: { points: number; isOfficial?: boolean; rank?: string | null; service?: string | null; sectors?: string[]; clubs?: string[] } | null;
+  volunteerProfile: { points?: number; isOfficial?: boolean; rank?: string | null; service?: string | null; sectors?: string[]; clubs?: string[] } | null;
   initialPayment: { status: string } | null;
   profilePicUrl?: string | null;
   division?: string | null;

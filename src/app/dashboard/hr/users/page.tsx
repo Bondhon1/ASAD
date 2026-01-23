@@ -16,7 +16,7 @@ interface User {
   role: string;
   volunteerId: string | null;
   institute: { name: string } | null;
-  volunteerProfile?: { points: number; isOfficial?: boolean; rank?: string | null; service?: string | null; sectors?: string[]; clubs?: string[] } | null;
+  volunteerProfile?: { points?: number; isOfficial?: boolean; rank?: string | null; service?: string | null; sectors?: string[]; clubs?: string[] } | null;
   initialPayment?: { status: string; verifiedAt?: string | null; approvedBy?: { id: string; fullName?: string | null; email?: string | null } } | null;
   finalPayment?: { status: string; verifiedAt?: string | null; approvedBy?: { id: string; fullName?: string | null; email?: string | null } } | null;
   interviewApprovedBy?: { id: string; fullName?: string | null; email?: string | null } | null;
