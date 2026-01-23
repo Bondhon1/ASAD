@@ -287,10 +287,13 @@ export default function DashboardPage() {
                 <span className="inline-flex items-center px-4 py-2 rounded-full bg-gray-100 text-sm font-medium text-gray-800">{user.volunteerProfile?.rank ?? '—'}</span>
                 <span className="inline-flex items-center px-3 py-2 rounded-full bg-gradient-to-r from-[#0b2545] to-[#07223f] text-white text-sm font-medium">Points: {user.volunteerProfile?.points ?? 0}</span>
               </div>
-            
-            {/* Service / Sectors / Clubs tags - show only for OFFICIAL users */}
-            {(user.status === 'OFFICIAL' || user.volunteerProfile?.isOfficial) && (
-              <div className="mt-4 flex flex-wrap gap-2">
+            </div>
+          </div>
+
+          {/* Service / Sectors / Clubs tags - placed just below profile header (visible like mobile switch buttons) */}
+          {(user.status === 'OFFICIAL' || user.volunteerProfile?.isOfficial) && (
+            <div className="mb-6 mt-2">
+              <div className="flex flex-wrap gap-2">
                 {user.volunteerProfile?.service ? (
                   <span className="px-3 py-1 rounded-full bg-gray-100 text-xs font-medium text-gray-800">{user.volunteerProfile.service}</span>
                 ) : null}
@@ -311,9 +314,8 @@ export default function DashboardPage() {
                   <span className="text-xs text-gray-500">—</span>
                 )}
               </div>
-            )}
             </div>
-          </div>
+          )}
 
           <div className="md:hidden mb-6">
             <div className="flex gap-2 mb-4">
