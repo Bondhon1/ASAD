@@ -393,7 +393,6 @@ export default function UsersManagementPage() {
                                         <select value={roleInput} onChange={(e) => setRoleInput(e.target.value)} className="px-2 py-1 border rounded">
                                           <option value="VOLUNTEER">VOLUNTEER</option>
                                           <option value="HR">HR</option>
-                                          <option value="MASTER">MASTER</option>
                                           <option value="ADMIN">ADMIN</option>
                                         </select>
                                         <button disabled={editingRoleSaving} onClick={async () => {

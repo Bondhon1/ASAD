@@ -78,6 +78,12 @@ export async function PATCH(req: Request, context: any) {
         if (requester.role !== 'ADMIN' && requester.role !== 'MASTER') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         // Only allow role changes when the requester is an OFFICIAL user
         if (requester.status !== 'OFFICIAL') return NextResponse.json({ error: 'Forbidden - requester must be OFFICIAL' }, { status: 403 });
+
+        // Prevent assigning the MASTER role - it's reserved for dev/test/debug accounts
+        if ((role as string)?.toUpperCase() === 'MASTER') {
+          return NextResponse.json({ error: 'Forbidden - cannot assign MASTER role' }, { status: 403 });
+        }
+
         const updatedUser = await prisma.user.update({ where: { id }, data: { role: role as any } });
         try { invalidateAll(); } catch (e) { /* ignore */ }
         return NextResponse.json({ ok: true, user: updatedUser });
