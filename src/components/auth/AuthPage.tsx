@@ -64,6 +64,7 @@ function AuthPageContent() {
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -359,13 +360,33 @@ function AuthPageContent() {
                         <label className="block text-sm font-semibold text-ink mb-2">
                           Password
                         </label>
-                        <input
-                          type="password"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          placeholder="••••••••"
-                          className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
-                        />
+                        <div className="relative">
+                          <input
+                            type={showPassword ? "text" : "password"}
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="••••••••"
+                            className="w-full px-4 pr-10 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword((s) => !s)}
+                            aria-label={showPassword ? "Hide password" : "Show password"}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted hover:text-ink"
+                          >
+                            {showPassword ? (
+                              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-5.523 0-10-4.477-10-10 0-1.09.178-2.137.502-3.12M6.18 6.18A9.953 9.953 0 0112 5c5.523 0 10 4.477 10 10 0 1.09-.178 2.137-.502 3.12M3 3l18 18" />
+                                <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                            ) : (
+                              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M12 15a3 3 0 100-6 3 3 0 000 6z" />
+                              </svg>
+                            )}
+                          </button>
+                        </div>
                       </motion.div>
 
                       <motion.div
@@ -454,14 +475,34 @@ function AuthPageContent() {
                         <label className="block text-sm font-semibold text-ink mb-2">
                           Password
                         </label>
-                        <input
-                          type="password"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          placeholder="••••••••"
-                          required
-                          className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
-                        />
+                        <div className="relative">
+                          <input
+                            type={showPassword ? "text" : "password"}
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="••••••••"
+                            required
+                            className="w-full px-4 pr-10 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword((s) => !s)}
+                            aria-label={showPassword ? "Hide password" : "Show password"}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted hover:text-ink"
+                          >
+                            {showPassword ? (
+                              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-5.523 0-10-4.477-10-10 0-1.09.178-2.137.502-3.12M6.18 6.18A9.953 9.953 0 0112 5c5.523 0 10 4.477 10 10 0 1.09-.178 2.137-.502 3.12M3 3l18 18" />
+                                <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                            ) : (
+                              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M12 15a3 3 0 100-6 3 3 0 000 6z" />
+                              </svg>
+                            )}
+                          </button>
+                        </div>
                         <p className="text-xs text-muted mt-1">
                           At least 8 characters, 1 uppercase, 1 number
                         </p>
