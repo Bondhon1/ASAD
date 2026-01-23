@@ -112,6 +112,8 @@ enum UserRole {
   HR
   MASTER
   ADMIN
+  DATABASE_DEPT
+  SECRETARIES
 }
 
 model Account {
@@ -242,6 +244,7 @@ model VolunteerProfile {
   rank                  Rank?            @relation(fields: [rankId], references: [id])
   rankId                String?
   bio                   String?
+  service               String?          // service assignment (e.g., VNSC, ISC, etc.)
   sectors               String[]         // JSON array of sector IDs
   clubs                 String[]         // JSON array of club IDs
   committee             Committee?       @relation(fields: [committeeId], references: [id], onDelete: SetNull)

@@ -119,7 +119,7 @@ export default function DashboardPage() {
   const displayEmail = user?.email || session?.user?.email || "";
   // Prioritize session role (fetched at login) over cached user role to avoid flicker
   const sessionRole = (session as any)?.user?.role;
-  const displayRole = (sessionRole as "VOLUNTEER" | "HR" | "MASTER" | "ADMIN") || (user?.role as "VOLUNTEER" | "HR" | "MASTER" | "ADMIN") || "VOLUNTEER";
+  const displayRole = (sessionRole as "VOLUNTEER" | "HR" | "MASTER" | "ADMIN" | "DATABASE_DEPT" | "SECRETARIES") || (user?.role as "VOLUNTEER" | "HR" | "MASTER" | "ADMIN" | "DATABASE_DEPT" | "SECRETARIES") || "VOLUNTEER";
 
   const skeletonPanel = (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-pulse">

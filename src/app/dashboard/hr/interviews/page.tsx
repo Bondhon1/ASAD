@@ -78,7 +78,7 @@ function InterviewSlotsContent() {
 
   const displayName = useMemo(() => user?.fullName || user?.username || session?.user?.name || "HR", [session?.user?.name, user?.fullName, user?.username]);
   const displayEmail = useMemo(() => user?.email || session?.user?.email || "", [session?.user?.email, user?.email]);
-  const displayRole = useMemo(() => (session as any)?.user?.role || (user?.role as "VOLUNTEER" | "HR" | "MASTER" | "ADMIN") || "HR", [session, user?.role]);
+  const displayRole = useMemo(() => (session as any)?.user?.role || (user?.role as "VOLUNTEER" | "HR" | "MASTER" | "ADMIN" | "DATABASE_DEPT" | "SECRETARIES") || "HR", [session, user?.role]);
 
   useEffect(() => {
     const fetchUserAndSlots = async () => {

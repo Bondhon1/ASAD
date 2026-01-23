@@ -36,7 +36,7 @@ function FallbackNotificationButton() {
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
-  userRole: "VOLUNTEER" | "HR" | "MASTER" | "ADMIN";
+  userRole: "VOLUNTEER" | "HR" | "MASTER" | "ADMIN" | "DATABASE_DEPT" | "SECRETARIES";
   userName: string;
   userEmail: string;
   userId: string;
@@ -115,7 +115,7 @@ export default function DashboardLayout({
     })();
   }, [userEmail, initialFinalPaymentStatus, initialUserStatus]);
 
-  const isStaff = userRole === "HR" || userRole === "MASTER" || userRole === "ADMIN";
+  const isStaff = userRole === "HR" || userRole === "MASTER" || userRole === "ADMIN" || userRole === "DATABASE_DEPT" || userRole === "SECRETARIES";
   const topbarLabel = isStaff ? userRole : formatStatusLabel(userStatus);
 
   const handleLogout = () => {
@@ -144,6 +144,20 @@ export default function DashboardLayout({
       { icon: Settings, label: "Settings", href: "/dashboard/settings" },
     ];
 
+    const databaseItems = [
+      { icon: Home, label: "Dashboard", href: "/dashboard" },
+      { icon: ClipboardList, label: "Manage Points / Ranks", href: "/dashboard/database" },
+      { icon: Users, label: "Community", href: "/dashboard/community" },
+      { icon: Settings, label: "Settings", href: "/dashboard/settings" },
+    ];
+
+    const secretariesItems = [
+      { icon: Home, label: "Dashboard", href: "/dashboard" },
+      { icon: ClipboardList, label: "Secretaries", href: "/dashboard/secretaries" },
+      { icon: Users, label: "Community", href: "/dashboard/community" },
+      { icon: Settings, label: "Settings", href: "/dashboard/settings" },
+    ];
+
     const masterItems = [
       { icon: Home, label: "Dashboard", href: "/dashboard" },
       { icon: UserCheck, label: "New Requests", href: "/dashboard/hr/requests" },
@@ -152,14 +166,18 @@ export default function DashboardLayout({
       { icon: Briefcase, label: "Job Posts", href: "/dashboard/hr/jobs" },
       { icon: FileText, label: "Leave Management", href: "/dashboard/hr/leaves" },
       { icon: Ban, label: "User Management", href: "/dashboard/hr/users" },
+      { icon: ClipboardList, label: "Manage Points / Ranks", href: "/dashboard/database" },
       { icon: ClipboardList, label: "Tasks", href: "/dashboard/tasks" },
       { icon: DollarSign, label: "Donations", href: "/dashboard/donations" },
+      { icon: ClipboardList, label: "Secretaries", href: "/dashboard/secretaries" },
       { icon: Users, label: "Community", href: "/dashboard/community" },
       { icon: Settings, label: "Settings", href: "/dashboard/settings" },
     ];
 
     if (userRole === "MASTER") return masterItems;
     if (userRole === "HR" || userRole === "ADMIN") return hrItems;
+    if (userRole === "DATABASE_DEPT") return databaseItems;
+    if (userRole === "SECRETARIES") return secretariesItems;
     return commonItems;
   };
 

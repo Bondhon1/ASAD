@@ -11,7 +11,8 @@ export async function PATCH(req: Request, context: any) {
 
     const requester = await prisma.user.findUnique({ where: { email: session.user.email }, select: { role: true, status: true } });
     if (!requester || requester.status === 'BANNED') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    if (!['HR', 'MASTER', 'ADMIN'].includes(requester.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    // Allow Database Dept to call this endpoint for profile/points/rank edits; other operations are guarded below.
+    if (!['HR', 'MASTER', 'ADMIN', 'DATABASE_DEPT'].includes(requester.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     // `params` may be a Promise in Next.js app routes — await it safely
     const params = await context.params;
@@ -31,18 +32,24 @@ export async function PATCH(req: Request, context: any) {
       return NextResponse.json({ error: 'Missing user id' }, { status: 400 });
     }
     const body = await req.json();
-    const { points, rank, volunteerId, status, role } = body as { points?: number; rank?: string; volunteerId?: string | null; status?: string; role?: string };
+    const { points, rank, volunteerId, status, role, service, sectors, clubs } = body as { points?: number; rank?: string; volunteerId?: string | null; status?: string; role?: string; service?: string | null; sectors?: string[] | null; clubs?: string[] | null };
 
     const hasPoints = typeof points === 'number';
     const hasRank = typeof rank === 'string' && rank.trim().length > 0;
     const hasVolunteerId = Object.prototype.hasOwnProperty.call(body, 'volunteerId');
     const hasStatus = Object.prototype.hasOwnProperty.call(body, 'status');
     const hasRole = Object.prototype.hasOwnProperty.call(body, 'role');
+    const hasService = Object.prototype.hasOwnProperty.call(body, 'service');
+    const hasSectors = Object.prototype.hasOwnProperty.call(body, 'sectors');
+    const hasClubs = Object.prototype.hasOwnProperty.call(body, 'clubs');
 
-    if (!hasPoints && !hasRank && !hasVolunteerId && !hasStatus && !hasRole) return NextResponse.json({ error: 'No changes provided' }, { status: 400 });
+    if (!hasPoints && !hasRank && !hasVolunteerId && !hasStatus && !hasRole && !hasService && !hasSectors && !hasClubs) return NextResponse.json({ error: 'No changes provided' }, { status: 400 });
 
-    // If volunteerId update requested, update User model first (to validate uniqueness)
+    // If volunteerId update requested, only HR/MASTER/ADMIN can change volunteerId
     if (hasVolunteerId) {
+      if (requester.role !== 'HR' && requester.role !== 'MASTER' && requester.role !== 'ADMIN') {
+        return NextResponse.json({ error: 'Forbidden - cannot update volunteerId' }, { status: 403 });
+      }
       try {
         await prisma.user.update({ where: { id }, data: { volunteerId: volunteerId === null ? null : volunteerId } });
       } catch (err: any) {
@@ -52,8 +59,11 @@ export async function PATCH(req: Request, context: any) {
       }
     }
 
-    // If status change requested, update user status (handle ban/unban)
+    // If status change requested, only HR/MASTER/ADMIN can change status (Database Dept cannot)
     if (hasStatus) {
+      if (requester.role !== 'HR' && requester.role !== 'MASTER' && requester.role !== 'ADMIN') {
+        return NextResponse.json({ error: 'Forbidden - cannot update status' }, { status: 403 });
+      }
       try {
         const updatedUser = await prisma.user.update({ where: { id }, data: { status: status as any } });
 
@@ -93,6 +103,11 @@ export async function PATCH(req: Request, context: any) {
       }
     }
 
+    // Prevent Database Dept from updating org assignments
+    if (requester.role === 'DATABASE_DEPT' && (hasService || hasSectors || hasClubs)) {
+      return NextResponse.json({ error: 'Forbidden - cannot update service/sectors/clubs' }, { status: 403 });
+    }
+
     // Prepare prisma update/create payload for volunteerProfile
     const prismaDataAny: any = {};
     if (hasPoints) prismaDataAny.points = points;
@@ -104,9 +119,13 @@ export async function PATCH(req: Request, context: any) {
         },
       };
     }
+    // service/sectors/clubs updates - only HR/ADMIN/MASTER allowed (Database Dept cannot change these)
+    if (hasService) prismaDataAny.service = service === null ? null : service;
+    if (hasSectors) prismaDataAny.sectors = sectors === null ? [] : sectors;
+    if (hasClubs) prismaDataAny.clubs = clubs === null ? [] : clubs;
 
     // If no volunteerProfile changes were requested, return success for volunteerId update
-    if (!hasPoints && !hasRank) {
+    if (!hasPoints && !hasRank && !hasService && !hasSectors && !hasClubs) {
       // return updated user and existing profile
       const user = await prisma.user.findUnique({ where: { id }, include: { volunteerProfile: { include: { rank: true } }, initialPayment: true, finalPayment: true } });
       return NextResponse.json({ ok: true, user });
@@ -117,6 +136,9 @@ export async function PATCH(req: Request, context: any) {
     if (!profile) {
       const createData: any = { userId: id, points: hasPoints ? points : 0 };
       if (hasRank) createData.rank = prismaDataAny.rank;
+      if (hasService) createData.service = prismaDataAny.service;
+      if (hasSectors) createData.sectors = prismaDataAny.sectors;
+      if (hasClubs) createData.clubs = prismaDataAny.clubs;
       const created = await prisma.volunteerProfile.create({ data: createData, include: { rank: true } });
       return NextResponse.json({ ok: true, profile: created });
     }
