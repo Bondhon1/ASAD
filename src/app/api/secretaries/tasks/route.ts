@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
-import { Prisma } from '@prisma/client';
+import { NotificationType } from '@prisma/client';
 
 type Body = {
   title: string;
@@ -111,7 +111,7 @@ export async function POST(req: Request) {
     let totalNotificationsCreated = 0;
     try {
       if (targetUsers.length) {
-        const notifications = targetUsers.map(uId => ({ userId: uId, type: Prisma.NotificationType.NEW_TASK, title: 'New task for you.', message: created.description || 'You have a new task assigned. Please check your Tasks.', link: `/tasks/${created.id}` }));
+        const notifications = targetUsers.map(uId => ({ userId: uId, type: NotificationType.NEW_TASK, title: 'New task for you.', message: created.description || 'You have a new task assigned. Please check your Tasks.', link: `/tasks/${created.id}` }));
         const chunkSize = 200;
         for (let i = 0; i < notifications.length; i += chunkSize) {
           const chunk = notifications.slice(i, i + chunkSize);
