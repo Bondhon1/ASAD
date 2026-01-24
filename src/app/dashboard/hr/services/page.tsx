@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { useCachedUserProfile } from '@/hooks/useCachedUserProfile';
 
 export default function ServicesPage() {
   const { user } = useCachedUserProfile<string | null>(typeof window !== 'undefined' ? localStorage.getItem('userEmail') : null);
+  const { data: session } = useSession();
   const [stats, setStats] = useState<Array<any>>([]);
   const [services, setServices] = useState<Array<any>>([]);
   const [loading, setLoading] = useState(true);
@@ -50,7 +52,14 @@ export default function ServicesPage() {
   };
 
   return (
-    <DashboardLayout userRole={(user as any)?.role || 'HR'} userName={(user as any)?.fullName || 'HR'} userEmail={(user as any)?.email || ''} userId={(user as any)?.id || ''}>
+    <DashboardLayout
+      userRole={(user as any)?.role || (session as any)?.user?.role || 'HR'}
+      userName={(user as any)?.fullName || (session as any)?.user?.name || 'HR'}
+      userEmail={(user as any)?.email || (session as any)?.user?.email || ''}
+      userId={(user as any)?.id || (session as any)?.user?.id || ''}
+      topbarName={(user as any)?.fullName || (session as any)?.user?.name || 'Services & Institute Stats'}
+      topbarLabel={(user as any)?.role || (session as any)?.user?.role || ''}
+    >
       <div className="max-w-4xl mx-auto px-6 py-8">
         <h2 className="text-2xl font-semibold mb-4">Services & Institute Stats</h2>
 

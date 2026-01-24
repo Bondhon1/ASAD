@@ -43,6 +43,8 @@ interface DashboardLayoutProps {
   showStatusBanners?: boolean;
   initialUserStatus?: string | null;
   initialFinalPaymentStatus?: string | null;
+  topbarName?: string;
+  topbarLabel?: string;
 }
 
 export default function DashboardLayout({
@@ -54,6 +56,8 @@ export default function DashboardLayout({
   showStatusBanners = true,
   initialUserStatus,
   initialFinalPaymentStatus,
+  topbarName,
+  topbarLabel,
 }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const router = useRouter();
@@ -116,7 +120,8 @@ export default function DashboardLayout({
   }, [userEmail, initialFinalPaymentStatus, initialUserStatus]);
 
   const isStaff = userRole === "HR" || userRole === "MASTER" || userRole === "ADMIN" || userRole === "DIRECTOR" || userRole === "DATABASE_DEPT" || userRole === "SECRETARIES";
-  const topbarLabel = isStaff ? userRole : formatStatusLabel(userStatus);
+  const displayTopbarName = topbarName ?? userName;
+  const displayTopbarLabel = topbarLabel ?? (isStaff ? userRole : formatStatusLabel(userStatus));
 
   const handleLogout = () => {
     localStorage.clear();
@@ -246,8 +251,8 @@ export default function DashboardLayout({
                 <span className="absolute top-1 right-1 w-2 h-2 bg-green-500 rounded-full"></span>
               </button>
               <div className="ml-2 px-3 py-2 bg-gray-100 rounded-lg hidden sm:block">
-                <p className="text-sm font-semibold text-gray-900">{userName}</p>
-                <p className="text-xs text-gray-500">{topbarLabel}</p>
+                <p className="text-sm font-semibold text-gray-900">{displayTopbarName}</p>
+                <p className="text-xs text-gray-500">{displayTopbarLabel}</p>
               </div>
             </div>
         </div>

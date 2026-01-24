@@ -34,7 +34,8 @@ export async function GET(request: NextRequest) {
       where: { email },
       include: {
         institute: true,
-        volunteerProfile: { include: { rank: true } },
+        // include service on volunteerProfile and rank
+        volunteerProfile: { include: { rank: true, service: true } },
         initialPayment: true,
         finalPayment: true,
         experiences: {
@@ -69,6 +70,46 @@ export async function GET(request: NextRequest) {
     const vp = user.volunteerProfile as any | null;
     if (vp && vp.rank) {
       vp.rank = vp.rank.name ?? vp.rank;
+    }
+
+    // Resolve sector/club IDs to names when possible. The DB may contain
+    // either names or ids (historical data), so we try to map ids to names
+    // but fall back to the stored value if no record is found.
+    if (vp) {
+      try {
+        const [allSectors, allClubs] = await Promise.all([
+          prisma.sector.findMany({ select: { id: true, name: true } }),
+          prisma.club.findMany({ select: { id: true, name: true } }),
+        ]);
+        const sectorById = new Map(allSectors.map(s => [s.id, s.name]));
+        const sectorNames = new Set(allSectors.map(s => s.name));
+        const clubById = new Map(allClubs.map(c => [c.id, c.name]));
+        const clubNames = new Set(allClubs.map(c => c.name));
+
+        if (Array.isArray(vp.sectors)) {
+          vp.sectors = vp.sectors.map((val: string) => {
+            if (sectorById.has(val)) return sectorById.get(val);
+            if (sectorNames.has(val)) return val;
+            return val; // unknown value, keep as-is
+          });
+        }
+
+        if (Array.isArray(vp.clubs)) {
+          vp.clubs = vp.clubs.map((val: string) => {
+            if (clubById.has(val)) return clubById.get(val);
+            if (clubNames.has(val)) return val;
+            return val;
+          });
+        }
+
+        // service included above; normalize to name when present
+        if (vp.service) {
+          vp.service = { id: vp.service.id, name: vp.service.name };
+        }
+      } catch (e) {
+        // ignore mapping errors and keep stored values
+        console.error('Failed to resolve sector/club names', e);
+      }
     }
 
     const responseData = { user: { ...user, followersCount, followingCount } };
