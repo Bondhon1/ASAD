@@ -16,7 +16,7 @@ interface User {
   role: string;
   volunteerId: string | null;
   institute: { name: string } | null;
-  volunteerProfile?: { points?: number; isOfficial?: boolean; rank?: string | null; service?: string | null; sectors?: string[]; clubs?: string[] } | null;
+  volunteerProfile?: { points?: number; isOfficial?: boolean; rank?: string | null; service?: { id?: string; name?: string | null } | null; sectors?: string[]; clubs?: string[] } | null;
   initialPayment?: { status: string; verifiedAt?: string | null; approvedBy?: { id: string; fullName?: string | null; email?: string | null } } | null;
   finalPayment?: { status: string; verifiedAt?: string | null; approvedBy?: { id: string; fullName?: string | null; email?: string | null } } | null;
   interviewApprovedBy?: { id: string; fullName?: string | null; email?: string | null } | null;
@@ -79,6 +79,7 @@ export default function UsersManagementPage() {
   const [selectedSectorsLocal, setSelectedSectorsLocal] = useState<string[]>([]);
   const [selectedClubsLocal, setSelectedClubsLocal] = useState<string[]>([]);
   const [editingOrgSaving, setEditingOrgSaving] = useState(false);
+  const [servicesList, setServicesList] = useState<Array<{id:string;name:string;}>>([]);
   const [pointsInput, setPointsInput] = useState<number | ''>('');
   const [rankInput, setRankInput] = useState<string>('');
   const [saving, setSaving] = useState(false);
@@ -180,6 +181,19 @@ export default function UsersManagementPage() {
     const t = setTimeout(() => setDebouncedQuery(query), 300);
     return () => clearTimeout(t);
   }, [query]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/hr/services');
+        if (!res.ok) return;
+        const d = await res.json();
+        setServicesList(d.services || []);
+      } catch (e) {
+        // ignore
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -454,7 +468,7 @@ export default function UsersManagementPage() {
                                   {/* Service / Sectors / Clubs as tag-like buttons */}
                                   <div className="mt-2 flex flex-wrap gap-2">
                                     {u.volunteerProfile?.service ? (
-                                      <span className="px-3 py-1 rounded-full bg-gray-100 text-xs font-medium text-gray-800">{u.volunteerProfile.service}</span>
+                                      <span className="px-3 py-1 rounded-full bg-gray-100 text-xs font-medium text-gray-800">{u.volunteerProfile.service?.name}</span>
                                     ) : null}
 
                                     {(u.volunteerProfile?.sectors || []).length > 0 ? (
@@ -576,49 +590,68 @@ export default function UsersManagementPage() {
                                   </div>
                                   {/* Service / Sector / Club management */}
                                   <div className="mt-3">
-                                    {(displayRole === 'DIRECTOR' || displayRole === 'MASTER') && (
+                                    {(displayRole === 'DIRECTOR' || displayRole === 'MASTER' || displayRole === 'HR' || displayRole === 'ADMIN') && (
                                       <div className="text-sm font-medium mb-2">Service / Sector / Club</div>
                                     )}
                                     {editingOrgUserId === u.id ? (
                                       <div className="space-y-3">
-                                        <div>
-                                          <div className="text-xs text-gray-600">Service</div>
-                                          <div className="flex gap-2 mt-2 flex-wrap">
-                                            {SERVICES.map(s => (
-                                              <button key={s.key} onClick={() => setSelectedServiceLocal(prev => prev === s.key ? null : s.key)} className={`px-3 py-1 rounded ${selectedServiceLocal === s.key ? 'bg-[#0b2545] text-white' : 'bg-gray-100 text-gray-800'}`}>{s.key}</button>
-                                            ))}
+                                        { (displayRole === 'HR' || displayRole === 'MASTER' || displayRole === 'ADMIN') && (
+                                          <div>
+                                            <div className="text-xs text-gray-600">Service</div>
+                                            <div className="mt-2">
+                                              <select value={selectedServiceLocal || ''} onChange={(e) => setSelectedServiceLocal(e.target.value || null)} className="px-3 py-2 border rounded w-full">
+                                                <option value="">-- none --</option>
+                                                {servicesList.map(s => (
+                                                  <option key={s.id} value={s.id}>{s.name}</option>
+                                                ))}
+                                              </select>
+                                            </div>
                                           </div>
-                                        </div>
+                                        )}
 
-                                        <div>
-                                          <div className="text-xs text-gray-600">Sectors</div>
-                                          <div className="flex gap-2 mt-2 flex-wrap">
-                                            {SECTORS.map(s => (
-                                              <button key={s} onClick={() => setSelectedSectorsLocal(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])} className={`px-3 py-1 rounded ${selectedSectorsLocal.includes(s) ? 'bg-[#0b2545] text-white' : 'bg-gray-100 text-gray-800'}`}>{s}</button>
-                                            ))}
-                                          </div>
-                                        </div>
+                                        {(displayRole === 'DIRECTOR' || displayRole === 'MASTER') && (
+                                          <>
+                                            <div>
+                                              <div className="text-xs text-gray-600">Sectors</div>
+                                              <div className="flex gap-2 mt-2 flex-wrap">
+                                                {SECTORS.map(s => (
+                                                  <button key={s} onClick={() => setSelectedSectorsLocal(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])} className={`px-3 py-1 rounded ${selectedSectorsLocal.includes(s) ? 'bg-[#0b2545] text-white' : 'bg-gray-100 text-gray-800'}`}>{s}</button>
+                                                ))}
+                                              </div>
+                                            </div>
 
-                                        <div>
-                                          <div className="text-xs text-gray-600">Clubs</div>
-                                          <div className="flex gap-2 mt-2 flex-wrap">
-                                            {CLUBS.map(c => (
-                                              <button key={c} onClick={() => setSelectedClubsLocal(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c])} className={`px-3 py-1 rounded ${selectedClubsLocal.includes(c) ? 'bg-[#0b2545] text-white' : 'bg-gray-100 text-gray-800'}`}>{c}</button>
-                                            ))}
-                                          </div>
-                                        </div>
+                                            <div>
+                                              <div className="text-xs text-gray-600">Clubs</div>
+                                              <div className="flex gap-2 mt-2 flex-wrap">
+                                                {CLUBS.map(c => (
+                                                  <button key={c} onClick={() => setSelectedClubsLocal(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c])} className={`px-3 py-1 rounded ${selectedClubsLocal.includes(c) ? 'bg-[#0b2545] text-white' : 'bg-gray-100 text-gray-800'}`}>{c}</button>
+                                                ))}
+                                              </div>
+                                            </div>
+                                          </>
+                                        )}
 
                                         <div className="flex gap-2 mt-2">
                                           <button disabled={editingOrgSaving} onClick={async () => {
                                             setEditingOrgSaving(true);
                                             try {
-                                              const payload: any = { service: selectedServiceLocal, sectors: selectedSectorsLocal, clubs: selectedClubsLocal };
+                                              const payload: any = {};
+                                              // only include serviceId when viewer is allowed to update service
+                                              if (displayRole === 'HR' || displayRole === 'MASTER' || displayRole === 'ADMIN') {
+                                                payload.serviceId = selectedServiceLocal;
+                                              }
+                                              // only include sectors/clubs when viewer is allowed to update them
+                                              if (displayRole === 'DIRECTOR' || displayRole === 'MASTER' || displayRole === 'ADMIN') {
+                                                payload.sectors = selectedSectorsLocal;
+                                                payload.clubs = selectedClubsLocal;
+                                              }
                                               const res = await fetch(`/api/hr/users/${u.id}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
                                               const data = await res.json();
                                               if (!res.ok) throw new Error(data?.error || 'Failed to save');
+                                              const svcName = servicesList.find(s => s.id === selectedServiceLocal)?.name || null;
                                               // update local user entry
-                                              setUsers(prev => prev.map(x => x.id === u.id ? { ...x, volunteerProfile: { ...(x.volunteerProfile || {}), service: selectedServiceLocal, sectors: selectedSectorsLocal, clubs: selectedClubsLocal } } : x));
-                                              setSelected(prev => prev ? { ...prev, volunteerProfile: { ...(prev.volunteerProfile || {}), service: selectedServiceLocal, sectors: selectedSectorsLocal, clubs: selectedClubsLocal } } : prev);
+                                              setUsers(prev => prev.map(x => x.id === u.id ? { ...x, volunteerProfile: { ...(x.volunteerProfile || {}), service: (displayRole === 'HR' || displayRole === 'MASTER' || displayRole === 'ADMIN') ? (selectedServiceLocal ? { id: selectedServiceLocal, name: svcName } : null) : x.volunteerProfile?.service, sectors: selectedSectorsLocal, clubs: selectedClubsLocal } } : x));
+                                              setSelected(prev => prev ? { ...prev, volunteerProfile: { ...(prev.volunteerProfile || {}), service: (displayRole === 'HR' || displayRole === 'MASTER' || displayRole === 'ADMIN') ? (selectedServiceLocal ? { id: selectedServiceLocal, name: svcName } : null) : prev.volunteerProfile?.service, sectors: selectedSectorsLocal, clubs: selectedClubsLocal } } : prev);
                                               setEditingOrgUserId(null);
                                             } catch (err: any) {
                                               alert(err?.message || 'Error saving');
@@ -628,11 +661,11 @@ export default function UsersManagementPage() {
                                         </div>
                                       </div>
                                     ) : (
-                                      (displayRole === 'DIRECTOR' || displayRole === 'MASTER') && (u.status === 'OFFICIAL' || u.volunteerProfile?.isOfficial) && (
+                                      (displayRole === 'DIRECTOR' || displayRole === 'MASTER' || displayRole === 'HR' || displayRole === 'ADMIN') && (u.status === 'OFFICIAL' || u.volunteerProfile?.isOfficial) && (
                                         <div className="flex items-center gap-2">
                                           <button onClick={() => {
                                             setEditingOrgUserId(u.id);
-                                            setSelectedServiceLocal(u.volunteerProfile?.service || autoAssignServiceFromInstitute(u.institute?.name) || null);
+                                            setSelectedServiceLocal(u.volunteerProfile?.service?.id || autoAssignServiceFromInstitute(u.institute?.name) || null);
                                             setSelectedSectorsLocal(Array.isArray(u.volunteerProfile?.sectors) ? (u.volunteerProfile?.sectors as string[]) : []);
                                             setSelectedClubsLocal(Array.isArray(u.volunteerProfile?.clubs) ? (u.volunteerProfile?.clubs as string[]) : []);
                                           }} className="px-2 py-1 text-xs bg-gray-100 rounded">Edit Service/Sectors/Clubs</button>

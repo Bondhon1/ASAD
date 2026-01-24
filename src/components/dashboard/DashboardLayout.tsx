@@ -141,6 +141,7 @@ export default function DashboardLayout({
       { icon: Briefcase, label: "Job Posts", href: "/dashboard/hr/jobs" },
       { icon: FileText, label: "Leave Management", href: "/dashboard/hr/leaves" },
       { icon: Ban, label: "User Management", href: "/dashboard/hr/users" },
+      { icon: Briefcase, label: "Services", href: "/dashboard/hr/services" },
       { icon: Settings, label: "Settings", href: "/dashboard/settings" },
     ];
 
@@ -184,6 +185,7 @@ export default function DashboardLayout({
       { icon: Briefcase, label: "Job Posts", href: "/dashboard/hr/jobs" },
       { icon: FileText, label: "Leave Management", href: "/dashboard/hr/leaves" },
       { icon: Ban, label: "User Management", href: "/dashboard/hr/users" },
+      { icon: Briefcase, label: "Services", href: "/dashboard/hr/services" },
       { icon: ClipboardList, label: "Manage Points / Ranks", href: "/dashboard/database" },
       { icon: ClipboardList, label: "Tasks", href: "/dashboard/tasks" },
       { icon: DollarSign, label: "Donations", href: "/dashboard/donations" },

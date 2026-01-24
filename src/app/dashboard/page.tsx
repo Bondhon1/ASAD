@@ -15,7 +15,7 @@ interface User {
   role: string;
   volunteerId: string | null;
   institute: { name: string } | null;
-  volunteerProfile: { points?: number; isOfficial?: boolean; rank?: string | null; service?: string | null; sectors?: string[]; clubs?: string[] } | null;
+  volunteerProfile: { points?: number; isOfficial?: boolean; rank?: string | null; service?: { id?: string; name?: string | null } | null; sectors?: string[]; clubs?: string[] } | null;
   initialPayment: { status: string } | null;
   profilePicUrl?: string | null;
   division?: string | null;
@@ -295,7 +295,7 @@ export default function DashboardPage() {
             <div className="mb-6 mt-2">
               <div className="flex flex-wrap gap-2">
                 {user.volunteerProfile?.service ? (
-                  <span className="px-3 py-1 rounded-full bg-gray-100 text-xs font-medium text-gray-800">{user.volunteerProfile.service}</span>
+                  <span className="px-3 py-1 rounded-full bg-gray-100 text-xs font-medium text-gray-800">{user.volunteerProfile.service?.name}</span>
                 ) : null}
 
                 {(user.volunteerProfile?.sectors || []).length > 0 ? (
