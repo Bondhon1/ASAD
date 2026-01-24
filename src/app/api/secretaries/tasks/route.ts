@@ -36,45 +36,39 @@ export async function POST(req: Request) {
     const startDate = now;
     const endDate = body.expireAt ? new Date(body.expireAt) : new Date(now.getTime() + 7 * 24 * 3600 * 1000);
 
-    const created = await prisma.task.create({
-      data: {
-        title: body.title.trim(),
-        description: body.description || undefined,
-        createdByUserId: requester.id,
-        // assignedGroupType/assignedGroup are coarse here; notifications target users directly
-        assignedGroupType: 'ALL',
-        assignedGroup: null,
-        taskType: (body.inputType || 'YESNO') as any,
-        mandatory: !!body.mandatory,
-        pointsPositive: typeof body.points === 'number' ? Math.max(0, Math.floor(body.points)) : 0,
-        pointsNegative: 0,
-        startDate,
-        endDate,
-      },
-    });
-
-    // Build target user set
+    // Build target user set BEFORE creating task so we can persist it to the task row
+    const assigned = body.assigned || {};
+    const targetSet = new Set<string>();
     try {
-      const assigned = body.assigned || {};
-      const targetSet = new Set<string>();
-
       if (assigned.all) {
         const users = await prisma.user.findMany({ where: { status: 'OFFICIAL' }, select: { id: true } });
         users.forEach(u => targetSet.add(u.id));
       } else {
         if (assigned.services && assigned.services.length) {
-          const users = await prisma.user.findMany({ where: { status: 'OFFICIAL', volunteerProfile: { is: { serviceId: { in: assigned.services } } } }, select: { id: true } });
-          users.forEach(u => targetSet.add(u.id));
+          const profiles = await prisma.volunteerProfile.findMany({ where: { serviceId: { in: assigned.services } }, select: { userId: true } });
+          const uids = profiles.map(p => p.userId);
+          if (uids.length) {
+            const users = await prisma.user.findMany({ where: { id: { in: uids }, status: 'OFFICIAL' }, select: { id: true } });
+            users.forEach(u => targetSet.add(u.id));
+          }
         }
 
         if (assigned.sectors && assigned.sectors.length) {
-          const users = await prisma.user.findMany({ where: { status: 'OFFICIAL', volunteerProfile: { is: { sectors: { hasSome: assigned.sectors } } } }, select: { id: true } });
-          users.forEach(u => targetSet.add(u.id));
+          const profiles = await prisma.volunteerProfile.findMany({ where: { sectors: { hasSome: assigned.sectors } }, select: { userId: true } });
+          const uids = profiles.map(p => p.userId);
+          if (uids.length) {
+            const users = await prisma.user.findMany({ where: { id: { in: uids }, status: 'OFFICIAL' }, select: { id: true } });
+            users.forEach(u => targetSet.add(u.id));
+          }
         }
 
         if (assigned.clubs && assigned.clubs.length) {
-          const users = await prisma.user.findMany({ where: { status: 'OFFICIAL', volunteerProfile: { is: { clubs: { hasSome: assigned.clubs } } } }, select: { id: true } });
-          users.forEach(u => targetSet.add(u.id));
+          const profiles = await prisma.volunteerProfile.findMany({ where: { clubs: { hasSome: assigned.clubs } }, select: { userId: true } });
+          const uids = profiles.map(p => p.userId);
+          if (uids.length) {
+            const users = await prisma.user.findMany({ where: { id: { in: uids }, status: 'OFFICIAL' }, select: { id: true } });
+            users.forEach(u => targetSet.add(u.id));
+          }
         }
 
         if (assigned.committees && assigned.committees.length) {
@@ -87,24 +81,85 @@ export async function POST(req: Request) {
           committees.flatMap(c => c.members).forEach(m => targetSet.add(m.userId));
         }
       }
+    } catch (e) {
+      console.error('Failed to compute target users', e);
+    }
 
-      const targetUsers = Array.from(targetSet);
+    const targetUsers = Array.from(targetSet);
+    console.info('[secretaries/tasks] matched target user count:', targetUsers.length);
 
+    // Now create the task and save the explicit target list
+    const created = await prisma.task.create({
+      data: {
+        title: body.title.trim(),
+        description: body.description || undefined,
+        createdByUserId: requester.id,
+        assignedGroupType: 'ALL',
+        assignedGroup: null,
+        targetUserIds: targetUsers,
+        taskType: (body.inputType || 'YESNO') as any,
+        mandatory: !!body.mandatory,
+        pointsPositive: typeof body.points === 'number' ? Math.max(0, Math.floor(body.points)) : 0,
+        pointsNegative: 0,
+        startDate,
+        endDate,
+      },
+    });
+
+    // Produce notifications for target users
+    let totalNotificationsCreated = 0;
+    try {
       if (targetUsers.length) {
-        const notifications = targetUsers.map(uId => ({ userId: uId, type: 'NEW_TASK', title: created.title, message: created.description || '', link: `/tasks/${created.id}` }));
+        const notifications = targetUsers.map(uId => ({ userId: uId, type: 'NEW_TASK', title: 'New task for you.', message: created.description || 'You have a new task assigned. Please check your Tasks.', link: `/tasks/${created.id}` }));
         const chunkSize = 200;
         for (let i = 0; i < notifications.length; i += chunkSize) {
           const chunk = notifications.slice(i, i + chunkSize);
-          await prisma.notification.createMany({ data: chunk });
+          try {
+            const res = await prisma.notification.createMany({ data: chunk });
+            // @ts-ignore
+            totalNotificationsCreated += (res?.count || 0);
+          } catch (chunkErr) {
+            console.error('Failed to insert notification chunk', chunkErr);
+          }
         }
+        console.info('[secretaries/tasks] notifications created:', totalNotificationsCreated);
+      } else {
+        console.info('[secretaries/tasks] no target users found for assigned:', assigned);
       }
     } catch (e) {
-      console.error('Failed to compute/notify target users', e);
+      console.error('Failed to notify target users', e);
     }
 
-    return NextResponse.json({ ok: true, task: created });
+    return NextResponse.json({ ok: true, task: created, notificationsCreated: totalNotificationsCreated });
   } catch (err: any) {
     console.error('POST /api/secretaries/tasks error', err);
+    return NextResponse.json({ error: err?.message || 'Server error' }, { status: 500 });
+  }
+}
+
+export async function GET(req: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const requester = await prisma.user.findUnique({ where: { email: session.user.email }, select: { id: true, role: true, status: true } });
+    if (!requester || requester.status === 'BANNED') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const url = new URL(req.url);
+    const all = url.searchParams.get('all');
+
+    // If ?all=1 is requested, only allow SECRETARIES or MASTER to fetch all tasks
+    if (all === '1') {
+      if (!['SECRETARIES', 'MASTER'].includes(requester.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      const tasks = await prisma.task.findMany({ orderBy: { createdAt: 'desc' } });
+      return NextResponse.json({ tasks });
+    }
+
+    // Otherwise return tasks created by the requester
+    const tasks = await prisma.task.findMany({ where: { createdByUserId: requester.id }, orderBy: { createdAt: 'desc' } });
+    return NextResponse.json({ tasks });
+  } catch (err: any) {
+    console.error('GET /api/secretaries/tasks error', err);
     return NextResponse.json({ error: err?.message || 'Server error' }, { status: 500 });
   }
 }

@@ -316,6 +316,7 @@ model Task {
   createdByUserId       String
   assignedGroupType     GroupType        @default(ALL)
   assignedGroup         String?          // sector/club/department/committee ID
+  targetUserIds         String[]         // explicit list of target user IDs
   taskType              TaskType
   mandatory             Boolean          @default(false)
   pointsPositive        Int              @default(0)

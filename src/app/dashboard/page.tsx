@@ -66,6 +66,8 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("experience");
   const userEmail = session?.user?.email || (typeof window !== "undefined" ? localStorage.getItem("userEmail") : null);
   const { user, loading: userLoading, error, refresh } = useCachedUserProfile<User>(userEmail);
+  const [pendingTasks, setPendingTasks] = useState<any[] | null>(null);
+  const [pendingTasksLoading, setPendingTasksLoading] = useState(true);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -108,6 +110,30 @@ export default function DashboardPage() {
       router.push(`/payments/initial?email=${encodeURIComponent(userEmail)}`);
     }
   }, [router, status, user, userEmail, userLoading]);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (!userEmail) return;
+      setPendingTasksLoading(true);
+      try {
+        const res = await fetch('/api/tasks');
+        if (!res.ok) {
+          setPendingTasks([]);
+          return;
+        }
+        const d = await res.json();
+        if (!mounted) return;
+        setPendingTasks(d.tasks || []);
+      } catch (e) {
+        if (!mounted) return;
+        setPendingTasks([]);
+      } finally {
+        if (mounted) setPendingTasksLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [userEmail]);
 
   if (status === "unauthenticated") {
     return null;
@@ -190,19 +216,18 @@ export default function DashboardPage() {
     <section className="bg-gray-50 border border-gray-200 rounded-lg p-4">
       <h3 className="text-sm font-medium text-[#0b2545] mb-4">Pending Tasks</h3>
       <div className="space-y-3">
-        {user?.taskSubmissions?.length ? (
-          user.taskSubmissions
-            .filter(ts => ts.status === 'PENDING')
-            .slice(0, 6)
-            .map((ts) => (
-              <div key={ts.id} className="bg-white border border-gray-100 rounded-lg p-4 h-16 flex items-center justify-between cursor-pointer hover:shadow-sm hover:translate-y-[-1px] transition-transform">
-                <div className="text-sm text-gray-800">{ts.task?.title || 'Task'}</div>
-                <div className="text-xs text-gray-500">{new Date(ts.submittedAt).toLocaleDateString()}</div>
-              </div>
-            ))
+        {pendingTasksLoading ? (
+          <div className="text-sm text-gray-600">Loading…</div>
+        ) : (pendingTasks && pendingTasks.length ? (
+          pendingTasks.slice(0, 6).map((t) => (
+            <div key={t.id} onClick={() => router.push('/dashboard/tasks')} className="bg-white border border-gray-100 rounded-lg p-4 h-16 flex items-center justify-between cursor-pointer hover:shadow-sm hover:translate-y-[-1px] transition-transform">
+              <div className="text-sm text-gray-800">{t.title || 'Task'}</div>
+              <div className="text-xs text-gray-500">{t.endDate ? new Date(t.endDate).toLocaleDateString() : ''}</div>
+            </div>
+          ))
         ) : (
           <div className="text-sm text-gray-600">No pending tasks.</div>
-        )}
+        ))}
       </div>
     </section>
   );
