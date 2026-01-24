@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { useCachedUserProfile } from "@/hooks/useCachedUserProfile";
-import { SERVICES, SECTORS, CLUBS, autoAssignServiceFromInstitute } from '@/lib/organizations';
+import { SERVICES, autoAssignServiceFromInstitute } from '@/lib/organizations';
 
 interface User {
   id: string;
@@ -80,6 +80,8 @@ export default function UsersManagementPage() {
   const [selectedClubsLocal, setSelectedClubsLocal] = useState<string[]>([]);
   const [editingOrgSaving, setEditingOrgSaving] = useState(false);
   const [servicesList, setServicesList] = useState<Array<{id:string;name:string;}>>([]);
+  const [sectorsList, setSectorsList] = useState<string[]>([]);
+  const [clubsList, setClubsList] = useState<string[]>([]);
   const [pointsInput, setPointsInput] = useState<number | ''>('');
   const [rankInput, setRankInput] = useState<string>('');
   const [saving, setSaving] = useState(false);
@@ -104,7 +106,23 @@ export default function UsersManagementPage() {
       }
     };
 
+    // fetch sectors/clubs concurrently
+    const fetchOrgs = async () => {
+      try {
+        const res = await fetch('/api/orgs', { signal: controller.signal, cache: 'no-store' });
+        if (!res.ok) throw new Error(`Status ${res.status}`);
+        const data = await res.json();
+        if (!active) return;
+        setSectorsList(Array.isArray(data.sectors) ? data.sectors : []);
+        setClubsList(Array.isArray(data.clubs) ? data.clubs : []);
+      } catch (err: any) {
+        if (err.name === 'AbortError') return;
+        console.error('Failed to load org lists', err);
+      }
+    };
+
     fetchStats();
+    fetchOrgs();
     return () => { active = false; controller.abort(); };
   }, [authChecked]);
 
@@ -614,8 +632,14 @@ export default function UsersManagementPage() {
                                             <div>
                                               <div className="text-xs text-gray-600">Sectors</div>
                                               <div className="flex gap-2 mt-2 flex-wrap">
-                                                {SECTORS.map(s => (
-                                                  <button key={s} onClick={() => setSelectedSectorsLocal(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])} className={`px-3 py-1 rounded ${selectedSectorsLocal.includes(s) ? 'bg-[#0b2545] text-white' : 'bg-gray-100 text-gray-800'}`}>{s}</button>
+                                                {sectorsList.map(s => (
+                                                  <button
+                                                    key={s}
+                                                    onClick={() => setSelectedSectorsLocal(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])}
+                                                    className={`px-3 py-1 rounded ${selectedSectorsLocal.includes(s) ? 'bg-[#0b2545] text-white' : 'bg-gray-100 text-gray-800'}`}
+                                                  >
+                                                    {s}
+                                                  </button>
                                                 ))}
                                               </div>
                                             </div>
@@ -623,8 +647,14 @@ export default function UsersManagementPage() {
                                             <div>
                                               <div className="text-xs text-gray-600">Clubs</div>
                                               <div className="flex gap-2 mt-2 flex-wrap">
-                                                {CLUBS.map(c => (
-                                                  <button key={c} onClick={() => setSelectedClubsLocal(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c])} className={`px-3 py-1 rounded ${selectedClubsLocal.includes(c) ? 'bg-[#0b2545] text-white' : 'bg-gray-100 text-gray-800'}`}>{c}</button>
+                                                {clubsList.map(c => (
+                                                  <button
+                                                    key={c}
+                                                    onClick={() => setSelectedClubsLocal(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c])}
+                                                    className={`px-3 py-1 rounded ${selectedClubsLocal.includes(c) ? 'bg-[#0b2545] text-white' : 'bg-gray-100 text-gray-800'}`}
+                                                  >
+                                                    {c}
+                                                  </button>
                                                 ))}
                                               </div>
                                             </div>
