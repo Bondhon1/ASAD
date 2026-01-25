@@ -13,7 +13,16 @@ export async function POST(req: Request) {
     if (!['MASTER', 'ADMIN'].includes(requester.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     const body = await req.json();
-    const { purpose, amountTarget, bkashNumber, nagadNumber, expiryDate } = body as { purpose?: string; amountTarget?: number; bkashNumber?: string; nagadNumber?: string; expiryDate?: string };
+    const { purpose, amountTarget, bkashNumber, nagadNumber, expiryDate, pointsPerDonation, mandatory, pointsToDeduct } = body as {
+      purpose?: string;
+      amountTarget?: number;
+      bkashNumber?: string;
+      nagadNumber?: string;
+      expiryDate?: string;
+      pointsPerDonation?: number;
+      mandatory?: boolean;
+      pointsToDeduct?: number;
+    };
 
     if (!purpose || !expiryDate) return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
 
@@ -27,6 +36,9 @@ export async function POST(req: Request) {
       bkashNumber: bkashNumber || undefined,
       nagadNumber: nagadNumber || undefined,
       expiryDate: expiry,
+      pointsPerDonation: typeof pointsPerDonation === 'number' ? Math.max(0, Math.floor(pointsPerDonation)) : 0,
+      mandatory: !!mandatory,
+      pointsToDeduct: typeof pointsToDeduct === 'number' && mandatory ? Math.max(0, Math.floor(pointsToDeduct)) : undefined,
       isPublic: false,
     } });
 

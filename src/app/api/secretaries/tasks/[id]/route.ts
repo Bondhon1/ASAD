@@ -42,6 +42,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (typeof body.description === 'string') data.description = body.description;
     if (body.endDate) data.endDate = new Date(body.endDate);
     if (typeof body.pointsPositive === 'number') data.pointsPositive = Math.max(0, Math.floor(body.pointsPositive));
+    if (typeof body.pointsToDeduct === 'number') data.pointsNegative = Math.max(0, Math.floor(body.pointsToDeduct));
     if (typeof body.mandatory === 'boolean') data.mandatory = body.mandatory;
     if (typeof body.taskType === 'string') data.taskType = body.taskType;
 

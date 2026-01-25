@@ -101,7 +101,7 @@ export async function POST(req: Request) {
         taskType: (body.inputType || 'YESNO') as any,
         mandatory: !!body.mandatory,
         pointsPositive: typeof body.points === 'number' ? Math.max(0, Math.floor(body.points)) : 0,
-        pointsNegative: 0,
+        pointsNegative: (body.mandatory && typeof body.pointsToDeduct === 'number') ? Math.max(0, Math.floor(body.pointsToDeduct)) : 0,
         startDate,
         endDate,
       },

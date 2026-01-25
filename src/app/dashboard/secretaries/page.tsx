@@ -26,6 +26,7 @@ export default function SecretariesPage() {
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editPoint, setEditPoint] = useState<number | ''>('');
+  const [editPointsToDeduct, setEditPointsToDeduct] = useState<number | ''>('');
 
   // Task form state
   const [taskTitle, setTaskTitle] = useState('');
@@ -33,6 +34,7 @@ export default function SecretariesPage() {
   const [taskExpire, setTaskExpire] = useState('');
   const [taskPoint, setTaskPoint] = useState<number | ''>('');
   const [taskMandatory, setTaskMandatory] = useState(false);
+  const [taskPointsToDeduct, setTaskPointsToDeduct] = useState<number | ''>('');
   const [taskInputType, setTaskInputType] = useState<'YESNO'|'COMMENT'|'IMAGE'>('YESNO');
   const [taskRestriction, setTaskRestriction] = useState<'ALL'|'SERVICE'|'SECTOR'>('ALL');
   const [taskStatus, setTaskStatus] = useState<string | null>(null);
@@ -63,6 +65,7 @@ export default function SecretariesPage() {
         expireAt: taskExpire,
         points: Number(taskPoint || 0),
         mandatory: taskMandatory,
+        pointsToDeduct: taskMandatory ? Number(taskPointsToDeduct || 0) : undefined,
         inputType: taskInputType,
         assigned,
       };
@@ -96,6 +99,7 @@ export default function SecretariesPage() {
     setEditTitle(t.title || '');
     setEditDescription(t.description || '');
     setEditPoint(t.points ?? '');
+    setEditPointsToDeduct(t.pointsToDeduct ?? t.pointsNegative ?? '');
   };
 
   const cancelEdit = () => {
@@ -107,7 +111,7 @@ export default function SecretariesPage() {
 
   const saveEdit = async (id: string) => {
     try {
-      const payload: any = { title: editTitle, description: editDescription, points: editPoint === '' ? 0 : Number(editPoint) };
+      const payload: any = { title: editTitle, description: editDescription, pointsPositive: editPoint === '' ? 0 : Number(editPoint), pointsToDeduct: editPointsToDeduct === '' ? 0 : Number(editPointsToDeduct) };
       const res = await fetch(`/api/secretaries/tasks/${id}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || 'Failed to update');
@@ -213,6 +217,12 @@ export default function SecretariesPage() {
                 <p className="text-xs text-slate-500">If checked, non-compliance may affect scoring.</p>
               </div>
             </div>
+            {taskMandatory && (
+              <div>
+                <label className="block text-sm font-medium text-[#07223f] mb-1">Points To Deduct If Not Completed</label>
+                <input value={taskPointsToDeduct as any} onChange={(e)=>setTaskPointsToDeduct(e.target.value==='' ? '' : Number(e.target.value))} type="number" className={inputCls} />
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-[#07223f] mb-1">Task Type</label>
               <select value={taskInputType} onChange={(e)=>setTaskInputType(e.target.value as any)} className={inputCls}>
@@ -341,6 +351,7 @@ export default function SecretariesPage() {
                           <textarea className={inputCls} value={editDescription} onChange={e=>setEditDescription(e.target.value)} rows={3} />
                           <div className="flex gap-2">
                             <input className={inputCls} type="number" value={editPoint as any} onChange={e=>setEditPoint(e.target.value==='' ? '' : Number(e.target.value))} />
+                            <input className={inputCls} type="number" value={editPointsToDeduct as any} onChange={e=>setEditPointsToDeduct(e.target.value==='' ? '' : Number(e.target.value))} placeholder="Points to deduct" />
                             <button onClick={() => saveEdit(t.id)} className="px-3 py-1.5 bg-[#2b6cb0] text-white rounded-md">Save</button>
                             <button onClick={cancelEdit} className="px-3 py-1.5 bg-white border border-slate-200 rounded-md">Cancel</button>
                           </div>

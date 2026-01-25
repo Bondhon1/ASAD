@@ -13,6 +13,9 @@ export default function CreateDonationPage() {
   const [bkashNumber, setBkashNumber] = useState("");
   const [nagadNumber, setNagadNumber] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
+  const [points, setPoints] = useState<number | "">("");
+  const [mandatory, setMandatory] = useState(false);
+  const [pointsToDeduct, setPointsToDeduct] = useState<number | "">("");
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
 
   useEffect(() => {
@@ -33,6 +36,9 @@ export default function CreateDonationPage() {
         bkashNumber: bkashNumber || undefined,
         nagadNumber: nagadNumber || undefined,
         expiryDate,
+        pointsPerDonation: points === "" ? 0 : Number(points),
+        mandatory,
+        pointsToDeduct: mandatory ? (pointsToDeduct === "" ? 0 : Number(pointsToDeduct)) : undefined,
       };
       const res = await fetch("/api/donations/create", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
       const data = await res.json();
@@ -83,6 +89,26 @@ export default function CreateDonationPage() {
               <label className="block text-sm font-medium text-[#07223f] mb-1">Expiry Date</label>
               <input value={expiryDate} onChange={(e)=>setExpiryDate(e.target.value)} type="datetime-local" className={inputCls} />
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-[#07223f] mb-1">Points (awarded per donation)</label>
+              <input value={points as any} onChange={(e)=>setPoints(e.target.value==='' ? '' : Number(e.target.value))} type="number" className={inputCls} />
+            </div>
+
+            <div className="flex items-center gap-3">
+              <input type="checkbox" checked={mandatory} onChange={(e)=>setMandatory(e.target.checked)} className="h-4 w-4" />
+              <div>
+                <p className="text-sm font-medium text-[#07223f]">Mandatory</p>
+                <p className="text-xs text-slate-500">If checked, non-participation may deduct points.</p>
+              </div>
+            </div>
+
+            {mandatory && (
+              <div>
+                <label className="block text-sm font-medium text-[#07223f] mb-1">Points To Deduct If Not Completed</label>
+                <input value={pointsToDeduct as any} onChange={(e)=>setPointsToDeduct(e.target.value==='' ? '' : Number(e.target.value))} type="number" className={inputCls} />
+              </div>
+            )}
 
             <div className="flex items-center gap-3">
               <button type="submit" className="px-5 py-2.5 bg-[#2b6cb0] hover:bg-[#1f5aa0] text-white rounded-lg shadow transition">Create Donation</button>

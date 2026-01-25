@@ -389,6 +389,8 @@ model DonationCampaign {
   expiryDate            DateTime
   status                CampaignStatus   @default(ACTIVE)
   pointsPerDonation     Int              @default(0)
+  mandatory             Boolean          @default(false)
+  pointsToDeduct        Int?
   isPublic              Boolean          @default(false)
   donations             Donation[]
   createdAt             DateTime         @default(now())
