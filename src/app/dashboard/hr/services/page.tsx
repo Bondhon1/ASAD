@@ -120,7 +120,29 @@ export default function ServicesPage() {
                 {stats.map(s => (
                   <div key={s.instituteId} className="flex items-center justify-between py-2">
                     <div className="text-sm font-medium text-gray-800 truncate">{s.name}</div>
-                    <div className="text-sm font-semibold text-[#0b2545]">{s.volunteersCount}</div>
+                    <div className="flex items-center gap-2">
+                      <div className="text-sm font-semibold text-[#0b2545]">{s.volunteersCount}</div>
+                      <button
+                        onClick={async () => {
+                          setSelectedService({ id: s.instituteId, name: s.name, isInstitute: true });
+                          setSelectedServiceId(s.instituteId);
+                          setShowUsersModal(true);
+                          setServiceUsersLoading(true);
+                          try {
+                            const r = await fetch(`/api/hr/institutes/${s.instituteId}/users?page=1&pageSize=${serviceUsersPageSize}`);
+                            const d = await r.json();
+                            if (r.ok) {
+                              setServiceUsers(d.users || []);
+                              setServiceUsersTotal(d.total || 0);
+                              setServiceUsersPage(1);
+                            }
+                          } catch (e) { console.error(e); } finally { setServiceUsersLoading(false); }
+                        }}
+                        className="px-3 py-1 rounded-lg bg-[#0b2545] text-white text-sm font-semibold shadow hover:shadow-md transition"
+                      >
+                        View users
+                      </button>
+                    </div>
                   </div>
                 ))}
                 <div className="pt-3 flex items-center justify-between text-sm text-gray-600">
