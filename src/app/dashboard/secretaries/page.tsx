@@ -12,22 +12,20 @@ export default function SecretariesPage() {
   const userEmail = session?.user?.email || (typeof window !== "undefined" ? localStorage.getItem("userEmail") : null);
   const { user: viewer, loading: userLoading, error: userError, refresh } = useCachedUserProfile<any>(userEmail);
 
-  const [tab, setTab] = useState<'donation'|'task'>('donation');
   // org lists fetched from server
   const [servicesList, setServicesList] = useState<Array<{id:string;name:string}>>([]);
   const [sectorsList, setSectorsList] = useState<Array<{id:string;name:string}>>([]);
   const [clubsList, setClubsList] = useState<Array<{id:string;name:string}>>([]);
+  // Tab state: 'create' (default) or 'manage'
+  const [tab, setTab] = useState<'create'|'manage'>('create');
 
-  // Donation form state
-  const [donationTitle, setDonationTitle] = useState('');
-  const [donationPurpose, setDonationPurpose] = useState('');
-  const [donationNumber, setDonationNumber] = useState('');
-  const [donationAmount, setDonationAmount] = useState<number | ''>('');
-  const [donationExpire, setDonationExpire] = useState('');
-  const [donationPoints, setDonationPoints] = useState<number | ''>('');
-  const [donationRestriction, setDonationRestriction] = useState<'ALL'|'SERVICE'|'SECTOR'>('ALL');
-  const [donationPlatform, setDonationPlatform] = useState('');
-  const [donationStatus, setDonationStatus] = useState<string | null>(null);
+  // Manage tasks state
+  const [tasks, setTasks] = useState<Array<any>>([]);
+  const [loadingTasks, setLoadingTasks] = useState(false);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editPoint, setEditPoint] = useState<number | ''>('');
 
   // Task form state
   const [taskTitle, setTaskTitle] = useState('');
@@ -47,25 +45,6 @@ export default function SecretariesPage() {
 
   // Since requested frontend-only for Secretaries, forms will preview data locally.
 
-  const submitDonation = async () => {
-    setDonationStatus(null);
-    try {
-      const payload: any = {
-        title: donationTitle,
-        purpose: donationPurpose,
-        amount: donationAmount === '' ? undefined : Number(donationAmount),
-        expireAt: donationExpire,
-        points: donationPoints === '' ? 0 : Number(donationPoints),
-        isPublic: false,
-      };
-      const res = await fetch('/api/secretaries/donationCampaigns', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'Failed to create campaign');
-      setDonationStatus('Created: ' + (data.campaign?.id || JSON.stringify(data.campaign)));
-    } catch (err: any) {
-      setDonationStatus('Error: ' + (err?.message || 'Unknown'));
-    }
-  };
 
   const submitTask = async () => {
     setTaskStatus(null);
@@ -91,8 +70,63 @@ export default function SecretariesPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || 'Failed to create task');
       setTaskStatus('Created: ' + (data.task?.id || JSON.stringify(data.task)));
+      // refresh manage list if visible
+      if (tab === 'manage') fetchTasks();
     } catch (err: any) {
       setTaskStatus('Error: ' + (err?.message || 'Unknown'));
+    }
+  };
+
+  const fetchTasks = async () => {
+    setLoadingTasks(true);
+    try {
+      const res = await fetch('/api/secretaries/tasks');
+      if (!res.ok) throw new Error('Failed to load tasks');
+      const data = await res.json();
+      setTasks(Array.isArray(data.tasks) ? data.tasks : data.tasks || []);
+    } catch (e) {
+      setTasks([]);
+    } finally {
+      setLoadingTasks(false);
+    }
+  };
+
+  const startEdit = (t: any) => {
+    setEditingTaskId(t.id);
+    setEditTitle(t.title || '');
+    setEditDescription(t.description || '');
+    setEditPoint(t.points ?? '');
+  };
+
+  const cancelEdit = () => {
+    setEditingTaskId(null);
+    setEditTitle('');
+    setEditDescription('');
+    setEditPoint('');
+  };
+
+  const saveEdit = async (id: string) => {
+    try {
+      const payload: any = { title: editTitle, description: editDescription, points: editPoint === '' ? 0 : Number(editPoint) };
+      const res = await fetch(`/api/secretaries/tasks/${id}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Failed to update');
+      // update local
+      setTasks(prev => prev.map(p => p.id === id ? { ...p, ...payload } : p));
+      cancelEdit();
+    } catch (err: any) {
+      alert(err?.message || 'Update failed');
+    }
+  };
+
+  const deleteTask = async (id: string) => {
+    if (!confirm('Delete this task?')) return;
+    try {
+      const res = await fetch(`/api/secretaries/tasks/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Delete failed');
+      setTasks(prev => prev.filter(t => t.id !== id));
+    } catch (e) {
+      alert('Failed to delete task');
     }
   };
   // auth checks and viewer setup for DashboardLayout
@@ -142,64 +176,18 @@ export default function SecretariesPage() {
       <div className="max-w-5xl mx-auto">
         <div className="flex flex-col gap-3 mb-6">
           <p className="text-sm uppercase tracking-[0.2em] text-[#0b1c33]">Secretaries Console</p>
-          <h1 className="text-3xl md:text-4xl font-semibold leading-tight text-[#0b1c33]">Create Tasks & Donations</h1>
+          <h1 className="text-3xl md:text-4xl font-semibold leading-tight text-[#0b1c33]">Create Tasks</h1>
           <p className="text-[#0b1c33] text-sm md:text-base">Target services, sectors, or clubs with one action. Everyone selected receives a notification.</p>
         </div>
 
-          <div className="flex items-center gap-2 mb-5">
-            <button onClick={() => setTab('donation')} className={`px-4 py-2 rounded-full text-sm font-semibold transition ${tab==='donation' ? 'bg-white text-[#0b1c33] shadow' : 'bg-white/90 text-slate-700 border border-slate-200'}`}>Donation</button>
-            <button onClick={() => setTab('task')} className={`px-4 py-2 rounded-full text-sm font-semibold transition ${tab==='task' ? 'bg-white text-[#0b1c33] shadow' : 'bg-white/90 text-slate-700 border border-slate-200'}`}>Task</button>
-          </div>
+        <div className="flex items-center gap-3 mb-5">
+          <button type="button" onClick={() => setTab('create')} className={`px-4 py-2 rounded-full text-sm font-semibold transition ${tab === 'create' ? 'bg-white text-[#0b1c33] shadow' : 'bg-white/90 text-slate-700 border border-slate-200'}`}>Create Task</button>
+          <button type="button" onClick={() => { setTab('manage'); fetchTasks(); }} className={`px-4 py-2 rounded-full text-sm font-semibold transition ${tab === 'manage' ? 'bg-white text-[#0b1c33] shadow' : 'bg-white/90 text-slate-700 border border-slate-200'}`}>Manage Tasks</button>
+        </div>
 
-        {tab === 'donation' ? (
-          <form className="bg-white border border-slate-200 p-6 md:p-8 rounded-2xl shadow-sm space-y-5" onSubmit={(e)=>{ e.preventDefault(); submitDonation(); }}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-[#07223f] mb-1">Title</label>
-              <input value={donationTitle} onChange={(e)=>setDonationTitle(e.target.value)} placeholder="Donation title" className={inputCls} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-[#07223f] mb-1">Amount (৳)</label>
-              <input value={donationAmount as any} onChange={(e)=>setDonationAmount(e.target.value==='' ? '' : Number(e.target.value))} placeholder="Amount" type="number" className={inputCls} />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-[#07223f] mb-1">Description</label>
-            <textarea value={donationPurpose} onChange={(e)=>setDonationPurpose(e.target.value)} placeholder="Optional description" className={inputCls} rows={4} />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-[#07223f] mb-1">Expire At</label>
-              <input value={donationExpire} onChange={(e)=>setDonationExpire(e.target.value)} type="datetime-local" className={inputCls} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-[#07223f] mb-1">Points</label>
-              <input value={donationPoints as any} onChange={(e)=>setDonationPoints(e.target.value==='' ? '' : Number(e.target.value))} type="number" className={inputCls} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-[#07223f] mb-1">Target</label>
-              <select value={donationRestriction} onChange={(e)=>setDonationRestriction(e.target.value as any)} className={inputCls}>
-                <option value="ALL">All volunteers</option>
-                <option value="SERVICE">By Service</option>
-                <option value="SECTOR">By Sector</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-[#07223f] mb-1">Platform (optional)</label>
-            <input value={donationPlatform} onChange={(e)=>setDonationPlatform(e.target.value)} placeholder="Posted platform name" className={inputCls} />
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button type="submit" className="px-5 py-2.5 bg-[#2b6cb0] hover:bg-[#1f5aa0] text-white rounded-lg shadow transition">Create Donation</button>
-            {donationStatus && <div className="text-sm text-gray-700">{donationStatus}</div>}
-          </div>
-        </form>
-        ) : (
-          <form className="bg-white border border-slate-200 p-6 md:p-8 rounded-2xl shadow-sm space-y-5" onSubmit={(e)=>{ e.preventDefault(); submitTask(); }}>
+        {tab === 'create' ? (
+        <form className="bg-white border border-slate-200 p-6 md:p-8 rounded-2xl shadow-sm space-y-5" onSubmit={(e)=>{ e.preventDefault(); submitTask(); }}>
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-[#07223f] mb-1">Task Title</label>
@@ -336,6 +324,48 @@ export default function SecretariesPage() {
             {taskStatus && <div className="text-sm text-gray-700">{taskStatus}</div>}
           </div>
         </form>
+        ) : (
+          <div className="bg-white border border-slate-200 p-6 md:p-8 rounded-2xl shadow-sm space-y-4">
+            {loadingTasks ? (
+              <div className="text-sm text-slate-600">Loading...</div>
+            ) : tasks.length === 0 ? (
+              <div className="text-sm text-slate-600">No active tasks.</div>
+            ) : (
+              <div className="space-y-3">
+                {tasks.map((t) => (
+                  <div key={t.id} className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      {editingTaskId === t.id ? (
+                        <div className="space-y-2">
+                          <input className={inputCls} value={editTitle} onChange={e=>setEditTitle(e.target.value)} />
+                          <textarea className={inputCls} value={editDescription} onChange={e=>setEditDescription(e.target.value)} rows={3} />
+                          <div className="flex gap-2">
+                            <input className={inputCls} type="number" value={editPoint as any} onChange={e=>setEditPoint(e.target.value==='' ? '' : Number(e.target.value))} />
+                            <button onClick={() => saveEdit(t.id)} className="px-3 py-1.5 bg-[#2b6cb0] text-white rounded-md">Save</button>
+                            <button onClick={cancelEdit} className="px-3 py-1.5 bg-white border border-slate-200 rounded-md">Cancel</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="font-semibold text-slate-900">{t.title}</div>
+                          <div className="text-sm text-slate-600">{t.description}</div>
+                          <div className="text-xs text-slate-500 mt-1">Points: {t.points ?? 0} • Expires: {t.expireAt ?? '—'}</div>
+                        </>
+                      )}
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      {editingTaskId !== t.id && (
+                        <>
+                          <button onClick={() => startEdit(t)} className="px-3 py-1.5 bg-white border border-slate-200 rounded-md text-sm">Edit</button>
+                          <button onClick={() => deleteTask(t.id)} className="px-3 py-1.5 bg-red-50 border border-red-200 text-red-600 rounded-md text-sm">Delete</button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>

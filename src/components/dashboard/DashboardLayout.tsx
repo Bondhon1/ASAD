@@ -147,8 +147,14 @@ export default function DashboardLayout({
       { icon: FileText, label: "Leave Management", href: "/dashboard/hr/leaves" },
       { icon: Ban, label: "User Management", href: "/dashboard/hr/users" },
       { icon: Briefcase, label: "Services", href: "/dashboard/hr/services" },
+      { icon: ClipboardList, label: "Manage Tasks", href: "/dashboard/tasks/manage" },
       { icon: Settings, label: "Settings", href: "/dashboard/settings" },
     ];
+
+    // show Create Donation for ADMIN users in the HR/admin menu
+    if (userRole === "ADMIN") {
+      hrItems.splice(hrItems.length - 1, 0, { icon: DollarSign, label: "Create Donation", href: "/dashboard/donations/create" });
+    }
 
     const directorItems = [
       { icon: Home, label: "Dashboard", href: "/dashboard" },
@@ -178,6 +184,7 @@ export default function DashboardLayout({
     const secretariesItems = [
       { icon: Home, label: "Dashboard", href: "/dashboard" },
       { icon: ClipboardList, label: "Secretaries", href: "/dashboard/secretaries" },
+      { icon: ClipboardList, label: "Manage Tasks", href: "/dashboard/tasks/manage" },
       { icon: Users, label: "Community", href: "/dashboard/community" },
       { icon: Settings, label: "Settings", href: "/dashboard/settings" },
     ];
@@ -193,10 +200,10 @@ export default function DashboardLayout({
       { icon: Briefcase, label: "Services", href: "/dashboard/hr/services" },
       { icon: ClipboardList, label: "Manage Points / Ranks", href: "/dashboard/database" },
       { icon: ClipboardList, label: "Tasks", href: "/dashboard/tasks" },
-      { icon: DollarSign, label: "Donations", href: "/dashboard/donations" },
       { icon: ClipboardList, label: "Secretaries", href: "/dashboard/secretaries" },
       { icon: Users, label: "Community", href: "/dashboard/community" },
       { icon: Settings, label: "Settings", href: "/dashboard/settings" },
+      { icon: DollarSign, label: "Create Donation", href: "/dashboard/donations/create" },
     ];
 
     if (userRole === "MASTER") return mergeWithCommon(masterItems);

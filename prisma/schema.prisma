@@ -384,6 +384,8 @@ model DonationCampaign {
   title                 String
   purpose               String?
   amountTarget          Float?
+  bkashNumber           String?
+  nagadNumber           String?
   expiryDate            DateTime
   status                CampaignStatus   @default(ACTIVE)
   pointsPerDonation     Int              @default(0)
