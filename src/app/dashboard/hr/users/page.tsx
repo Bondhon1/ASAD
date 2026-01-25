@@ -80,8 +80,8 @@ export default function UsersManagementPage() {
   const [selectedClubsLocal, setSelectedClubsLocal] = useState<string[]>([]);
   const [editingOrgSaving, setEditingOrgSaving] = useState(false);
   const [servicesList, setServicesList] = useState<Array<{id:string;name:string;}>>([]);
-  const [sectorsList, setSectorsList] = useState<string[]>([]);
-  const [clubsList, setClubsList] = useState<string[]>([]);
+  const [sectorsList, setSectorsList] = useState<Array<{id:string;name:string;}>>([]);
+  const [clubsList, setClubsList] = useState<Array<{id:string;name:string;}>>([]);
   const [pointsInput, setPointsInput] = useState<number | ''>('');
   const [rankInput, setRankInput] = useState<string>('');
   const [saving, setSaving] = useState(false);
@@ -491,13 +491,13 @@ export default function UsersManagementPage() {
 
                                     {(u.volunteerProfile?.sectors || []).length > 0 ? (
                                       (u.volunteerProfile?.sectors || []).map(s => (
-                                        <span key={`sector-${s}`} className="px-3 py-1 rounded-full bg-gray-100 text-xs font-medium text-gray-800">{s}</span>
+                                        <span key={`sector-${s}`} className="px-3 py-1 rounded-full bg-gray-100 text-xs font-medium text-gray-800">{sectorsList.find(x=>x.id===s)?.name || s}</span>
                                       ))
                                     ) : null}
 
                                     {(u.volunteerProfile?.clubs || []).length > 0 ? (
                                       (u.volunteerProfile?.clubs || []).map(c => (
-                                        <span key={`club-${c}`} className="px-3 py-1 rounded-full bg-gray-100 text-xs font-medium text-gray-800">{c}</span>
+                                        <span key={`club-${c}`} className="px-3 py-1 rounded-full bg-gray-100 text-xs font-medium text-gray-800">{clubsList.find(x=>x.id===c)?.name || c}</span>
                                       ))
                                     ) : null}
 
@@ -634,11 +634,11 @@ export default function UsersManagementPage() {
                                               <div className="flex gap-2 mt-2 flex-wrap">
                                                 {sectorsList.map(s => (
                                                   <button
-                                                    key={s}
-                                                    onClick={() => setSelectedSectorsLocal(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])}
-                                                    className={`px-3 py-1 rounded ${selectedSectorsLocal.includes(s) ? 'bg-[#0b2545] text-white' : 'bg-gray-100 text-gray-800'}`}
+                                                    key={s.id}
+                                                    onClick={() => setSelectedSectorsLocal(prev => prev.includes(s.id) ? prev.filter(x => x !== s.id) : [...prev, s.id])}
+                                                    className={`px-3 py-1 rounded ${selectedSectorsLocal.includes(s.id) ? 'bg-[#0b2545] text-white' : 'bg-gray-100 text-gray-800'}`}
                                                   >
-                                                    {s}
+                                                    {s.name}
                                                   </button>
                                                 ))}
                                               </div>
@@ -649,11 +649,11 @@ export default function UsersManagementPage() {
                                               <div className="flex gap-2 mt-2 flex-wrap">
                                                 {clubsList.map(c => (
                                                   <button
-                                                    key={c}
-                                                    onClick={() => setSelectedClubsLocal(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c])}
-                                                    className={`px-3 py-1 rounded ${selectedClubsLocal.includes(c) ? 'bg-[#0b2545] text-white' : 'bg-gray-100 text-gray-800'}`}
+                                                    key={c.id}
+                                                    onClick={() => setSelectedClubsLocal(prev => prev.includes(c.id) ? prev.filter(x => x !== c.id) : [...prev, c.id])}
+                                                    className={`px-3 py-1 rounded ${selectedClubsLocal.includes(c.id) ? 'bg-[#0b2545] text-white' : 'bg-gray-100 text-gray-800'}`}
                                                   >
-                                                    {c}
+                                                    {c.name}
                                                   </button>
                                                 ))}
                                               </div>
