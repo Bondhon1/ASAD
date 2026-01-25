@@ -10,6 +10,7 @@ type Body = {
   inputType?: 'YESNO' | 'COMMENT' | 'IMAGE' | 'DONATION';
   mandatory?: boolean;
   points?: number;
+  pointsToDeduct?: number;
   expireAt?: string;
   assigned?: {
     services?: string[]; // service ids
