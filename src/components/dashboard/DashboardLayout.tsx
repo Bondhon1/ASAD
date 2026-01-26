@@ -17,7 +17,6 @@ import {
   Settings,
   LogOut,
   UserCheck,
-  Tool,
   CheckSquare,
   BarChart2,
   Briefcase,
