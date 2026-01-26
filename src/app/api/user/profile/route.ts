@@ -29,10 +29,11 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Fetch user with all includes in a single query
+    // Fetch user with all includes in a single query (include accounts for OAuth detection)
     const user = await prisma.user.findUnique({
       where: { email },
       include: {
+        accounts: true,
         institute: true,
         // include service on volunteerProfile and rank
         volunteerProfile: { include: { rank: true, service: true } },
@@ -112,7 +113,14 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const responseData = { user: { ...user, followersCount, followingCount } };
+    // Do not expose password hash to clients; provide helper flags for frontend
+    const safeUser: any = { ...user };
+    if (safeUser.password) delete safeUser.password;
+    const authProviders = (user.accounts || []).map(a => a.provider).filter(Boolean);
+    safeUser.hasPassword = !!user.password;
+    safeUser.authProviders = authProviders;
+
+    const responseData = { user: { ...safeUser, followersCount, followingCount } };
 
     // Cache the response
     profileCache.set(email, { data: responseData, timestamp: Date.now() });

@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
 
     const email = session.user.email;
     const body = await request.json();
-    const { fullName, username, institute, profilePicUrl, address, experiences } = body;
+    const { fullName, username, institute, profilePicUrl, address, experiences, guardianName, guardianContact, birthdate, phone } = body;
 
     const user = await prisma.user.findUnique({ where: { email }, include: { volunteerProfile: true } });
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -96,6 +96,10 @@ export async function POST(request: NextRequest) {
       district: address?.district ?? undefined,
       upazila: address?.upazila ?? undefined,
       addressLine: address?.addressLine ?? undefined,
+      phone: phone ?? undefined,
+      guardianName: guardianName ?? undefined,
+      guardianContact: guardianContact ?? undefined,
+      birthdate: birthdate ? new Date(birthdate) : undefined,
     }, include: { institute: true, volunteerProfile: true, experiences: { orderBy: { startDate: 'desc' } } } }));
 
     const results = await prisma.$transaction(ops);

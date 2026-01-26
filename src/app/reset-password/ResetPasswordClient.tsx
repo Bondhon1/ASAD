@@ -9,6 +9,7 @@ export default function ResetPasswordClient() {
   const token = searchParams.get('token') || '';
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -43,11 +44,17 @@ export default function ResetPasswordClient() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="text-sm">New password</label>
-            <input value={password} onChange={e => setPassword(e.target.value)} type="password" className="w-full border rounded px-3 py-2" />
+            <div className="relative">
+              <input value={password} onChange={e => setPassword(e.target.value)} type={showPassword ? 'text' : 'password'} className="w-full border rounded px-3 py-2 pr-12" />
+              <button type="button" onClick={() => setShowPassword(s => !s)} className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-gray-600">{showPassword ? 'Hide' : 'Show'}</button>
+            </div>
           </div>
           <div>
             <label className="text-sm">Confirm password</label>
-            <input value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} type="password" className="w-full border rounded px-3 py-2" />
+            <div className="relative">
+              <input value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} type={showPassword ? 'text' : 'password'} className="w-full border rounded px-3 py-2 pr-12" />
+              <button type="button" onClick={() => setShowPassword(s => !s)} className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-gray-600">{showPassword ? 'Hide' : 'Show'}</button>
+            </div>
           </div>
           <div>
             <button disabled={loading} className="w-full px-4 py-2 bg-[#1E3A5F] text-white rounded">{loading ? 'Saving...' : 'Save password'}</button>

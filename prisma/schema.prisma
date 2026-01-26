@@ -38,6 +38,10 @@ model User {
   district              String?
   upazila               String?
   addressLine           String?
+  // Guardian and personal info
+  guardianName          String?
+  guardianContact       String?
+  birthdate             DateTime?
   
   // Google Calendar integration (for HR)
   googleRefreshToken    String?                // Encrypted refresh token

@@ -214,7 +214,14 @@ export default function DashboardLayout({
     return commonItems;
   };
 
-  const menuItems = getMenuItems();
+  let menuItems = getMenuItems();
+  // Ensure Job Posts (HR jobs) appears at the bottom of the menu for all roles
+  const jobHref = '/dashboard/hr/jobs';
+  const jobIndex = menuItems.findIndex((it) => it.href === jobHref);
+  if (jobIndex !== -1) {
+    const [jobItem] = menuItems.splice(jobIndex, 1);
+    menuItems.push(jobItem);
+  }
   
   // Check if userId is valid for notifications
   const hasValidUserId = userId && userId !== "";

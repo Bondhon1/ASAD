@@ -22,6 +22,7 @@ export default function SettingsPage() {
 
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
+  const [phone, setPhone] = useState("");
   const [institute, setInstitute] = useState("");
   const [profilePicUrl, setProfilePicUrl] = useState("");
   const [division, setDivision] = useState("");
@@ -29,8 +30,18 @@ export default function SettingsPage() {
   const [upazila, setUpazila] = useState("");
   const [addressLine, setAddressLine] = useState("");
   const [experiences, setExperiences] = useState<ExperienceInput[]>([]);
+  const [guardianName, setGuardianName] = useState("");
+  const [guardianContact, setGuardianContact] = useState("");
+  const [birthdate, setBirthdate] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [accountExpanded, setAccountExpanded] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwMessage, setPwMessage] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   const [suggestions, setSuggestions] = useState<Array<{ label: string; value: string; eiin?: number | string; institutionType?: string }>>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const hideTimeoutRef = useRef<number | null>(null);
@@ -62,16 +73,20 @@ export default function SettingsPage() {
       try {
         const res = await fetch(`/api/user/profile?email=${encodeURIComponent(email)}`);
         const data = await res.json();
-        if (data.user) {
+          if (data.user) {
           setUser(data.user);
           setFullName(data.user.fullName || "");
           setUsername(data.user.username || "");
+          setPhone(data.user.phone || "");
           setInstitute(data.user.institute?.name || "");
           setProfilePicUrl(data.user.profilePicUrl || "");
           setDivision(data.user.division || "");
           setDistrict(data.user.district || "");
           setUpazila(data.user.upazila || "");
           setAddressLine(data.user.addressLine || "");
+          setGuardianName(data.user.guardianName || "");
+          setGuardianContact(data.user.guardianContact || "");
+          setBirthdate(data.user.birthdate ? (new Date(data.user.birthdate)).toISOString().slice(0,10) : "");
           setExperiences(
             (data.user.experiences || []).map((exp: any) => ({
               id: exp.id,
@@ -123,8 +138,12 @@ export default function SettingsPage() {
           fullName,
           username,
           institute: instituteToSend,
+            phone,
           profilePicUrl,
-          address: { division, district, upazila, addressLine },
+            address: { division, district, upazila, addressLine },
+            guardianName,
+            guardianContact,
+            birthdate,
           experiences,
         }),
       });
@@ -136,12 +155,16 @@ export default function SettingsPage() {
           setUser(json.user);
           setFullName(json.user.fullName || fullName);
           setUsername(json.user.username || username);
+          setPhone(json.user.phone || phone);
           setInstitute(json.user.institute?.name || instituteToSend);
           setProfilePicUrl(json.user.profilePicUrl || profilePicUrl);
           setDivision(json.user.division || division);
           setDistrict(json.user.district || district);
           setUpazila(json.user.upazila || upazila);
           setAddressLine(json.user.addressLine || addressLine);
+          setGuardianName(json.user.guardianName || guardianName);
+          setGuardianContact(json.user.guardianContact || guardianContact);
+          setBirthdate(json.user.birthdate ? (new Date(json.user.birthdate)).toISOString().slice(0,10) : birthdate);
           setExperiences(
             (json.user.experiences || []).map((exp: any) => ({
               id: exp.id,
@@ -163,6 +186,50 @@ export default function SettingsPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleChangePassword = async () => {
+    setPwMessage(null);
+    if (!newPassword || newPassword.length < 8) { setPwMessage('Password must be at least 8 characters'); return; }
+    if (newPassword !== confirmPassword) { setPwMessage('Passwords do not match'); return; }
+    // if user has a password, ensure old password provided
+    if (user?.hasPassword && !currentPassword) { setPwMessage('Old password is required'); return; }
+    setPwSaving(true);
+    try {
+      const res = await fetch('/api/user/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword: currentPassword || undefined, newPassword }),
+      });
+      const json = await res.json();
+      if (res.ok) {
+        setPwMessage('Password updated');
+        setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
+        // refetch profile to update hasPassword flag
+        const email = session?.user?.email;
+        if (email) {
+          const r = await fetch(`/api/user/profile?email=${encodeURIComponent(email)}`);
+          const d = await r.json(); if (d.user) setUser(d.user);
+        }
+      } else {
+        setPwMessage(json.error || 'Failed to change password');
+      }
+    } catch (e) {
+      setPwMessage('Network error');
+    } finally {
+      setPwSaving(false);
+    }
+  };
+
+  const handleSendResetEmail = async () => {
+    setPwMessage(null);
+    try {
+      const email = session?.user?.email;
+      if (!email) { setPwMessage('No email available'); return; }
+      const res = await fetch('/api/auth/forgot-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+      if (res.ok) setPwMessage('Password reset email sent if account exists');
+      else setPwMessage('Failed to send reset email');
+    } catch (e) { setPwMessage('Network error'); }
   };
 
   if (status === "unauthenticated") return null;
@@ -311,8 +378,8 @@ export default function SettingsPage() {
                       <input value={fullName} onChange={e=>setFullName(e.target.value)} className="w-full mt-1 p-2 border border-gray-100 rounded-md" />
                     </div>
                     <div>
-                      <label className="text-xs text-gray-600">Username</label>
-                      <input value={username} disabled className="w-full mt-1 p-2 border border-gray-100 rounded-md bg-gray-50" />
+                      <label className="text-xs text-gray-600">Phone / Contact number</label>
+                      <input value={phone} onChange={e=>setPhone(e.target.value)} className="w-full mt-1 p-2 border border-gray-100 rounded-md" />
                     </div>
                     <div>
                       <label className="text-xs text-gray-600">Institute</label>
@@ -353,6 +420,19 @@ export default function SettingsPage() {
                           </div>
                         )}
                       </div>
+                    </div>
+                    
+                    <div>
+                      <label className="text-xs text-gray-600">Guardian name</label>
+                      <input value={guardianName} onChange={e => setGuardianName(e.target.value)} className="w-full mt-1 p-2 border border-gray-100 rounded-md" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-600">Guardian contact</label>
+                      <input value={guardianContact} onChange={e => setGuardianContact(e.target.value)} className="w-full mt-1 p-2 border border-gray-100 rounded-md" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-600">Birthdate</label>
+                      <input type="date" value={birthdate} onChange={e => setBirthdate(e.target.value)} className="w-full mt-1 p-2 border border-gray-100 rounded-md" />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
                       <div>
@@ -456,6 +536,67 @@ export default function SettingsPage() {
         </div>
       </div>
       )}
+
+      <div className="max-w-4xl mx-auto px-6 py-4">
+        <div className="bg-white border border-gray-200 rounded-md">
+          <button className="w-full text-left px-4 py-3 flex items-center justify-between" onClick={() => setAccountExpanded(v => !v)} aria-expanded={accountExpanded}>
+            <div>
+              <div className="text-sm font-medium text-gray-900">Account</div>
+              <div className="text-xs text-gray-500">Change password or manage login. Google signups handled.</div>
+            </div>
+            <div className="text-gray-500">{accountExpanded ? '−' : '+'}</div>
+          </button>
+
+          {accountExpanded && (
+            <div className="p-4 border-t border-gray-100">
+              <div className="space-y-3 max-w-xl">
+                <div className="text-sm text-gray-700">Email: {user?.email || session?.user?.email}</div>
+                {user?.hasPassword ? (
+                  <div className="space-y-2">
+                    <div>
+                      <label className="text-xs text-gray-600">Old password</label>
+                      <div className="relative">
+                        <input type={showPassword ? 'text' : 'password'} value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} className="w-full mt-1 p-2 pr-12 border border-gray-100 rounded-md" />
+                        <button type="button" onClick={() => setShowPassword(s => !s)} className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">{showPassword ? 'Hide' : 'Show'}</button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-600">New password</label>
+                      <div className="relative">
+                        <input type={showPassword ? 'text' : 'password'} value={newPassword} onChange={e => setNewPassword(e.target.value)} className="w-full mt-1 p-2 pr-12 border border-gray-100 rounded-md" />
+                        <button type="button" onClick={() => setShowPassword(s => !s)} className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">{showPassword ? 'Hide' : 'Show'}</button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-600">Confirm new password</label>
+                      <div className="relative">
+                        <input type={showPassword ? 'text' : 'password'} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className="w-full mt-1 p-2 pr-12 border border-gray-100 rounded-md" />
+                        <button type="button" onClick={() => setShowPassword(s => !s)} className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">{showPassword ? 'Hide' : 'Show'}</button>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button onClick={handleChangePassword} disabled={pwSaving} className="px-4 py-2 bg-[#07223f] text-white rounded-md">{pwSaving ? 'Saving...' : 'Change password'}</button>
+                      {pwMessage && <div className="text-sm text-gray-600">{pwMessage}</div>}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {user?.authProviders && user.authProviders.includes('google') && (
+                      <div className="text-sm text-gray-700">This account was created via Google sign-in and has no password set.</div>
+                    )}
+                    <div className="text-sm text-gray-600">No password is set for this account. Send a set-password email to create one.</div>
+                    <div className="flex items-center gap-3">
+                      <button onClick={handleSendResetEmail} className="px-3 py-2 border border-gray-100 rounded-md text-sm">Send set-password email</button>
+                      {pwMessage && <div className="text-sm text-gray-600">{pwMessage}</div>}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
     </DashboardLayout>
   );
 }
