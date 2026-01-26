@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -17,8 +17,10 @@ import {
   Settings,
   LogOut,
   UserCheck,
+  Tool,
+  CheckSquare,
+  BarChart2,
   Briefcase,
-  Ban,
   FileText,
   Bell
 } from "lucide-react";
@@ -122,6 +124,9 @@ export default function DashboardLayout({
   const isStaff = userRole === "HR" || userRole === "MASTER" || userRole === "ADMIN" || userRole === "DIRECTOR" || userRole === "DATABASE_DEPT" || userRole === "SECRETARIES";
   const displayTopbarName = topbarName ?? userName;
   const displayTopbarLabel = topbarLabel ?? (isStaff ? userRole : formatStatusLabel(userStatus));
+  const pathname = usePathname();
+  const isUserManagementPage = pathname?.startsWith("/dashboard/hr/users");
+  const logoSrc = isUserManagementPage ? "/three-people.svg" : "/logo.jpg";
 
   const handleLogout = () => {
     localStorage.clear();
@@ -142,12 +147,12 @@ export default function DashboardLayout({
       { icon: Home, label: "Dashboard", href: "/dashboard" },
       { icon: UserCheck, label: "New Requests", href: "/dashboard/hr/requests" },
       { icon: Calendar, label: "Schedule Interview", href: "/dashboard/hr/interviews" },
-      { icon: Users, label: "Approve Volunteers", href: "/dashboard/hr/approvals" },
+      { icon: UserCheck, label: "Approve Volunteers", href: "/dashboard/hr/approvals" },
       { icon: Briefcase, label: "Job Posts", href: "/dashboard/hr/jobs" },
       { icon: FileText, label: "Leave Management", href: "/dashboard/hr/leaves" },
-      { icon: Ban, label: "User Management", href: "/dashboard/hr/users" },
+      { icon: Users, label: "User Management", href: "/dashboard/hr/users" },
       { icon: Briefcase, label: "Services", href: "/dashboard/hr/services" },
-      { icon: ClipboardList, label: "Manage Tasks", href: "/dashboard/tasks/manage" },
+      { icon: CheckSquare, label: "Manage Tasks", href: "/dashboard/tasks/manage" },
       { icon: Settings, label: "Settings", href: "/dashboard/settings" },
     ];
 
@@ -158,7 +163,7 @@ export default function DashboardLayout({
 
     const directorItems = [
       { icon: Home, label: "Dashboard", href: "/dashboard" },
-      { icon: Ban, label: "User Management", href: "/dashboard/hr/users" },
+      { icon: Users, label: "User Management", href: "/dashboard/hr/users" },
       { icon: Settings, label: "Settings", href: "/dashboard/settings" },
     ];
 
@@ -176,7 +181,7 @@ export default function DashboardLayout({
 
     const databaseItems = [
       { icon: Home, label: "Dashboard", href: "/dashboard" },
-      { icon: ClipboardList, label: "Manage Points / Ranks", href: "/dashboard/database" },
+      { icon: BarChart2, label: "Manage Points / Ranks", href: "/dashboard/database" },
       { icon: Users, label: "Community", href: "/dashboard/community" },
       { icon: Settings, label: "Settings", href: "/dashboard/settings" },
     ];
@@ -193,12 +198,12 @@ export default function DashboardLayout({
       { icon: Home, label: "Dashboard", href: "/dashboard" },
       { icon: UserCheck, label: "New Requests", href: "/dashboard/hr/requests" },
       { icon: Calendar, label: "Schedule Interview", href: "/dashboard/hr/interviews" },
-      { icon: Users, label: "Approve Volunteers", href: "/dashboard/hr/approvals" },
+      { icon: UserCheck, label: "Approve Volunteers", href: "/dashboard/hr/approvals" },
       { icon: Briefcase, label: "Job Posts", href: "/dashboard/hr/jobs" },
       { icon: FileText, label: "Leave Management", href: "/dashboard/hr/leaves" },
-      { icon: Ban, label: "User Management", href: "/dashboard/hr/users" },
+      { icon: Users, label: "User Management", href: "/dashboard/hr/users" },
       { icon: Briefcase, label: "Services", href: "/dashboard/hr/services" },
-      { icon: ClipboardList, label: "Manage Points / Ranks", href: "/dashboard/database" },
+      { icon: BarChart2, label: "Manage Points / Ranks", href: "/dashboard/database" },
       { icon: ClipboardList, label: "Tasks", href: "/dashboard/tasks" },
       { icon: ClipboardList, label: "Secretaries", href: "/dashboard/secretaries" },
       { icon: Users, label: "Community", href: "/dashboard/community" },
@@ -242,8 +247,8 @@ export default function DashboardLayout({
             <Link href="/" className="flex items-center gap-3 text-left">
               <div className="relative h-10 w-10 overflow-hidden rounded-lg border border-border bg-white p-0.5 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
                 <Image
-                  src="/logo.jpg"
-                  alt="Amar Somoy Amar Desh logo"
+                  src={logoSrc}
+                  alt={isUserManagementPage ? "User management logo" : "Amar Somoy Amar Desh logo"}
                   fill
                   sizes="40px"
                   className="object-cover"

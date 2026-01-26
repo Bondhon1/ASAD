@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -8,7 +10,13 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // TODO: Add authentication check for HR/MASTER role
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const hrUser = await prisma.user.findUnique({ where: { email: session.user.email } });
+    if (!hrUser || (hrUser.role !== "HR" && hrUser.role !== "MASTER" && hrUser.role !== "ADMIN")) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const { id: applicationId } = await params;
     const body = await request.json();
@@ -27,11 +35,12 @@ export async function POST(
       );
     }
 
-    // Update initial payment status to REJECTED
+    // Update initial payment status to REJECTED and record approver
     await prisma.initialPayment.update({
       where: { userId: application.userId },
       data: {
         status: "REJECTED",
+        approvedById: hrUser.id,
       },
     });
 
@@ -45,8 +54,6 @@ export async function POST(
         status: "REJECTED",
       },
     });
-
-    // TODO: Send email notification to user about rejection
 
     return NextResponse.json(
       { success: true, message: "Application rejected" },

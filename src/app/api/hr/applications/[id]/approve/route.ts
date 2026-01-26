@@ -64,6 +64,7 @@ export async function POST(
         data: {
           status: "VERIFIED",
           verifiedAt: new Date(),
+          approvedById: hrUser.id,
         },
       }),
       // Assign application to slot and update status
