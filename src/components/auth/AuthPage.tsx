@@ -7,7 +7,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
-import { signIn, useSession } from "next-auth/react";
+import { signIn, useSession, getSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 
 type AuthMode = "login" | "signup";
@@ -61,6 +62,7 @@ const itemVariants = {
 function AuthPageContent() {
   const searchParams = useSearchParams();
   const { data: session, status, update: updateSession } = useSession();
+  const router = useRouter();
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -97,14 +99,41 @@ function AuthPageContent() {
     setLoading(true);
 
     try {
-      // Use NextAuth signIn and let it perform a full redirect so cookies are set reliably
-      // (avoids race where cookie set via XHR isn't available for immediate session fetch)
-      await signIn("credentials", {
+      // Attempt sign in without automatic redirect so we can persist a local session flag
+      const res: any = await signIn("credentials", {
         email,
         password,
-        redirect: true,
-        callbackUrl: "/dashboard",
+        redirect: false,
       });
+
+      if (!res || res.error) {
+        setError(res?.error || "Login failed. Please try again.");
+        setLoading(false);
+        return;
+      }
+
+      // Fetch session from next-auth and persist minimal info to localStorage with TTL
+      try {
+        const s = await getSession();
+        if (s && s.user) {
+          const ttl = 7 * 24 * 60 * 60 * 1000; // 7 days
+          const payload = {
+            user: {
+              name: s.user.name || null,
+              email: s.user.email || null,
+              image: s.user.image || null,
+            },
+            expiresAt: Date.now() + ttl,
+            createdAt: Date.now(),
+          };
+          try { localStorage.setItem('asad_session', JSON.stringify(payload)); } catch (e) {}
+        }
+      } catch (e) {
+        // ignore session fetch errors
+      }
+
+      // Finally redirect to dashboard
+      router.push('/dashboard');
     } catch (err) {
       setError("Login failed. Please try again.");
       setLoading(false);

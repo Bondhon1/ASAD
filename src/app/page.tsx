@@ -2,6 +2,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { getSession } from 'next-auth/react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -45,6 +47,7 @@ function useInView(threshold = 0.1) {
 }
 
 export default function NavyTheme() {
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeSector, setActiveSector] = useState<{name: string; icon: string; summary: string; color: string; textDark?: boolean} | null>(null);
   const [currentEvent, setCurrentEvent] = useState(0);
@@ -77,6 +80,32 @@ export default function NavyTheme() {
   const projectAnim = useInView(0.1);
   const noticesAnim = useInView(0.1);
   const joinAnim = useInView(0.1);
+
+  // Redirect to dashboard if session exists (localStorage or server)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('asad_session');
+      if (raw) {
+        const p = JSON.parse(raw);
+        if (p?.expiresAt && Date.now() < p.expiresAt) {
+          router.replace('/dashboard');
+          return;
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    // fallback: check NextAuth session on server
+    (async () => {
+      try {
+        const s = await getSession();
+        if (s) router.replace('/dashboard');
+      } catch (e) {
+        // ignore
+      }
+    })();
+  }, [router]);
 
   return (
     <div className="min-h-screen bg-white" style={{ fontFamily: 'var(--font-dm-sans), system-ui, sans-serif' }}>

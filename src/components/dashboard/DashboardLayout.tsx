@@ -23,6 +23,7 @@ import {
   FileText,
   Bell
 } from "lucide-react";
+import { signOut } from "next-auth/react";
 import { NotificationProvider } from "@/components/providers/NotificationProvider";
 import NotificationDropdown from "@/components/dashboard/NotificationDropdown";
 
@@ -127,8 +128,15 @@ export default function DashboardLayout({
   const isUserManagementPage = pathname?.startsWith("/dashboard/hr/users");
   const logoSrc = isUserManagementPage ? "/three-people.svg" : "/logo.jpg";
 
-  const handleLogout = () => {
-    localStorage.clear();
+  const handleLogout = async () => {
+    try {
+      // clear local stored session
+      localStorage.removeItem('asad_session');
+    } catch (e) {}
+    // call NextAuth signOut to clear server session cookie
+    try {
+      await signOut({ redirect: false });
+    } catch (e) {}
     router.push("/auth");
   };
 
