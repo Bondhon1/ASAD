@@ -126,7 +126,8 @@ export default function DashboardLayout({
   const displayTopbarLabel = topbarLabel ?? (isStaff ? userRole : formatStatusLabel(userStatus));
   const pathname = usePathname();
   const isUserManagementPage = pathname?.startsWith("/dashboard/hr/users");
-  const logoSrc = isUserManagementPage ? "/three-people.svg" : "/logo.jpg";
+  // Always use the site's favicon for the compact topbar logo
+  const logoSrc = "/favicon.ico";
 
   const handleLogout = async () => {
     try {
