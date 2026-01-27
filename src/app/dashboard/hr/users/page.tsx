@@ -128,8 +128,9 @@ export default function UsersManagementPage() {
         if (!res.ok) throw new Error(`Status ${res.status}`);
         const data = await res.json();
         if (!active) return;
-        // API returns both full `ranks` and `dropdownRanks` (selectable only)
-        setRanksList(data.dropdownRanks || data.ranks || []);
+        // API returns full `ranks` (in DB order) and optionally `dropdownRanks`.
+        // Use `ranks` (DB order) for dropdowns so the UI matches database order exactly.
+        setRanksList(data.ranks || data.dropdownRanks || []);
       } catch (err: any) {
         if (err.name === 'AbortError') return;
         console.error('Failed to load ranks', err);

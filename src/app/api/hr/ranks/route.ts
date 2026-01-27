@@ -48,9 +48,9 @@ export async function PATCH(req: Request) {
 
 export async function GET() {
   try {
-    const ranks = await prisma.rank.findMany({ 
+    // fetch ranks without explicit ordering so the database's natural/storage order is preserved
+    const ranks = await prisma.rank.findMany({
       select: { id: true, name: true, createdAt: true, description: true, thresholdPoints: true, parentId: true },
-      orderBy: { thresholdPoints: 'asc' } 
     });
 
     // mark ranks that have children as non-selectable categories
