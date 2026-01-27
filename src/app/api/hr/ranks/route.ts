@@ -49,14 +49,92 @@ export async function PATCH(req: Request) {
 export async function GET() {
   try {
     // fetch ranks without explicit ordering so the database's natural/storage order is preserved
-    const ranks = await prisma.rank.findMany({
-      select: { id: true, name: true, createdAt: true, description: true, thresholdPoints: true, parentId: true },
-    });
+    const ranks = await prisma.rank.findMany();
+
+    // Build a canonical ordering based on business rules (hardcoded sequence)
+    const desiredOrder = [
+      { name: 'VOLUNTEER' },
+      { name: 'Aspiring Volunteer' },
+      { name: 'Ready to Serve (RS)' },
+      { name: 'Mentor' },
+      { name: 'Dedicated Volunteer', children: ['Dedicated Volunteer*', 'Dedicated Volunteer**'] },
+      { name: 'Ability to Lead (AL)', children: ['Ability to Lead (AL) *', 'Ability to Lead (AL) **', 'Ability to Lead (AL) ***'] },
+      { name: 'Deputy Commander (DC)', children: ['Deputy Commander (DC) *', 'Deputy Commander (DC) **'] },
+      { name: 'Commander', children: ['Commander *', 'Commander **', 'Commander ***'] },
+      { name: 'Asadian Star', children: ['Asadian Star (AS) *', 'Asadian Star (AS) **'] },
+      { name: 'General Volunteer (GV)' },
+      { name: 'Senior Volunteer' },
+      { name: 'Senior Commander' },
+      { name: 'Community Builder' },
+      { name: 'Strategic Leader' },
+      { name: 'Adviser' },
+    ];
+
+    const normalize = (s: any) => (s || '').toString().replace(/[\s\uFEFF\u00A0]+/g, ' ').trim().toLowerCase();
+    const byId = new Map(ranks.map((r: any) => [r.id, r]));
+    const byName = new Map(ranks.map((r: any) => [normalize(r.name), r]));
+
+    const ordered: any[] = [];
+    const added = new Set<string>();
+
+    const pushRank = (r: any) => {
+      if (!r || added.has(r.id)) return;
+      ordered.push(r);
+      added.add(r.id);
+    };
+
+    // helper to find by name fuzzily
+    const findByName = (target: string) => {
+      if (!target) return null;
+      const n = normalize(target.replace(/[★\*]/g, ''));
+      if (byName.has(n)) return byName.get(n);
+      // try contains match
+      for (const r of ranks) {
+        if (normalize(r.name).includes(n)) return r;
+      }
+      return null;
+    };
+
+    for (const item of desiredOrder) {
+      const parent = findByName(item.name);
+      if (parent) pushRank(parent);
+      if (Array.isArray(item.children) && parent) {
+        for (const childName of item.children) {
+          let c: any = null;
+          const childNorm = normalize(childName);
+          // try exact normalized match (preserves stars if present)
+          if (byName.has(childNorm)) c = byName.get(childNorm);
+
+          // try to find among parent's children by matching base name (without stars)
+          if (!c) {
+            const childBase = normalize(childName.replace(/[★\*]/g, ''));
+            c = ranks.find((x: any) => x.parentId === parent.id && normalize(x.name).includes(childBase));
+          }
+
+          // final fallback: fuzzy find but avoid returning the parent itself
+          if (!c) {
+            const f = findByName(childName);
+            if (f && f.id !== parent.id) c = f;
+          }
+
+          if (c) pushRank(c);
+        }
+      }
+    }
+
+    // append any remaining ranks in DB order
+    for (const r of ranks) {
+      if (!added.has(r.id)) pushRank(r);
+    }
 
     // mark ranks that have children as non-selectable categories
-    const hasChildren = new Set(ranks.map(r => r.parentId).filter(Boolean));
-    const ranksWithSelectable = ranks.map(r => ({ ...r, selectable: !hasChildren.has(r.id) }));
-    const dropdownRanks = ranksWithSelectable.filter(r => r.selectable);
+    const hasChildren = new Set(ranks.map((r: any) => r.parentId).filter(Boolean));
+    const ranksWithSelectable = ordered.map((r: any) => ({
+      ...r,
+      parent: r.parentId ? { id: r.parentId, name: byId.get(r.parentId)?.name || null } : null,
+      selectable: !hasChildren.has(r.id),
+    }));
+    const dropdownRanks = ranksWithSelectable.filter((r: any) => r.selectable);
 
     return NextResponse.json({ ok: true, ranks: ranksWithSelectable, dropdownRanks });
   } catch (err: any) {

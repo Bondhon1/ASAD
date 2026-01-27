@@ -86,7 +86,7 @@ export default function UsersManagementPage() {
   const [rankInput, setRankInput] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
-  const [ranksList, setRanksList] = useState<Array<{id:string;name:string;}>>([]);
+  const [ranksList, setRanksList] = useState<Array<{id:string;name:string;selectable?:boolean}>>([]);
 
   useEffect(() => {
     let active = true;
@@ -565,7 +565,7 @@ export default function UsersManagementPage() {
                                         <div className="flex items-center gap-2 mt-2 flex-wrap">
                                         <select value={rankInput} onChange={(e) => setRankInput(e.target.value)} className="px-2 py-1 border rounded min-w-0">
                                           <option value="">-- Select rank --</option>
-                                          {ranksList.map(r => (
+                                          {ranksList.filter(r => r.selectable !== false).map(r => (
                                             <option key={r.id} value={r.name}>{r.name}</option>
                                           ))}
                                         </select>
