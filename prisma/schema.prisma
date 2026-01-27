@@ -270,6 +270,9 @@ model Rank {
   name                  String           @unique
   thresholdPoints       Int
   description           String?
+  parentId              String?
+  parent                Rank?            @relation("RankHierarchy", fields: [parentId], references: [id])
+  subRanks              Rank[]           @relation("RankHierarchy")
   volunteerProfiles     VolunteerProfile[]
   createdAt             DateTime         @default(now())
   

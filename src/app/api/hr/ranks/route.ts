@@ -13,14 +13,33 @@ export async function PATCH(req: Request) {
     if (!['HR', 'MASTER', 'ADMIN', 'DIRECTOR', 'DATABASE_DEPT'].includes(requester.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     const body = await req.json();
-    const { name, thresholdPoints } = body as { name?: string; thresholdPoints?: number };
-    if (!name || typeof thresholdPoints !== 'number') return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+    const { name, thresholdPoints, description, parentId } = body as { name?: string; thresholdPoints?: number; description?: string; parentId?: string | null };
+    if (!name) return NextResponse.json({ error: 'Missing name' }, { status: 400 });
 
-    const rank = await prisma.rank.findUnique({ where: { name } });
-    if (!rank) return NextResponse.json({ error: 'Rank not found' }, { status: 404 });
+    const updateData: any = {};
+    if (typeof thresholdPoints === 'number') updateData.thresholdPoints = thresholdPoints;
+    if (typeof description === 'string') updateData.description = description;
+    if (parentId !== undefined) {
+      if (parentId === null) {
+        updateData.parent = { disconnect: true };
+      } else {
+        updateData.parent = { connect: { id: parentId } };
+      }
+    }
 
-    const updated = await prisma.rank.update({ where: { name }, data: { thresholdPoints } });
-    return NextResponse.json({ ok: true, rank: updated });
+    const createData: any = {
+      name,
+      thresholdPoints: typeof thresholdPoints === 'number' ? thresholdPoints : 0,
+      description: typeof description === 'string' ? description : null,
+    };
+    if (parentId) createData.parent = { connect: { id: parentId } };
+
+    const rank = await prisma.rank.upsert({
+      where: { name },
+      update: updateData,
+      create: createData,
+    });
+    return NextResponse.json({ ok: true, rank });
   } catch (err: any) {
     console.error('PATCH /api/hr/ranks error', err);
     return NextResponse.json({ error: err?.message || 'Server error' }, { status: 500 });
@@ -29,8 +48,17 @@ export async function PATCH(req: Request) {
 
 export async function GET() {
   try {
-    const ranks = await prisma.rank.findMany({ orderBy: { thresholdPoints: 'asc' } });
-    return NextResponse.json({ ok: true, ranks });
+    const ranks = await prisma.rank.findMany({ 
+      select: { id: true, name: true, createdAt: true, description: true, thresholdPoints: true, parentId: true },
+      orderBy: { thresholdPoints: 'asc' } 
+    });
+
+    // mark ranks that have children as non-selectable categories
+    const hasChildren = new Set(ranks.map(r => r.parentId).filter(Boolean));
+    const ranksWithSelectable = ranks.map(r => ({ ...r, selectable: !hasChildren.has(r.id) }));
+    const dropdownRanks = ranksWithSelectable.filter(r => r.selectable);
+
+    return NextResponse.json({ ok: true, ranks: ranksWithSelectable, dropdownRanks });
   } catch (err: any) {
     console.error('GET /api/hr/ranks error', err);
     return NextResponse.json({ error: err?.message || 'Server error' }, { status: 500 });

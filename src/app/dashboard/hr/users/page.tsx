@@ -86,6 +86,7 @@ export default function UsersManagementPage() {
   const [rankInput, setRankInput] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [ranksList, setRanksList] = useState<Array<{id:string;name:string;}>>([]);
 
   useEffect(() => {
     let active = true;
@@ -121,8 +122,23 @@ export default function UsersManagementPage() {
       }
     };
 
+    const fetchRanks = async () => {
+      try {
+        const res = await fetch('/api/hr/ranks', { signal: controller.signal });
+        if (!res.ok) throw new Error(`Status ${res.status}`);
+        const data = await res.json();
+        if (!active) return;
+        // API returns both full `ranks` and `dropdownRanks` (selectable only)
+        setRanksList(data.dropdownRanks || data.ranks || []);
+      } catch (err: any) {
+        if (err.name === 'AbortError') return;
+        console.error('Failed to load ranks', err);
+      }
+    };
+
     fetchStats();
     fetchOrgs();
+    fetchRanks();
     return () => { active = false; controller.abort(); };
   }, [authChecked]);
 
@@ -548,31 +564,9 @@ export default function UsersManagementPage() {
                                         <div className="flex items-center gap-2 mt-2 flex-wrap">
                                         <select value={rankInput} onChange={(e) => setRankInput(e.target.value)} className="px-2 py-1 border rounded min-w-0">
                                           <option value="">-- Select rank --</option>
-                                          <option value="VOLUNTEER">VOLUNTEER</option>
-                                          <option value="Aspiring Volunteer">Aspiring Volunteer</option>
-                                          <option value="Ready to Serve (RS)">Ready to Serve (RS)</option>
-                                          <option value="Mentor">Mentor</option>
-                                          <option value="Dedicated Volunteer">Dedicated Volunteer</option>
-                                          <option value="Dedicated Volunteer*">Dedicated Volunteer*</option>
-                                          <option value="Dedicated Volunteer**">Dedicated Volunteer**</option>
-                                          <option value="Ability to Lead (AL)">Ability to Lead (AL)</option>
-                                          <option value="Ability to Lead (AL) *">Ability to Lead (AL) *</option>
-                                          <option value="Ability to Lead (AL) **">Ability to Lead (AL) **</option>
-                                          <option value="Ability to Lead (AL) ***">Ability to Lead (AL) ***</option>
-                                          <option value="Deputy Commander (DC)">Deputy Commander (DC)</option>
-                                          <option value="Deputy Commander (DC) *">Deputy Commander (DC) *</option>
-                                          <option value="Deputy Commander (DC) **">Deputy Commander (DC) **</option>
-                                          <option value="Commander">Commander</option>
-                                          <option value="Commander *">Commander *</option>
-                                          <option value="Commander **">Commander **</option>
-                                          <option value="Commander ***">Commander ***</option>
-                                          <option value="Asadian Star (AS) *">Asadian Star (AS) *</option>
-                                          <option value="Asadian Star (AS) **">Asadian Star (AS) **</option>
-                                          <option value="General Volunteer (GV)">General Volunteer (GV)</option>
-                                          <option value="Senior Volunteer">Senior Volunteer</option>
-                                          <option value="Senior Commander">Senior Commander</option>
-                                          <option value="Community Builder">Community Builder</option>
-                                          <option value="Strategic Leader">Strategic Leader</option>
+                                          {ranksList.map(r => (
+                                            <option key={r.id} value={r.name}>{r.name}</option>
+                                          ))}
                                         </select>
                                         <button disabled={saving} onClick={async () => {
                                           if (!selected) return;
