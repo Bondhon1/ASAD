@@ -4,7 +4,7 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { NotificationType } from '@prisma/client';
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -14,7 +14,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
 
     if (!['SECRETARIES', 'MASTER', 'ADMIN', 'DIRECTOR'].includes(requester.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-    const id = params.id;
+    const { id } = await params;
     // delete related notifications first
     await prisma.notification.deleteMany({ where: { link: `/tasks/${id}` } });
     const deleted = await prisma.task.delete({ where: { id } });
@@ -26,7 +26,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   }
 }
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -36,7 +36,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
     if (!['SECRETARIES', 'MASTER', 'ADMIN', 'DIRECTOR'].includes(requester.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-    const id = params.id;
+    const { id } = await params;
     const body = await req.json();
 
     const oldTask = await prisma.task.findUnique({ where: { id } });
