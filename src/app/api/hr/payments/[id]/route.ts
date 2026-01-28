@@ -11,7 +11,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const hr = await prisma.user.findUnique({ where: { email: session.user.email } });
-    if (!hr || (hr.role !== "HR" && hr.role !== "MASTER")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (!hr || (hr.role !== "HR" && hr.role !== "MASTER" && hr.role !== "ADMIN")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const { id } = await params;
     const body = await request.json();
