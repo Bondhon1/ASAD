@@ -65,6 +65,7 @@ export default function DashboardLayout({
   const router = useRouter();
   const [userStatus, setUserStatus] = useState<string | null>(initialUserStatus ?? null);
   const [finalPaymentStatus, setFinalPaymentStatus] = useState<string | null>(initialFinalPaymentStatus ?? null);
+  const [scheduledInterview, setScheduledInterview] = useState<any | null>(null);
 
   const formatStatusLabel = (status: string | null) => {
     switch (status) {
@@ -120,6 +121,21 @@ export default function DashboardLayout({
       }
     })();
   }, [userEmail, initialFinalPaymentStatus, initialUserStatus]);
+
+  // Fetch scheduled interview (if any) for display on user dashboard
+  useEffect(() => {
+    if (!userEmail) return;
+    (async () => {
+      try {
+        const res = await fetch(`/api/user/interview?email=${encodeURIComponent(userEmail)}`);
+        if (!res.ok) return setScheduledInterview(null);
+        const data = await res.json();
+        setScheduledInterview(data?.interview || null);
+      } catch (e) {
+        setScheduledInterview(null);
+      }
+    })();
+  }, [userEmail]);
 
   const isStaff = userRole === "HR" || userRole === "MASTER" || userRole === "ADMIN" || userRole === "DIRECTOR" || userRole === "DATABASE_DEPT" || userRole === "SECRETARIES";
   const displayTopbarName = topbarName ?? userName;
@@ -336,6 +352,14 @@ export default function DashboardLayout({
           {/* Rejection / payment banners */}
           {showStatusBanners && (
             <>
+              {userStatus === "INTERVIEW_SCHEDULED" && scheduledInterview && (
+                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md flex items-center justify-between">
+                  <div>
+                    <div className="font-semibold text-blue-800">Interview Scheduled</div>
+                    <div className="text-sm text-blue-700">You have an upcoming interview on {new Date(scheduledInterview.startTime).toLocaleString()}. <a href={scheduledInterview.meetLink} target="_blank" rel="noreferrer" className="underline text-[#1E3A5F]">Join Meet</a></div>
+                  </div>
+                </div>
+              )}
               {userStatus === "REJECTED" && (
                 <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md flex items-center justify-between">
                   <div>

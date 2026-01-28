@@ -33,6 +33,36 @@ export default function ServicesPage() {
   const [serviceUsersTotal, setServiceUsersTotal] = useState(0);
   const [serviceUsersLoading, setServiceUsersLoading] = useState(false);
 
+  // Helper to open users modal for either a service or an institute
+  const openUsersFor = async (opts: { id: string; name?: string; isInstitute?: boolean; service?: any }) => {
+    const { id, name, isInstitute, service } = opts;
+    setSelectedService(service || { id, name, isInstitute });
+    setSelectedServiceId(id);
+    setShowUsersModal(true);
+    setServiceUsersLoading(true);
+    try {
+      const url = isInstitute ? `/api/hr/institutes/${id}/users?page=1&pageSize=${serviceUsersPageSize}` : `/api/hr/services/${id}/users?page=1&pageSize=${serviceUsersPageSize}`;
+      const r = await fetch(url);
+      const d = await r.json();
+      if (r.ok) {
+        setServiceUsers(d.users || []);
+        setServiceUsersTotal(d.total || 0);
+        setServiceUsersPage(1);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setServiceUsersLoading(false);
+    }
+  };
+
+  const handleItemKey = (e: React.KeyboardEvent, fn: () => void) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      fn();
+    }
+  };
+
   useEffect(() => {
     const fetchAll = async () => {
       setLoading(true);
@@ -118,30 +148,17 @@ export default function ServicesPage() {
             {loading ? <div>Loading…</div> : (
               <div className="divide-y divide-[#eef2fb]">
                 {stats.map(s => (
-                  <div key={s.instituteId} className="flex items-center justify-between py-2">
+                  <div
+                    key={s.instituteId}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openUsersFor({ id: s.instituteId, name: s.name, isInstitute: true })}
+                    onKeyDown={(e) => handleItemKey(e as any, () => openUsersFor({ id: s.instituteId, name: s.name, isInstitute: true }))}
+                    className="flex items-center justify-between py-2 cursor-pointer hover:bg-gray-50 rounded-md px-2"
+                  >
                     <div className="text-sm font-medium text-gray-800 truncate">{s.name}</div>
                     <div className="flex items-center gap-2">
                       <div className="text-sm font-semibold text-[#0b2545]">{s.volunteersCount}</div>
-                      <button
-                        onClick={async () => {
-                          setSelectedService({ id: s.instituteId, name: s.name, isInstitute: true });
-                          setSelectedServiceId(s.instituteId);
-                          setShowUsersModal(true);
-                          setServiceUsersLoading(true);
-                          try {
-                            const r = await fetch(`/api/hr/institutes/${s.instituteId}/users?page=1&pageSize=${serviceUsersPageSize}`);
-                            const d = await r.json();
-                            if (r.ok) {
-                              setServiceUsers(d.users || []);
-                              setServiceUsersTotal(d.total || 0);
-                              setServiceUsersPage(1);
-                            }
-                          } catch (e) { console.error(e); } finally { setServiceUsersLoading(false); }
-                        }}
-                        className="px-3 py-1 rounded-lg bg-[#0b2545] text-white text-sm font-semibold shadow hover:shadow-md transition"
-                      >
-                        View users
-                      </button>
                     </div>
                   </div>
                 ))}
@@ -163,41 +180,23 @@ export default function ServicesPage() {
                 <h3 className="text-lg font-semibold text-[#0b2545]">Existing Services</h3>
                 <p className="text-sm text-gray-500">Tap a card to view assigned users.</p>
               </div>
-              <span className="px-2 py-1 rounded-full bg-white border border-[#dbe3f1] text-xs text-gray-500 shadow-sm">Navy actions</span>
+              
             </div>
             {loading ? <div>Loading…</div> : (
               <div className="space-y-3">
                 {services.map(s => (
                   <div
                     key={s.id}
-                    className="bg-white border border-[#dbe3f1] rounded-xl px-4 py-3 shadow-sm hover:shadow-md transition duration-150"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openUsersFor({ id: s.id, name: s.name, isInstitute: false, service: s })}
+                    onKeyDown={(e) => handleItemKey(e as any, () => openUsersFor({ id: s.id, name: s.name, isInstitute: false, service: s }))}
+                    className="bg-white border border-[#dbe3f1] rounded-xl px-4 py-3 shadow-sm hover:shadow-md transition duration-150 cursor-pointer"
                   >
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                       <div className="flex-1 min-w-0 flex items-center gap-3">
                         <div className="text-sm font-semibold text-gray-900">{s.code || '—'}</div>
                         <div className="text-xs px-2 py-1 rounded-full bg-[#0b2545]/10 text-[#0b2545] font-medium">{s.usersCount || 0} users</div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={async () => {
-                            setSelectedService(s);
-                            setSelectedServiceId(s.id);
-                            setShowUsersModal(true);
-                            setServiceUsersLoading(true);
-                            try {
-                              const r = await fetch(`/api/hr/services/${s.id}/users?page=1&pageSize=${serviceUsersPageSize}`);
-                              const d = await r.json();
-                              if (r.ok) {
-                                setServiceUsers(d.users || []);
-                                setServiceUsersTotal(d.total || 0);
-                                setServiceUsersPage(1);
-                              }
-                            } catch (e) { console.error(e); } finally { setServiceUsersLoading(false); }
-                          }}
-                          className="px-3 py-2 rounded-lg bg-[#0b2545] text-white text-sm font-semibold shadow hover:shadow-md transition"
-                        >
-                          View users
-                        </button>
                       </div>
                     </div>
                   </div>

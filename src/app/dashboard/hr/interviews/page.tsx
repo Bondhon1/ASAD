@@ -304,12 +304,17 @@ function InterviewSlotsContent() {
     >
       {isLoading || !user ? skeletonPage : (
         <div className="max-w-7xl mx-auto">
-          <div className="mb-6 flex items-center justify-between">
+            <div className="mb-6 flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Interview Slots</h1>
               <p className="text-gray-600 mt-2">Manage interview scheduling and Google Meet sessions</p>
             </div>
-            <button onClick={() => setShowCreateModal(true)} className="flex items-center gap-2 px-4 py-2 bg-[#1E3A5F] text-white rounded-lg hover:bg-[#2a4d75] transition-colors">
+            <button
+              onClick={() => calendarStatus.connected && setShowCreateModal(true)}
+              disabled={!calendarStatus.connected}
+              title={!calendarStatus.connected ? "Connect Google Calendar to create slots" : "Create Slot"}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${calendarStatus.connected ? 'bg-[#1E3A5F] text-white hover:bg-[#2a4d75]' : 'bg-gray-100 text-gray-500 disabled:opacity-50 disabled:cursor-not-allowed'}`}
+            >
               <Plus className="w-5 h-5" />
               Create Slot
             </button>
@@ -377,14 +382,10 @@ function InterviewSlotsContent() {
                       <a href={slot.meetLink} target="_blank" rel="noreferrer" className="text-[#1E3A5F] underline">{slot.meetLink}</a>
                     </div>
                   </div>
-                  <div className="mt-4 flex items-center justify-between">
+                  <div className="mt-4">
                     <button onClick={() => handleOpenParticipants(slot.id)} className="flex items-center gap-2 px-3 py-2 text-sm text-[#1E3A5F] bg-[#1E3A5F]/10 rounded-md">
                       <Users className="w-4 h-4" />
                       View Participants
-                    </button>
-                    <button onClick={generateMeetLink} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 border rounded-md">
-                      <LinkIcon className="w-4 h-4" />
-                      Regenerate Link
                     </button>
                   </div>
                 </motion.div>
