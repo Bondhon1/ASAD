@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { useCachedUserProfile } from '@/hooks/useCachedUserProfile';
 import { useSession } from 'next-auth/react';
@@ -17,7 +18,9 @@ export default function TasksPage() {
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
 
-  const isAdmin = ((user as any)?.role || (session as any)?.user?.role || '') && ['SECRETARIES','MASTER'].includes(((user as any)?.role || (session as any)?.user?.role || ''));
+  const role = ((user as any)?.role || (session as any)?.user?.role || '');
+  const canCreate = ['SECRETARIES', 'MASTER'].includes(role);
+  const isSuperAdmin = ['MASTER', 'ADMIN'].includes(role);
 
   useEffect(() => {
     (async () => {
@@ -33,7 +36,8 @@ export default function TasksPage() {
     (async () => {
       setCreatedLoading(true);
       try {
-        const url = isAdmin ? '/api/secretaries/tasks?all=1' : '/api/secretaries/tasks';
+        // secretaries see their own created tasks; MASTER/ADMIN can see all
+        const url = isSuperAdmin ? '/api/secretaries/tasks?all=1' : '/api/secretaries/tasks';
         const res = await fetch(url);
         if (!res.ok) return;
         const d = await res.json();
@@ -42,7 +46,7 @@ export default function TasksPage() {
         // ignore
       } finally { setCreatedLoading(false); }
     })();
-  }, [isAdmin, userEmail]);
+  }, [isSuperAdmin, userEmail]);
 
   const refresh = async () => {
     setLoading(true);
@@ -57,7 +61,7 @@ export default function TasksPage() {
     // refresh created tasks too
     setCreatedLoading(true);
     try {
-      const url = isAdmin ? '/api/secretaries/tasks?all=1' : '/api/secretaries/tasks';
+      const url = isSuperAdmin ? '/api/secretaries/tasks?all=1' : '/api/secretaries/tasks';
       const res = await fetch(url);
       if (res.ok) {
         const d = await res.json();
@@ -81,6 +85,8 @@ export default function TasksPage() {
       alert('Delete failed: ' + (err?.message || 'Unknown'));
     }
   };
+
+  // Note: Creation is handled on the Secretaries page; Tasks page links there.
 
   const startEdit = (t: any) => {
     setEditingId(t.id);
@@ -111,6 +117,11 @@ export default function TasksPage() {
               <p className="text-slate-500">Your active tasks and recent assignments.</p>
             </div>
             <div className="flex items-center gap-2">
+              {canCreate && (
+                <Link href="/dashboard/secretaries" className="inline-flex items-center gap-2 px-4 py-2 bg-white text-[#0b1c33] rounded-full text-sm font-semibold shadow transition">
+                  Create Task
+                </Link>
+              )}
               <button 
                 onClick={refresh} 
                 className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 transition-all shadow-sm"
@@ -120,6 +131,8 @@ export default function TasksPage() {
               </button>
             </div>
           </div>
+
+          
 
           {loading ? (
             <div className="grid grid-cols-1 gap-4">
@@ -176,7 +189,7 @@ export default function TasksPage() {
                         <button className="w-full md:w-32 px-4 py-2 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors shadow-sm shadow-blue-100">
                           Open Task
                         </button>
-                        {isAdmin && (
+                        {isSuperAdmin && (
                           <div className="flex gap-2">
                             <button 
                               onClick={() => startEdit(t)} 
@@ -229,57 +242,57 @@ export default function TasksPage() {
           )}
 
           {/* My Created Tasks (admin only) */}
-          {isAdmin && (
-            <div className="mt-16">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-bold text-slate-800">Tasks You Created</h3>
-                <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">{createdTasks.length} Created</span>
-              </div>
-              {createdLoading ? (
-                <div className="h-24 bg-white border border-slate-100 rounded-2xl animate-pulse" />
-              ) : (
-                <div className="grid grid-cols-1 gap-4">
-                  {createdTasks.length === 0 ? (
-                    <div className="p-8 bg-dashed border border-slate-200 rounded-2xl text-center text-slate-400 font-medium">No tasks created by you yet.</div>
+              {(canCreate) && (
+                <div className="mt-16">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-2xl font-bold text-slate-800">Tasks You Created</h3>
+                    <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">{createdTasks.length} Created</span>
+                  </div>
+                  {createdLoading ? (
+                    <div className="h-24 bg-white border border-slate-100 rounded-2xl animate-pulse" />
                   ) : (
-                    createdTasks.map(t => (
-                      <div key={t.id} className="bg-white border border-slate-100 rounded-xl p-4 flex items-center justify-between hover:border-blue-200 transition-colors">
-                        <div className="flex-1 min-w-0 pr-4">
-                          <div className="text-lg font-bold text-slate-800 truncate">{t.title}</div>
-                          <div className="text-sm text-slate-500 truncate">{t.description}</div>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <button 
-                            onClick={() => startEdit(t)} 
-                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
-                          </button>
-                          <button 
-                            onClick={() => deleteTask(t.id)} 
-                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-                          </button>
-                        </div>
-                      </div>
-                    ))
+                    <div className="grid grid-cols-1 gap-4">
+                      {createdTasks.length === 0 ? (
+                        <div className="p-8 bg-dashed border border-slate-200 rounded-2xl text-center text-slate-400 font-medium">No tasks created by you yet.</div>
+                      ) : (
+                        createdTasks.map(t => (
+                          <div key={t.id} className="bg-white border border-slate-100 rounded-2xl p-6 flex items-center justify-between hover:border-blue-200 transition-colors">
+                            <div className="flex-1 min-w-0 pr-4">
+                              <div className="text-lg font-bold text-slate-800 truncate">{t.title}</div>
+                              <div className="text-sm text-slate-500 truncate">{t.description}</div>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <button 
+                                onClick={() => startEdit(t)} 
+                                className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                              </button>
+                              <button 
+                                onClick={() => deleteTask(t.id)} 
+                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
                   )}
                 </div>
               )}
-            </div>
-          )}
         </div>
       </div>
-          {/* Admin - View/Edit All Tasks */}
-          {isAdmin && (
+          {/* Admin - View/Edit All Tasks (MASTER and ADMIN only) */}
+          {isSuperAdmin && (
             <div className="mt-8">
               <h3 className="text-xl font-semibold text-[#07223f] mb-3">Admin — View & Edit All Tasks</h3>
               {createdLoading ? <div>Loading…</div> : (
                 <div className="grid grid-cols-1 gap-4">
                   {createdTasks.length === 0 ? <div className="bg-white border rounded p-6">No tasks available</div> : (
                     createdTasks.map(t => (
-                      <div key={t.id} className="bg-white border rounded-2xl p-5 shadow-sm">
+                      <div key={t.id} className="bg-white border rounded-2xl p-6 shadow-sm">
                         <div className="flex items-center justify-between">
                           <div>
                             <div className="text-lg font-semibold text-[#07223f]">{t.title}</div>

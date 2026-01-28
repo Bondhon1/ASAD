@@ -145,6 +145,25 @@ export default function DashboardLayout({
   // Always use the site's favicon for the compact topbar logo
   const logoSrc = "/favicon.ico";
 
+  // Canonical icon map: ensure same icon is used for the same href across all roles
+  const ICON_MAP: Record<string, any> = {
+    '/dashboard': Home,
+    '/dashboard/tasks': ClipboardList,
+    '/dashboard/donations': DollarSign,
+    '/dashboard/community': Users,
+    '/dashboard/settings': Settings,
+    '/dashboard/hr/requests': UserCheck,
+    '/dashboard/hr/interviews': Calendar,
+    '/dashboard/hr/approvals': CheckSquare,
+    '/dashboard/hr/jobs': Briefcase,
+    '/dashboard/hr/leaves': FileText,
+    '/dashboard/hr/users': Users,
+    '/dashboard/hr/services': BarChart2,
+    '/dashboard/database': BarChart2,
+    '/dashboard/secretaries': ClipboardList,
+    '/dashboard/donations/create': DollarSign,
+  };
+
   const handleLogout = async () => {
     try {
       // clear local stored session
@@ -160,87 +179,89 @@ export default function DashboardLayout({
   // Define menu items based on role
   const getMenuItems = () => {
     const commonItems = [
-      { icon: Home, label: "Dashboard", href: "/dashboard" },
-      { icon: ClipboardList, label: "Tasks", href: "/dashboard/tasks" },
-      { icon: DollarSign, label: "Donations", href: "/dashboard/donations" },
-      { icon: Users, label: "Community", href: "/dashboard/community" },
-      { icon: Settings, label: "Settings", href: "/dashboard/settings" },
+      { label: "Dashboard", href: "/dashboard" },
+      { label: "Tasks", href: "/dashboard/tasks" },
+      { label: "Donations", href: "/dashboard/donations" },
+      { label: "Community", href: "/dashboard/community" },
+      { label: "Settings", href: "/dashboard/settings" },
     ];
 
     const hrItems = [
-      { icon: Home, label: "Dashboard", href: "/dashboard" },
-      { icon: UserCheck, label: "New Requests", href: "/dashboard/hr/requests" },
-      { icon: Calendar, label: "Schedule Interview", href: "/dashboard/hr/interviews" },
-      { icon: UserCheck, label: "Approve Volunteers", href: "/dashboard/hr/approvals" },
-      { icon: Briefcase, label: "Job Posts", href: "/dashboard/hr/jobs" },
-      { icon: FileText, label: "Leave Management", href: "/dashboard/hr/leaves" },
-      { icon: Users, label: "User Management", href: "/dashboard/hr/users" },
-      { icon: Briefcase, label: "Services", href: "/dashboard/hr/services" },
-      { icon: CheckSquare, label: "Manage Tasks", href: "/dashboard/tasks/manage" },
-      { icon: Settings, label: "Settings", href: "/dashboard/settings" },
+      { label: "Dashboard", href: "/dashboard" },
+      { label: "New Requests", href: "/dashboard/hr/requests" },
+      { label: "Schedule Interview", href: "/dashboard/hr/interviews" },
+      { label: "Approve Volunteers", href: "/dashboard/hr/approvals" },
+      { label: "Job Posts", href: "/dashboard/hr/jobs" },
+      { label: "Leave Management", href: "/dashboard/hr/leaves" },
+      { label: "User Management", href: "/dashboard/hr/users" },
+      { label: "Services", href: "/dashboard/hr/services" },
+      { label: "Tasks", href: "/dashboard/tasks" },
+      { label: "Settings", href: "/dashboard/settings" },
     ];
 
     // show Create Donation for ADMIN users in the HR/admin menu
     if (userRole === "ADMIN") {
-      hrItems.splice(hrItems.length - 1, 0, { icon: DollarSign, label: "Create Donation", href: "/dashboard/donations/create" });
+      hrItems.splice(hrItems.length - 1, 0, { label: "Create Donation", href: "/dashboard/donations/create" });
     }
 
     const directorItems = [
-      { icon: Home, label: "Dashboard", href: "/dashboard" },
-      { icon: Users, label: "User Management", href: "/dashboard/hr/users" },
-      { icon: Settings, label: "Settings", href: "/dashboard/settings" },
+      { label: "Dashboard", href: "/dashboard" },
+      { label: "User Management", href: "/dashboard/hr/users" },
+      { label: "Settings", href: "/dashboard/settings" },
     ];
 
     // Merge role-specific items with common items, preserving role items order and avoiding duplicates by `href`.
-    const mergeWithCommon = (items: { icon: any; label: string; href: string }[]) => {
-      const map = new Map<string, { icon: any; label: string; href: string }>();
+    const mergeWithCommon = (items: { label: string; href: string }[]) => {
+      const map = new Map<string, { label: string; href: string }>();
       // role-specific items first
       for (const it of items) map.set(it.href, it);
       // append common items if not already present
       for (const it of commonItems) {
         if (!map.has(it.href)) map.set(it.href, it);
       }
-      return Array.from(map.values());
+      // attach canonical icons before returning
+      return Array.from(map.values()).map((it) => ({ ...it, icon: ICON_MAP[it.href] || Home }));
     };
 
     const databaseItems = [
-      { icon: Home, label: "Dashboard", href: "/dashboard" },
-      { icon: BarChart2, label: "Manage Points / Ranks", href: "/dashboard/database" },
-      { icon: Users, label: "Community", href: "/dashboard/community" },
-      { icon: Settings, label: "Settings", href: "/dashboard/settings" },
+      { label: "Dashboard", href: "/dashboard" },
+      { label: "Manage Points / Ranks", href: "/dashboard/database" },
+      { label: "Community", href: "/dashboard/community" },
+      { label: "Settings", href: "/dashboard/settings" },
     ];
 
     const secretariesItems = [
-      { icon: Home, label: "Dashboard", href: "/dashboard" },
-      { icon: ClipboardList, label: "Secretaries", href: "/dashboard/secretaries" },
-      { icon: ClipboardList, label: "Manage Tasks", href: "/dashboard/tasks/manage" },
-      { icon: Users, label: "Community", href: "/dashboard/community" },
-      { icon: Settings, label: "Settings", href: "/dashboard/settings" },
+      { label: "Dashboard", href: "/dashboard" },
+      { label: "Secretaries", href: "/dashboard/secretaries" },
+      { label: "Tasks", href: "/dashboard/tasks" },
+      { label: "Community", href: "/dashboard/community" },
+      { label: "Settings", href: "/dashboard/settings" },
     ];
 
     const masterItems = [
-      { icon: Home, label: "Dashboard", href: "/dashboard" },
-      { icon: UserCheck, label: "New Requests", href: "/dashboard/hr/requests" },
-      { icon: Calendar, label: "Schedule Interview", href: "/dashboard/hr/interviews" },
-      { icon: UserCheck, label: "Approve Volunteers", href: "/dashboard/hr/approvals" },
-      { icon: Briefcase, label: "Job Posts", href: "/dashboard/hr/jobs" },
-      { icon: FileText, label: "Leave Management", href: "/dashboard/hr/leaves" },
-      { icon: Users, label: "User Management", href: "/dashboard/hr/users" },
-      { icon: Briefcase, label: "Services", href: "/dashboard/hr/services" },
-      { icon: BarChart2, label: "Manage Points / Ranks", href: "/dashboard/database" },
-      { icon: ClipboardList, label: "Tasks", href: "/dashboard/tasks" },
-      { icon: ClipboardList, label: "Secretaries", href: "/dashboard/secretaries" },
-      { icon: Users, label: "Community", href: "/dashboard/community" },
-      { icon: Settings, label: "Settings", href: "/dashboard/settings" },
-      { icon: DollarSign, label: "Create Donation", href: "/dashboard/donations/create" },
+      { label: "Dashboard", href: "/dashboard" },
+      { label: "New Requests", href: "/dashboard/hr/requests" },
+      { label: "Schedule Interview", href: "/dashboard/hr/interviews" },
+      { label: "Approve Volunteers", href: "/dashboard/hr/approvals" },
+      { label: "Job Posts", href: "/dashboard/hr/jobs" },
+      { label: "Leave Management", href: "/dashboard/hr/leaves" },
+      { label: "User Management", href: "/dashboard/hr/users" },
+      { label: "Services", href: "/dashboard/hr/services" },
+      { label: "Manage Points / Ranks", href: "/dashboard/database" },
+      { label: "Tasks", href: "/dashboard/tasks" },
+      { label: "Secretaries", href: "/dashboard/secretaries" },
+      { label: "Community", href: "/dashboard/community" },
+      { label: "Settings", href: "/dashboard/settings" },
+      { label: "Create Donation", href: "/dashboard/donations/create" },
     ];
 
-    if (userRole === "MASTER") return mergeWithCommon(masterItems);
-    if (userRole === "DIRECTOR") return mergeWithCommon(directorItems);
-    if (userRole === "HR" || userRole === "ADMIN") return mergeWithCommon(hrItems);
-    if (userRole === "DATABASE_DEPT") return mergeWithCommon(databaseItems);
-    if (userRole === "SECRETARIES") return mergeWithCommon(secretariesItems);
-    return commonItems;
+    if (userRole === "MASTER") return mergeWithCommon(masterItems as any);
+    if (userRole === "DIRECTOR") return mergeWithCommon(directorItems as any);
+    if (userRole === "HR" || userRole === "ADMIN") return mergeWithCommon(hrItems as any);
+    if (userRole === "DATABASE_DEPT") return mergeWithCommon(databaseItems as any);
+    if (userRole === "SECRETARIES") return mergeWithCommon(secretariesItems as any);
+    // default: attach icons to common items
+    return commonItems.map((it) => ({ ...it, icon: ICON_MAP[it.href] || Home }));
   };
 
   let menuItems = getMenuItems();
