@@ -110,10 +110,19 @@ export default function SecretariesPage() {
     setEditExpire(t.endDate ? new Date(t.endDate).toISOString().slice(0, 16) : '');
     setEditMandatory(!!t.mandatory);
     setEditInputType(t.taskType || 'YESNO');
-    setEditTargetAll(false);
-    setEditSelectedServices([]);
-    setEditSelectedSectors([]);
-    setEditSelectedClubs([]);
+    
+    // Parse assigned groups
+    let assigned: any = {};
+    try {
+      if (t.assignedGroup) assigned = JSON.parse(t.assignedGroup);
+    } catch (e) {
+      console.error("Failed to parse assignedGroup", e);
+    }
+
+    setEditTargetAll(!!assigned.all);
+    setEditSelectedServices(assigned.services || []);
+    setEditSelectedSectors(assigned.sectors || []);
+    setEditSelectedClubs(assigned.clubs || []);
   };
 
   const cancelEdit = () => {
@@ -218,6 +227,29 @@ export default function SecretariesPage() {
 
   const inputCls = 'w-full px-3 py-2 rounded-md border border-slate-200 bg-white/80 focus:outline-none focus:ring-2 focus:ring-[#2b6cb0] focus:border-[#2b6cb0] text-slate-900 placeholder:text-slate-400';
 
+  const renderButtons = (list: any[], selected: string[], toggle: (id: string) => void) => (
+    <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto p-3 border border-slate-200 rounded-xl bg-white/50">
+      {list.length === 0 && <span className="text-xs text-slate-400">No items available</span>}
+      {list.map(item => {
+        const isSelected = selected.includes(item.id);
+        return (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => toggle(item.id)}
+            className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all ${
+              isSelected 
+                ? 'bg-[#2b6cb0] text-white border-[#2b6cb0] shadow-sm ring-2 ring-blue-100' 
+                : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+            }`}
+          >
+            {item.name}
+          </button>
+        );
+      })}
+    </div>
+  );
+
   const content = (
     <div className="min-h-[calc(100vh-140px)] bg-transparent py-10 px-4">
       <div className="max-w-5xl mx-auto">
@@ -297,74 +329,48 @@ export default function SecretariesPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Services</label>
-                    <select multiple value={selectedServices} onChange={(e)=>{
-                      const vals = Array.from(e.target.selectedOptions).map(o => o.value);
-                      setSelectedServices(vals);
-                    }} className={`${inputCls} hidden md:block h-28`}>
-                      {servicesList.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                    </select>
-                    <div className="md:hidden space-y-2 bg-white rounded-lg p-3 border border-slate-200">
-                      {servicesList.map(s => (
-                        <label key={s.id} className="flex items-center gap-2">
-                          <input type="checkbox" checked={selectedServices.includes(s.id)} onChange={(e)=>{
-                            setSelectedServices(prev => e.target.checked ? Array.from(new Set([...prev, s.id])) : prev.filter(x => x !== s.id));
-                          }} />
-                          <span className="text-sm">{s.name}</span>
-                        </label>
-                      ))}
-                    </div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Services</label>
+                    {renderButtons(servicesList, selectedServices, (id) => {
+                      setSelectedServices(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+                    })}
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Sectors</label>
-                    <select multiple value={selectedSectors} onChange={(e)=>{
-                      const vals = Array.from(e.target.selectedOptions).map(o => o.value);
-                      setSelectedSectors(vals);
-                    }} className={`${inputCls} hidden md:block h-28`}>
-                      {sectorsList.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                    </select>
-                    <div className="md:hidden space-y-2 bg-white rounded-lg p-3 border border-slate-200">
-                      {sectorsList.map(s => (
-                        <label key={s.id} className="flex items-center gap-2">
-                          <input type="checkbox" checked={selectedSectors.includes(s.id)} onChange={(e)=>{
-                            setSelectedSectors(prev => e.target.checked ? Array.from(new Set([...prev, s.id])) : prev.filter(x => x !== s.id));
-                          }} />
-                          <span className="text-sm">{s.name}</span>
-                        </label>
-                      ))}
-                    </div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Sectors</label>
+                    {renderButtons(sectorsList, selectedSectors, (id) => {
+                      setSelectedSectors(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+                    })}
                   </div>
                 </div>
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Clubs</label>
-                    <select multiple value={selectedClubs} onChange={(e)=>{
-                      const vals = Array.from(e.target.selectedOptions).map(o => o.value);
-                      setSelectedClubs(vals);
-                    }} className={`${inputCls} hidden md:block h-28`}>
-                      {clubsList.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                    </select>
-                    <div className="md:hidden space-y-2 bg-white rounded-lg p-3 border border-slate-200">
-                      {clubsList.map(s => (
-                        <label key={s.id} className="flex items-center gap-2">
-                          <input type="checkbox" checked={selectedClubs.includes(s.id)} onChange={(e)=>{
-                            setSelectedClubs(prev => e.target.checked ? Array.from(new Set([...prev, s.id])) : prev.filter(x => x !== s.id));
-                          }} />
-                          <span className="text-sm">{s.name}</span>
-                        </label>
-                      ))}
-                    </div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Clubs</label>
+                    {renderButtons(clubsList, selectedClubs, (id) => {
+                      setSelectedClubs(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+                    })}
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Selected Preview</label>
-                    <div className="flex flex-wrap gap-2">
-                      {[...selectedServices, ...selectedSectors, ...selectedClubs].slice(0, 18).map(id => {
-                        const name = servicesList.find(s=>s.id===id)?.name || sectorsList.find(s=>s.id===id)?.name || clubsList.find(s=>s.id===id)?.name || id;
-                        return <span key={id} className="px-2 py-1 bg-white text-sm rounded-full border border-slate-200 text-[#07223f] shadow-sm">{name}</span>;
-                      })}
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Selected Preview ({selectedServices.length + selectedSectors.length + selectedClubs.length})</label>
+                    <div className="flex flex-wrap gap-2 p-3 border border-dashed border-slate-200 rounded-xl bg-slate-50/50 min-h-[60px]">
+                      {[...selectedServices, ...selectedSectors, ...selectedClubs].length === 0 ? (
+                        <span className="text-xs text-slate-400 self-center mx-auto">Selected items will appear here</span>
+                      ) : (
+                        [...selectedServices, ...selectedSectors, ...selectedClubs].map(id => {
+                          const name = servicesList.find(s=>s.id===id)?.name || sectorsList.find(s=>s.id===id)?.name || clubsList.find(s=>s.id===id)?.name || id;
+                          return (
+                            <span key={id} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#2b6cb0]/10 text-[#2b6cb0] text-xs font-medium rounded-md border border-[#2b6cb0]/20">
+                              {name}
+                              <button type="button" onClick={() => {
+                                setSelectedServices(prev => prev.filter(x => x !== id));
+                                setSelectedSectors(prev => prev.filter(x => x !== id));
+                                setSelectedClubs(prev => prev.filter(x => x !== id));
+                              }} className="hover:text-red-500">×</button>
+                            </span>
+                          );
+                        })
+                      )}
                     </div>
                   </div>
                 </div>
@@ -440,24 +446,24 @@ export default function SecretariesPage() {
                               <span className="text-xs text-slate-600">All Volunteers</span>
                             </label>
                             {!editTargetAll && (
-                              <div className="grid grid-cols-3 gap-2">
+                              <div className="space-y-4">
                                 <div>
-                                  <label className="block text-[10px] uppercase text-slate-400">Services</label>
-                                  <select multiple value={editSelectedServices} onChange={e=>setEditSelectedServices(Array.from(e.target.selectedOptions).map(o=>o.value))} className="w-full text-xs border rounded p-1 h-20">
-                                    {servicesList.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                  </select>
+                                  <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Services</label>
+                                  {renderButtons(servicesList, editSelectedServices, (id) => {
+                                    setEditSelectedServices(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+                                  })}
                                 </div>
                                 <div>
-                                  <label className="block text-[10px] uppercase text-slate-400">Sectors</label>
-                                  <select multiple value={editSelectedSectors} onChange={e=>setEditSelectedSectors(Array.from(e.target.selectedOptions).map(o=>o.value))} className="w-full text-xs border rounded p-1 h-20">
-                                    {sectorsList.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                  </select>
+                                  <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Sectors</label>
+                                  {renderButtons(sectorsList, editSelectedSectors, (id) => {
+                                    setEditSelectedSectors(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+                                  })}
                                 </div>
                                 <div>
-                                  <label className="block text-[10px] uppercase text-slate-400">Clubs</label>
-                                  <select multiple value={editSelectedClubs} onChange={e=>setEditSelectedClubs(Array.from(e.target.selectedOptions).map(o=>o.value))} className="w-full text-xs border rounded p-1 h-20">
-                                    {clubsList.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                  </select>
+                                  <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Clubs</label>
+                                  {renderButtons(clubsList, editSelectedClubs, (id) => {
+                                    setEditSelectedClubs(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+                                  })}
                                 </div>
                               </div>
                             )}

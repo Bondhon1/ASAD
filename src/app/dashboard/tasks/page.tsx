@@ -15,6 +15,7 @@ export default function TasksPage() {
   const [loading, setLoading] = useState(true);
   const [createdLoading, setCreatedLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editSource, setEditSource] = useState<'assigned' | 'created' | 'admin' | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editPoint, setEditPoint] = useState<number | ''>('');
@@ -115,8 +116,9 @@ export default function TasksPage() {
 
   // Note: Creation is handled on the Secretaries page; Tasks page links there.
 
-  const startEdit = (t: any) => {
+  const startEdit = (t: any, source: 'assigned' | 'created' | 'admin') => {
     setEditingId(t.id);
+    setEditSource(source);
     setEditTitle(t.title || '');
     setEditDescription(t.description || '');
     setEditPoint(t.pointsPositive ?? '');
@@ -124,10 +126,19 @@ export default function TasksPage() {
     setEditExpire(t.endDate ? new Date(t.endDate).toISOString().slice(0, 16) : '');
     setEditMandatory(!!t.mandatory);
     setEditInputType(t.taskType || 'YESNO');
-    setEditTargetAll(false);
-    setEditSelectedServices([]);
-    setEditSelectedSectors([]);
-    setEditSelectedClubs([]);
+    
+    // Parse assigned groups
+    let assigned: any = {};
+    try {
+      if (t.assignedGroup) assigned = JSON.parse(t.assignedGroup);
+    } catch (e) {
+      console.error("Failed to parse assignedGroup", e);
+    }
+
+    setEditTargetAll(!!assigned.all);
+    setEditSelectedServices(assigned.services || []);
+    setEditSelectedSectors(assigned.sectors || []);
+    setEditSelectedClubs(assigned.clubs || []);
   };
 
   const saveEdit = async () => {
@@ -163,11 +174,35 @@ export default function TasksPage() {
       const d = await res.json();
       if (!res.ok) throw new Error(d?.error || 'Update failed');
       setEditingId(null);
+      setEditSource(null);
       await refresh();
     } catch (err: any) {
       alert('Update failed: ' + (err?.message || 'Unknown'));
     }
   };
+
+  const renderButtons = (list: any[], selected: string[], toggle: (id: string) => void) => (
+    <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto p-3 border border-slate-200 rounded-xl bg-white/50">
+      {list.length === 0 && <span className="text-xs text-slate-400">No items available</span>}
+      {list.map(item => {
+        const isSelected = selected.includes(item.id);
+        return (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => toggle(item.id)}
+            className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all ${
+              isSelected 
+                ? 'bg-blue-600 text-white border-blue-600 shadow-sm ring-2 ring-blue-100' 
+                : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+            }`}
+          >
+            {item.name}
+          </button>
+        );
+      })}
+    </div>
+  );
 
   return (
     <DashboardLayout userRole={(user as any)?.role || (session as any)?.user?.role || 'VOLUNTEER'} userName={(user as any)?.fullName || (session as any)?.user?.name || 'User'} userEmail={(user as any)?.email || (session as any)?.user?.email || ''} userId={(user as any)?.id || (session as any)?.user?.id || ''}>
@@ -254,7 +289,7 @@ export default function TasksPage() {
                         {isSuperAdmin && (
                           <div className="flex gap-2">
                             <button 
-                              onClick={() => startEdit(t)} 
+                              onClick={() => startEdit(t, 'assigned')} 
                               className="p-2 bg-white border border-slate-200 rounded-lg text-slate-400 hover:text-blue-600 hover:border-blue-100 transition-all"
                               title="Edit"
                             >
@@ -272,7 +307,7 @@ export default function TasksPage() {
                       </div>
                     </div>
 
-                    {editingId === t.id && (
+                    {editingId === t.id && editSource === 'assigned' && (
                       <div className="mt-6 bg-slate-50 border border-slate-200 p-6 rounded-2xl animate-in fade-in slide-in-from-top-2 space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="md:col-span-2">
@@ -324,24 +359,33 @@ export default function TasksPage() {
 
                         <div className="border-t border-slate-200 pt-4">
                           <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 px-1">Update Audience (Optional)</label>
-                          <label className="flex items-center gap-2 mb-2">
+                          <label className="flex items-center gap-2 mb-3">
                             <input type="checkbox" checked={editTargetAll} onChange={e=>{
                               setEditTargetAll(e.target.checked);
                               if (e.target.checked) { setEditSelectedServices([]); setEditSelectedSectors([]); setEditSelectedClubs([]); }
-                            }} />
-                            <span className="text-xs text-slate-600">Notify All Volunteers</span>
+                            }} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                            <span className="text-sm font-medium text-slate-600">Notify All Volunteers</span>
                           </label>
                           {!editTargetAll && (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                              <select multiple value={editSelectedServices} onChange={e=>setEditSelectedServices(Array.from(e.target.selectedOptions).map(o=>o.value))} className="text-xs border rounded-xl p-2 h-24">
-                                {servicesList.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                              </select>
-                              <select multiple value={editSelectedSectors} onChange={e=>setEditSelectedSectors(Array.from(e.target.selectedOptions).map(o=>o.value))} className="text-xs border rounded-xl p-2 h-24">
-                                {sectorsList.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                              </select>
-                              <select multiple value={editSelectedClubs} onChange={e=>setEditSelectedClubs(Array.from(e.target.selectedOptions).map(o=>o.value))} className="text-xs border rounded-xl p-2 h-24">
-                                {clubsList.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                              </select>
+                            <div className="space-y-4">
+                              <div>
+                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 px-1">Services</label>
+                                {renderButtons(servicesList, editSelectedServices, (id) => {
+                                  setEditSelectedServices(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+                                })}
+                              </div>
+                              <div>
+                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 px-1">Sectors</label>
+                                {renderButtons(sectorsList, editSelectedSectors, (id) => {
+                                  setEditSelectedSectors(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+                                })}
+                              </div>
+                              <div>
+                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 px-1">Clubs</label>
+                                {renderButtons(clubsList, editSelectedClubs, (id) => {
+                                  setEditSelectedClubs(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+                                })}
+                              </div>
                             </div>
                           )}
                         </div>
@@ -361,19 +405,19 @@ export default function TasksPage() {
           {/* My Created Tasks (admin only) */}
               {(canCreate) && (
                 <div className="mt-16">
-                  <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center justify-between mb-6 px-1">
                     <h3 className="text-2xl font-bold text-slate-800">Tasks You Created</h3>
-                    <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">{createdTasks.length} Created</span>
+                    <span className="bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">{createdTasks.filter(t => t.createdByUserId === user?.id).length} Created</span>
                   </div>
                   {createdLoading ? (
                     <div className="h-24 bg-white border border-slate-100 rounded-2xl animate-pulse" />
                   ) : (
                     <div className="grid grid-cols-1 gap-4">
-                      {createdTasks.length === 0 ? (
-                        <div className="p-8 bg-dashed border border-slate-200 rounded-2xl text-center text-slate-400 font-medium">No tasks created by you yet.</div>
+                      {createdTasks.filter(t => t.createdByUserId === user?.id).length === 0 ? (
+                        <div className="p-8 bg-white border border-dashed border-slate-200 rounded-2xl text-center text-slate-400 font-medium shadow-sm">No tasks created by you yet.</div>
                       ) : (
-                        createdTasks.map(t => (
-                          <div key={t.id} className="bg-white border border-slate-100 rounded-2xl p-6 hover:border-blue-200 transition-colors">
+                        createdTasks.filter(t => t.createdByUserId === user?.id).map(t => (
+                          <div key={t.id} className="bg-white border border-slate-100 rounded-2xl p-6 hover:border-blue-200 transition-colors shadow-sm">
                             <div className="flex items-center justify-between">
                               <div className="flex-1 min-w-0 pr-4">
                                 <div className="text-lg font-bold text-slate-800 truncate">{t.title}</div>
@@ -381,7 +425,7 @@ export default function TasksPage() {
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
                                 <button 
-                                  onClick={() => startEdit(t)} 
+                                  onClick={() => startEdit(t, 'created')} 
                                   className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
                                 >
                                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
@@ -394,8 +438,8 @@ export default function TasksPage() {
                                 </button>
                               </div>
                             </div>
-                            {editingId === t.id && (
-                              <div className="mt-4 bg-slate-50 border border-slate-200 p-6 rounded-2xl space-y-4">
+                            {editingId === t.id && editSource === 'created' && (
+                              <div className="mt-4 bg-slate-50 border border-slate-200 p-6 rounded-2xl space-y-4 animate-in fade-in slide-in-from-top-2">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                   <div className="md:col-span-2">
                                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 px-1">Title</label>
@@ -431,16 +475,34 @@ export default function TasksPage() {
                                   </div>
                                 </div>
                                 <div className="border-t border-slate-200 pt-4">
-                                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Update Audience</label>
-                                  <label className="flex items-center gap-2 mb-2">
-                                    <input type="checkbox" checked={editTargetAll} onChange={e=>{setEditTargetAll(e.target.checked); if(e.target.checked){setEditSelectedServices([]);setEditSelectedSectors([]);setEditSelectedClubs([]);}}} />
-                                    <span className="text-xs">All Volunteers</span>
+                                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 px-1">Update Audience (Optional)</label>
+                                  <label className="flex items-center gap-2 mb-3">
+                                    <input type="checkbox" checked={editTargetAll} onChange={e=>{
+                                      setEditTargetAll(e.target.checked);
+                                      if (e.target.checked) { setEditSelectedServices([]); setEditSelectedSectors([]); setEditSelectedClubs([]); }
+                                    }} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                                    <span className="text-sm font-medium text-slate-600">Notify All Volunteers</span>
                                   </label>
                                   {!editTargetAll && (
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                                      <select multiple value={editSelectedServices} onChange={e=>setEditSelectedServices(Array.from(e.target.selectedOptions).map(o=>o.value))} className="text-[10px] border rounded-lg p-1 h-16">{servicesList.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select>
-                                      <select multiple value={editSelectedSectors} onChange={e=>setEditSelectedSectors(Array.from(e.target.selectedOptions).map(o=>o.value))} className="text-[10px] border rounded-lg p-1 h-16">{sectorsList.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select>
-                                      <select multiple value={editSelectedClubs} onChange={e=>setEditSelectedClubs(Array.from(e.target.selectedOptions).map(o=>o.value))} className="text-[10px] border rounded-lg p-1 h-16">{clubsList.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select>
+                                    <div className="space-y-4">
+                                      <div>
+                                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 px-1">Services</label>
+                                        {renderButtons(servicesList, editSelectedServices, (id) => {
+                                          setEditSelectedServices(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+                                        })}
+                                      </div>
+                                      <div>
+                                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 px-1">Sectors</label>
+                                        {renderButtons(sectorsList, editSelectedSectors, (id) => {
+                                          setEditSelectedSectors(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+                                        })}
+                                      </div>
+                                      <div>
+                                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 px-1">Clubs</label>
+                                        {renderButtons(clubsList, editSelectedClubs, (id) => {
+                                          setEditSelectedClubs(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+                                        })}
+                                      </div>
                                     </div>
                                   )}
                                 </div>
@@ -457,50 +519,130 @@ export default function TasksPage() {
                   )}
                 </div>
               )}
-        </div>
-      </div>
+
           {/* Admin - View/Edit All Tasks (MASTER and ADMIN only) */}
           {isSuperAdmin && (
-            <div className="mt-8">
-              <h3 className="text-xl font-semibold text-[#07223f] mb-3">Admin — View & Edit All Tasks</h3>
-              {createdLoading ? <div>Loading…</div> : (
+            <div className="mt-16 bg-white border border-slate-200 rounded-3xl p-8 shadow-sm">
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h3 className="text-2xl font-bold text-[#07223f]">System Administration</h3>
+                  <p className="text-slate-500 text-sm">View and manage all organization tasks from one place.</p>
+                </div>
+                <div className="px-4 py-1.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-full uppercase tracking-widest">
+                  {createdTasks.filter(t => t.createdByUserId !== user?.id).length} System Tasks
+                </div>
+              </div>
+
+              {createdLoading ? (
                 <div className="grid grid-cols-1 gap-4">
-                  {createdTasks.length === 0 ? <div className="bg-white border rounded p-6">No tasks available</div> : (
-                    createdTasks.map(t => (
-                      <div key={t.id} className="bg-white border rounded-2xl p-6 shadow-sm hover:border-blue-200 transition-colors">
+                  {[1, 2].map(i => <div key={i} className="h-24 bg-slate-50 rounded-2xl animate-pulse" />)}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4">
+                  {createdTasks.filter(t => t.createdByUserId !== user?.id).length === 0 ? (
+                    <div className="text-center py-10 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-slate-400 font-medium">
+                      No other tasks found in the system.
+                    </div>
+                  ) : (
+                    createdTasks.filter(t => t.createdByUserId !== user?.id).map(t => (
+                      <div key={t.id} className="group bg-white border border-slate-100 rounded-2xl p-6 hover:border-blue-200 hover:shadow-md transition-all duration-300">
                         <div className="flex items-center justify-between">
-                          <div>
-                            <div className="text-lg font-semibold text-[#07223f]">{t.title}</div>
-                            <div className="text-sm text-slate-700">{t.description}</div>
+                          <div className="flex-1 pr-4">
+                            <div className="text-lg font-bold text-[#07223f] group-hover:text-blue-700 transition-colors">{t.title}</div>
+                            <div className="text-sm text-slate-500 line-clamp-1">{t.description}</div>
+                            <div className="flex items-center gap-3 mt-2">
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter bg-slate-50 px-2 py-0.5 rounded border">ID: {t.id.slice(-6)}</span>
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter bg-slate-50 px-2 py-0.5 rounded border">Created By: {t.createdByUserId === user?.id ? 'You' : 'Another Admin'}</span>
+                            </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <button onClick={() => startEdit(t)} className="px-3 py-1 bg-white border rounded text-sm">Edit</button>
-                            <button onClick={() => deleteTask(t.id)} className="px-3 py-1 bg-red-600 text-white rounded text-sm">Delete</button>
+                            <button 
+                              onClick={() => startEdit(t, 'admin')} 
+                              className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm"
+                            >
+                              Edit Task
+                            </button>
+                            <button 
+                              onClick={() => deleteTask(t.id)} 
+                              className="px-4 py-2 bg-red-50 border border-red-100 rounded-xl text-xs font-bold text-red-600 hover:bg-red-600 hover:text-white transition-all shadow-sm"
+                            >
+                              Delete
+                            </button>
                           </div>
                         </div>
-                        {editingId === t.id && (
-                          <div className="mt-4 bg-slate-50 border rounded-xl p-4 space-y-3">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {editingId === t.id && editSource === 'admin' && (
+                          <div className="mt-6 bg-slate-50 border border-slate-200 p-6 rounded-2xl animate-in fade-in slide-in-from-top-2 space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div className="md:col-span-2">
-                                <label className="block text-[10px] uppercase font-bold text-slate-400">Title</label>
-                                <input value={editTitle} onChange={e=>setEditTitle(e.target.value)} className="w-full p-2 border rounded-lg bg-white text-sm" />
+                                <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1 px-1">Title</label>
+                                <input value={editTitle} onChange={e=>setEditTitle(e.target.value)} className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-sm font-medium focus:ring-2 focus:ring-blue-500 transition-all" />
                               </div>
                               <div className="md:col-span-2">
-                                <label className="block text-[10px] uppercase font-bold text-slate-400">Description</label>
-                                <textarea value={editDescription} onChange={e=>setEditDescription(e.target.value)} className="w-full p-2 border rounded-lg bg-white text-sm" rows={2} />
+                                <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1 px-1">Description</label>
+                                <textarea value={editDescription} onChange={e=>setEditDescription(e.target.value)} className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-sm focus:ring-2 focus:ring-blue-500 transition-all" rows={2} />
                               </div>
                               <div>
-                                <label className="block text-[10px] uppercase font-bold text-slate-400">Deadline</label>
-                                <input type="datetime-local" value={editExpire} onChange={e=>setEditExpire(e.target.value)} className="w-full p-2 border rounded-lg bg-white text-sm" />
+                                <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1 px-1">Deadline</label>
+                                <input type="datetime-local" value={editExpire} onChange={e=>setEditExpire(e.target.value)} className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-sm" />
                               </div>
                               <div>
-                                <label className="block text-[10px] uppercase font-bold text-slate-400">Points</label>
-                                <input type="number" value={editPoint as any} onChange={e=>setEditPoint(e.target.value==='' ? '' : Number(e.target.value))} className="w-full p-2 border rounded-lg bg-white text-sm" />
+                                <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1 px-1">Points</label>
+                                <input type="number" value={editPoint as any} onChange={e=>setEditPoint(e.target.value==='' ? '' : Number(e.target.value))} className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-sm" />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1 px-1">Type</label>
+                                <select value={editInputType} onChange={e=>setEditInputType(e.target.value as any)} className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-sm">
+                                  <option value="YESNO">Yes/No</option>
+                                  <option value="COMMENT">Comment</option>
+                                  <option value="IMAGE">Image</option>
+                                  <option value="DONATION">Donation</option>
+                                </select>
+                              </div>
+                              <div className="flex flex-col justify-center">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                  <input type="checkbox" checked={editMandatory} onChange={e=>setEditMandatory(e.target.checked)} className="h-4 w-4" />
+                                  <span className="text-[10px] uppercase font-bold text-slate-400">Mandatory</span>
+                                </label>
+                                {editMandatory && <input type="number" value={editPointsToDeduct as any} onChange={e=>setEditPointsToDeduct(e.target.value==='' ? '' : Number(e.target.value))} placeholder="Deduction" className="mt-1 p-2 border border-slate-200 rounded-lg bg-white text-xs" />}
                               </div>
                             </div>
-                            <div className="flex gap-2 justify-end mt-2">
-                              <button onClick={saveEdit} className="px-4 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium">Save All Changes</button>
-                              <button onClick={()=>setEditingId(null)} className="px-4 py-1.5 bg-white border rounded-lg text-xs font-medium">Cancel</button>
+
+                            <div className="border-t border-slate-200 pt-4">
+                              <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 px-1">Update Audience (Optional)</label>
+                              <label className="flex items-center gap-2 mb-3">
+                                <input type="checkbox" checked={editTargetAll} onChange={e=>{
+                                  setEditTargetAll(e.target.checked);
+                                  if (e.target.checked) { setEditSelectedServices([]); setEditSelectedSectors([]); setEditSelectedClubs([]); }
+                                }} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                                <span className="text-sm font-medium text-slate-600">Notify All Volunteers</span>
+                              </label>
+                              {!editTargetAll && (
+                                <div className="space-y-4">
+                                  <div>
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 px-1">Services</label>
+                                    {renderButtons(servicesList, editSelectedServices, (id) => {
+                                      setEditSelectedServices(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+                                    })}
+                                  </div>
+                                  <div>
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 px-1">Sectors</label>
+                                    {renderButtons(sectorsList, editSelectedSectors, (id) => {
+                                      setEditSelectedSectors(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+                                    })}
+                                  </div>
+                                  <div>
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 px-1">Clubs</label>
+                                    {renderButtons(clubsList, editSelectedClubs, (id) => {
+                                      setEditSelectedClubs(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex gap-2 justify-end pt-2 border-t border-slate-200 mt-2">
+                              <button onClick={saveEdit} className="px-6 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold shadow-sm hover:bg-blue-700 transition-colors">Save System Changes</button>
+                              <button onClick={()=>{setEditingId(null); setEditSource(null);}} className="px-6 py-2 bg-white border border-slate-200 text-slate-500 rounded-xl text-xs font-bold hover:bg-slate-50 transition-colors">Cancel</button>
                             </div>
                           </div>
                         )}
@@ -511,8 +653,8 @@ export default function TasksPage() {
               )}
             </div>
           )}
-        
-      
+        </div>
+      </div>
     </DashboardLayout>
   );
 }

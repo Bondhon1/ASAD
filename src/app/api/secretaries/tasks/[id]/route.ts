@@ -74,44 +74,103 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       const assigned = body.assigned;
       const targetSet = new Set<string>();
       if (assigned.all) {
-        const users = await prisma.user.findMany({ where: { status: 'OFFICIAL' }, select: { id: true } });
+        const users = await prisma.user.findMany({ 
+          where: { status: 'OFFICIAL' }, 
+          select: { id: true } 
+        });
         users.forEach(u => targetSet.add(u.id));
       } else {
         if (assigned.services && assigned.services.length) {
-          const profiles = await prisma.volunteerProfile.findMany({ where: { serviceId: { in: assigned.services } }, select: { userId: true } });
+          const profiles = await prisma.volunteerProfile.findMany({ 
+            where: { serviceId: { in: assigned.services } }, 
+            select: { userId: true } 
+          });
           const uids = profiles.map(p => p.userId);
           if (uids.length) {
-            const users = await prisma.user.findMany({ where: { id: { in: uids }, status: 'OFFICIAL' }, select: { id: true } });
+            const users = await prisma.user.findMany({ 
+              where: { id: { in: uids }, status: 'OFFICIAL' }, 
+              select: { id: true } 
+            });
             users.forEach(u => targetSet.add(u.id));
           }
         }
         if (assigned.sectors && assigned.sectors.length) {
-          const profiles = await prisma.volunteerProfile.findMany({ where: { sectors: { hasSome: assigned.sectors } }, select: { userId: true } });
-          const uids = profiles.map(p => p.userId);
-          if (uids.length) {
-            const users = await prisma.user.findMany({ where: { id: { in: uids }, status: 'OFFICIAL' }, select: { id: true } });
-            users.forEach(u => targetSet.add(u.id));
+          // Resolve sector IDs to sector NAMES before querying volunteerProfile.sectors
+          const sectorRows = await prisma.sector.findMany({ where: { id: { in: assigned.sectors } }, select: { name: true } });
+          const sectorNames = sectorRows.map((s) => s.name).filter(Boolean);
+          if (sectorNames.length) {
+            const profiles = await prisma.volunteerProfile.findMany({
+              where: { sectors: { hasSome: sectorNames } },
+              select: { userId: true },
+            });
+            const uids = profiles.map((p) => p.userId);
+            if (uids.length) {
+              const users = await prisma.user.findMany({
+                where: {
+                  AND: [
+                    { id: { in: uids } },
+                    { OR: [{ status: 'OFFICIAL' }, { id: requester.id }] },
+                  ],
+                },
+                select: { id: true },
+              });
+              users.forEach((u) => targetSet.add(u.id));
+            }
           }
         }
         if (assigned.clubs && assigned.clubs.length) {
-          const profiles = await prisma.volunteerProfile.findMany({ where: { clubs: { hasSome: assigned.clubs } }, select: { userId: true } });
-          const uids = profiles.map(p => p.userId);
-          if (uids.length) {
-            const users = await prisma.user.findMany({ where: { id: { in: uids }, status: 'OFFICIAL' }, select: { id: true } });
-            users.forEach(u => targetSet.add(u.id));
+          // volunteerProfile.clubs stores club NAMES; resolve IDs to names first
+          const clubRows = await prisma.club.findMany({ where: { id: { in: assigned.clubs } }, select: { name: true } });
+          const clubNames = clubRows.map((c) => c.name).filter(Boolean);
+          if (clubNames.length) {
+            const profiles = await prisma.volunteerProfile.findMany({
+              where: { clubs: { hasSome: clubNames } },
+              select: { userId: true },
+            });
+            const uids = profiles.map((p) => p.userId);
+            if (uids.length) {
+              const users = await prisma.user.findMany({
+                where: {
+                  AND: [
+                    { id: { in: uids } },
+                    { OR: [{ status: 'OFFICIAL' }, { id: requester.id }] },
+                  ],
+                },
+                select: { id: true },
+              });
+              users.forEach((u) => targetSet.add(u.id));
+            }
           }
         }
         if (assigned.committees && assigned.committees.length) {
-          const members = await prisma.committeeMember.findMany({ where: { committeeId: { in: assigned.committees } }, select: { userId: true } });
-          members.forEach(m => targetSet.add(m.userId));
+          const members = await prisma.committeeMember.findMany({ 
+            where: { committeeId: { in: assigned.committees } }, 
+            select: { userId: true } 
+          });
+          const uids = members.map(m => m.userId);
+          const users = await prisma.user.findMany({ 
+            where: { id: { in: uids }, status: 'OFFICIAL' }, 
+            select: { id: true } 
+          });
+          users.forEach(u => targetSet.add(u.id));
         }
         if (assigned.departments && assigned.departments.length) {
-          const committees = await prisma.committee.findMany({ where: { departmentId: { in: assigned.departments } }, include: { members: true } });
-          committees.flatMap(c => c.members).forEach(m => targetSet.add(m.userId));
+          const committees = await prisma.committee.findMany({ 
+            where: { departmentId: { in: assigned.departments } }, 
+            include: { members: true } 
+          });
+          const uids = committees.flatMap(c => c.members).map(m => m.userId);
+          const users = await prisma.user.findMany({ 
+            where: { id: { in: uids }, status: 'OFFICIAL' }, 
+            select: { id: true } 
+          });
+          users.forEach(u => targetSet.add(u.id));
         }
       }
       targetUsers = Array.from(targetSet);
       data.targetUserIds = targetUsers;
+      data.assignedGroup = JSON.stringify(assigned);
+      data.assignedGroupType = assigned.all ? 'ALL' : 'SECTOR';
     }
 
     const updated = await prisma.task.update({ where: { id }, data });
@@ -123,9 +182,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         data: newAudienceIds.map(uId => ({
           userId: uId,
           type: NotificationType.NEW_TASK,
-          title: 'New task for you.',
-          message: updated.description || 'You have a new task assigned. Please check your Tasks.',
-          link: `/tasks/${updated.id}`
+          title: 'New assignment: ' + updated.title,
+          message: updated.description ? (updated.description.slice(0, 100) + (updated.description.length > 100 ? '...' : '')) : 'You have a new task assigned.',
+          link: '/dashboard/tasks'
         }))
       });
     }
@@ -137,9 +196,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         data: targetUsers.map(uId => ({
           userId: uId,
           type: NotificationType.APPLICATION_UPDATE,
-          title: 'Task deadline extended',
-          message: `The deadline for task "${updated.title}" has been extended to ${newEndDate!.toLocaleString()}.`,
-          link: `/tasks/${updated.id}`
+          title: 'Deadline extended: ' + updated.title,
+          message: `The deadline has been extended to ${newEndDate!.toLocaleString()}.`,
+          link: '/dashboard/tasks'
         }))
       });
     }
