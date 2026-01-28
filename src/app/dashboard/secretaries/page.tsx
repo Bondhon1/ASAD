@@ -27,6 +27,13 @@ export default function SecretariesPage() {
   const [editDescription, setEditDescription] = useState('');
   const [editPoint, setEditPoint] = useState<number | ''>('');
   const [editPointsToDeduct, setEditPointsToDeduct] = useState<number | ''>('');
+  const [editExpire, setEditExpire] = useState('');
+  const [editMandatory, setEditMandatory] = useState(false);
+  const [editInputType, setEditInputType] = useState<'YESNO'|'COMMENT'|'IMAGE'|'DONATION'>('YESNO');
+  const [editTargetAll, setEditTargetAll] = useState(false);
+  const [editSelectedServices, setEditSelectedServices] = useState<string[]>([]);
+  const [editSelectedSectors, setEditSelectedSectors] = useState<string[]>([]);
+  const [editSelectedClubs, setEditSelectedClubs] = useState<string[]>([]);
 
   // Task form state
   const [taskTitle, setTaskTitle] = useState('');
@@ -98,8 +105,15 @@ export default function SecretariesPage() {
     setEditingTaskId(t.id);
     setEditTitle(t.title || '');
     setEditDescription(t.description || '');
-    setEditPoint(t.points ?? '');
-    setEditPointsToDeduct(t.pointsToDeduct ?? t.pointsNegative ?? '');
+    setEditPoint(t.pointsPositive ?? '');
+    setEditPointsToDeduct(t.pointsNegative ?? '');
+    setEditExpire(t.endDate ? new Date(t.endDate).toISOString().slice(0, 16) : '');
+    setEditMandatory(!!t.mandatory);
+    setEditInputType(t.taskType || 'YESNO');
+    setEditTargetAll(false);
+    setEditSelectedServices([]);
+    setEditSelectedSectors([]);
+    setEditSelectedClubs([]);
   };
 
   const cancelEdit = () => {
@@ -107,17 +121,46 @@ export default function SecretariesPage() {
     setEditTitle('');
     setEditDescription('');
     setEditPoint('');
+    setEditPointsToDeduct('');
+    setEditExpire('');
+    setEditMandatory(false);
+    setEditInputType('YESNO');
+    setEditTargetAll(false);
+    setEditSelectedServices([]);
+    setEditSelectedSectors([]);
+    setEditSelectedClubs([]);
   };
 
   const saveEdit = async (id: string) => {
     try {
-      const payload: any = { title: editTitle, description: editDescription, pointsPositive: editPoint === '' ? 0 : Number(editPoint), pointsToDeduct: editPointsToDeduct === '' ? 0 : Number(editPointsToDeduct) };
+      const assigned: any = {};
+      let hasAssigned = false;
+      if (editTargetAll) {
+        assigned.all = true;
+        hasAssigned = true;
+      } else {
+        if (editSelectedServices.length) { assigned.services = editSelectedServices; hasAssigned = true; }
+        if (editSelectedSectors.length) { assigned.sectors = editSelectedSectors; hasAssigned = true; }
+        if (editSelectedClubs.length) { assigned.clubs = editSelectedClubs; hasAssigned = true; }
+      }
+
+      const payload: any = {
+        title: editTitle,
+        description: editDescription,
+        points: editPoint === '' ? 0 : Number(editPoint),
+        pointsToDeduct: editPointsToDeduct === '' ? 0 : Number(editPointsToDeduct),
+        expireAt: editExpire,
+        mandatory: editMandatory,
+        inputType: editInputType,
+      };
+      if (hasAssigned) payload.assigned = assigned;
+
       const res = await fetch(`/api/secretaries/tasks/${id}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || 'Failed to update');
-      // update local
-      setTasks(prev => prev.map(p => p.id === id ? { ...p, ...payload } : p));
-      cancelEdit();
+      // refresh manage list
+      fetchTasks();
+      setEditingTaskId(null);
     } catch (err: any) {
       alert(err?.message || 'Update failed');
     }
@@ -346,21 +389,90 @@ export default function SecretariesPage() {
                   <div key={t.id} className="flex items-start justify-between gap-4">
                     <div className="flex-1">
                       {editingTaskId === t.id ? (
-                        <div className="space-y-2">
-                          <input className={inputCls} value={editTitle} onChange={e=>setEditTitle(e.target.value)} />
-                          <textarea className={inputCls} value={editDescription} onChange={e=>setEditDescription(e.target.value)} rows={3} />
-                          <div className="flex gap-2">
-                            <input className={inputCls} type="number" value={editPoint as any} onChange={e=>setEditPoint(e.target.value==='' ? '' : Number(e.target.value))} />
-                            <input className={inputCls} type="number" value={editPointsToDeduct as any} onChange={e=>setEditPointsToDeduct(e.target.value==='' ? '' : Number(e.target.value))} placeholder="Points to deduct" />
-                            <button onClick={() => saveEdit(t.id)} className="px-3 py-1.5 bg-[#2b6cb0] text-white rounded-md">Save</button>
-                            <button onClick={cancelEdit} className="px-3 py-1.5 bg-white border border-slate-200 rounded-md">Cancel</button>
+                        <div className="space-y-4 bg-slate-50 p-4 rounded-xl border border-blue-100">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div className="md:col-span-2">
+                              <label className="block text-xs font-semibold text-slate-500 mb-1">Title</label>
+                              <input className={inputCls} value={editTitle} onChange={e=>setEditTitle(e.target.value)} />
+                            </div>
+                            <div className="md:col-span-2">
+                              <label className="block text-xs font-semibold text-slate-500 mb-1">Description</label>
+                              <textarea className={inputCls} value={editDescription} onChange={e=>setEditDescription(e.target.value)} rows={3} />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-slate-500 mb-1">Deadline</label>
+                              <input className={inputCls} type="datetime-local" value={editExpire} onChange={e=>setEditExpire(e.target.value)} />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-slate-500 mb-1">Points</label>
+                              <input className={inputCls} type="number" value={editPoint as any} onChange={e=>setEditPoint(e.target.value==='' ? '' : Number(e.target.value))} />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-slate-500 mb-1">Task Type</label>
+                              <select value={editInputType} onChange={(e)=>setEditInputType(e.target.value as any)} className={inputCls}>
+                                <option value="YESNO">Yes / No</option>
+                                <option value="COMMENT">Comment</option>
+                                <option value="IMAGE">Image</option>
+                                <option value="DONATION">Donation</option>
+                              </select>
+                            </div>
+                            <div className="flex flex-col justify-center">
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" checked={editMandatory} onChange={e=>setEditMandatory(e.target.checked)} className="h-4 w-4" />
+                                <span className="text-xs font-semibold text-slate-500">Mandatory</span>
+                              </label>
+                              {editMandatory && (
+                                <div className="mt-2">
+                                  <label className="block text-[10px] font-semibold text-slate-400">Deduction points</label>
+                                  <input className={inputCls} type="number" value={editPointsToDeduct as any} onChange={e=>setEditPointsToDeduct(e.target.value==='' ? '' : Number(e.target.value))} placeholder="Points to deduct" />
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="border-t border-slate-200 pt-3">
+                            <label className="block text-xs font-semibold text-slate-500 mb-2">Update Audience (Optional - leave unchecked to keep current)</label>
+                            <label className="flex items-center gap-2 mb-2">
+                              <input type="checkbox" checked={editTargetAll} onChange={e=>{
+                                setEditTargetAll(e.target.checked);
+                                if (e.target.checked) { setEditSelectedServices([]); setEditSelectedSectors([]); setEditSelectedClubs([]); }
+                              }} />
+                              <span className="text-xs text-slate-600">All Volunteers</span>
+                            </label>
+                            {!editTargetAll && (
+                              <div className="grid grid-cols-3 gap-2">
+                                <div>
+                                  <label className="block text-[10px] uppercase text-slate-400">Services</label>
+                                  <select multiple value={editSelectedServices} onChange={e=>setEditSelectedServices(Array.from(e.target.selectedOptions).map(o=>o.value))} className="w-full text-xs border rounded p-1 h-20">
+                                    {servicesList.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] uppercase text-slate-400">Sectors</label>
+                                  <select multiple value={editSelectedSectors} onChange={e=>setEditSelectedSectors(Array.from(e.target.selectedOptions).map(o=>o.value))} className="w-full text-xs border rounded p-1 h-20">
+                                    {sectorsList.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] uppercase text-slate-400">Clubs</label>
+                                  <select multiple value={editSelectedClubs} onChange={e=>setEditSelectedClubs(Array.from(e.target.selectedOptions).map(o=>o.value))} className="w-full text-xs border rounded p-1 h-20">
+                                    {clubsList.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                  </select>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex gap-2 pt-2">
+                            <button onClick={() => saveEdit(t.id)} className="px-4 py-2 bg-[#2b6cb0] text-white rounded-md text-sm font-medium shadow-sm">Save Changes</button>
+                            <button onClick={cancelEdit} className="px-4 py-2 bg-white border border-slate-200 rounded-md text-sm font-medium text-slate-600">Cancel</button>
                           </div>
                         </div>
                       ) : (
                         <>
                           <div className="font-semibold text-slate-900">{t.title}</div>
                           <div className="text-sm text-slate-600">{t.description}</div>
-                          <div className="text-xs text-slate-500 mt-1">Points: {t.points ?? 0} • Expires: {t.expireAt ?? '—'}</div>
+                          <div className="text-xs text-slate-500 mt-1">Points: {t.pointsPositive ?? 0} • Expires: {t.endDate ? new Date(t.endDate).toLocaleString() : '—'}</div>
                         </>
                       )}
                     </div>

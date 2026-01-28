@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
+import { NotificationType } from '@prisma/client';
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
   try {
@@ -11,7 +12,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
     const requester = await prisma.user.findUnique({ where: { email: session.user.email }, select: { id: true, role: true } });
     if (!requester) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    if (!['SECRETARIES', 'MASTER'].includes(requester.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (!['SECRETARIES', 'MASTER', 'ADMIN', 'DIRECTOR'].includes(requester.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     const id = params.id;
     // delete related notifications first
@@ -33,20 +34,115 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     const requester = await prisma.user.findUnique({ where: { email: session.user.email }, select: { id: true, role: true } });
     if (!requester) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    if (!['SECRETARIES', 'MASTER'].includes(requester.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (!['SECRETARIES', 'MASTER', 'ADMIN', 'DIRECTOR'].includes(requester.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     const id = params.id;
     const body = await req.json();
+
+    const oldTask = await prisma.task.findUnique({ where: { id } });
+    if (!oldTask) return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+
     const data: any = {};
     if (typeof body.title === 'string') data.title = body.title;
     if (typeof body.description === 'string') data.description = body.description;
-    if (body.endDate) data.endDate = new Date(body.endDate);
+    
+    let newEndDate: Date | null = null;
+    if (body.expireAt) {
+      newEndDate = new Date(body.expireAt);
+      data.endDate = newEndDate;
+    } else if (body.endDate) {
+      newEndDate = new Date(body.endDate);
+      data.endDate = newEndDate;
+    }
+
     if (typeof body.pointsPositive === 'number') data.pointsPositive = Math.max(0, Math.floor(body.pointsPositive));
+    if (typeof body.points === 'number') data.pointsPositive = Math.max(0, Math.floor(body.points)); // handle both
+    
     if (typeof body.pointsToDeduct === 'number') data.pointsNegative = Math.max(0, Math.floor(body.pointsToDeduct));
+    if (typeof body.pointsNegative === 'number') data.pointsNegative = Math.max(0, Math.floor(body.pointsNegative)); // handle both
+    
     if (typeof body.mandatory === 'boolean') data.mandatory = body.mandatory;
+    
     if (typeof body.taskType === 'string') data.taskType = body.taskType;
+    if (typeof body.inputType === 'string') data.taskType = body.inputType; // handle both
+
+    let targetUsers = oldTask.targetUserIds;
+    let audienceChanged = false;
+
+    if (body.assigned) {
+      audienceChanged = true;
+      const assigned = body.assigned;
+      const targetSet = new Set<string>();
+      if (assigned.all) {
+        const users = await prisma.user.findMany({ where: { status: 'OFFICIAL' }, select: { id: true } });
+        users.forEach(u => targetSet.add(u.id));
+      } else {
+        if (assigned.services && assigned.services.length) {
+          const profiles = await prisma.volunteerProfile.findMany({ where: { serviceId: { in: assigned.services } }, select: { userId: true } });
+          const uids = profiles.map(p => p.userId);
+          if (uids.length) {
+            const users = await prisma.user.findMany({ where: { id: { in: uids }, status: 'OFFICIAL' }, select: { id: true } });
+            users.forEach(u => targetSet.add(u.id));
+          }
+        }
+        if (assigned.sectors && assigned.sectors.length) {
+          const profiles = await prisma.volunteerProfile.findMany({ where: { sectors: { hasSome: assigned.sectors } }, select: { userId: true } });
+          const uids = profiles.map(p => p.userId);
+          if (uids.length) {
+            const users = await prisma.user.findMany({ where: { id: { in: uids }, status: 'OFFICIAL' }, select: { id: true } });
+            users.forEach(u => targetSet.add(u.id));
+          }
+        }
+        if (assigned.clubs && assigned.clubs.length) {
+          const profiles = await prisma.volunteerProfile.findMany({ where: { clubs: { hasSome: assigned.clubs } }, select: { userId: true } });
+          const uids = profiles.map(p => p.userId);
+          if (uids.length) {
+            const users = await prisma.user.findMany({ where: { id: { in: uids }, status: 'OFFICIAL' }, select: { id: true } });
+            users.forEach(u => targetSet.add(u.id));
+          }
+        }
+        if (assigned.committees && assigned.committees.length) {
+          const members = await prisma.committeeMember.findMany({ where: { committeeId: { in: assigned.committees } }, select: { userId: true } });
+          members.forEach(m => targetSet.add(m.userId));
+        }
+        if (assigned.departments && assigned.departments.length) {
+          const committees = await prisma.committee.findMany({ where: { departmentId: { in: assigned.departments } }, include: { members: true } });
+          committees.flatMap(c => c.members).forEach(m => targetSet.add(m.userId));
+        }
+      }
+      targetUsers = Array.from(targetSet);
+      data.targetUserIds = targetUsers;
+    }
 
     const updated = await prisma.task.update({ where: { id }, data });
+
+    // Handle Notifications
+    const newAudienceIds = targetUsers.filter(uId => !oldTask.targetUserIds.includes(uId));
+    if (newAudienceIds.length > 0) {
+      await prisma.notification.createMany({
+        data: newAudienceIds.map(uId => ({
+          userId: uId,
+          type: NotificationType.NEW_TASK,
+          title: 'New task for you.',
+          message: updated.description || 'You have a new task assigned. Please check your Tasks.',
+          link: `/tasks/${updated.id}`
+        }))
+      });
+    }
+
+    const isDeadlineExtended = newEndDate && newEndDate.getTime() > oldTask.endDate.getTime();
+    if (isDeadlineExtended) {
+      // Notify all target users (the ones that were already there and the new ones)
+      await prisma.notification.createMany({
+        data: targetUsers.map(uId => ({
+          userId: uId,
+          type: NotificationType.APPLICATION_UPDATE,
+          title: 'Task deadline extended',
+          message: `The deadline for task "${updated.title}" has been extended to ${newEndDate!.toLocaleString()}.`,
+          link: `/tasks/${updated.id}`
+        }))
+      });
+    }
 
     return NextResponse.json({ ok: true, task: updated });
   } catch (err: any) {

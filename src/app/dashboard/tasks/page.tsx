@@ -17,10 +17,37 @@ export default function TasksPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
+  const [editPoint, setEditPoint] = useState<number | ''>('');
+  const [editPointsToDeduct, setEditPointsToDeduct] = useState<number | ''>('');
+  const [editExpire, setEditExpire] = useState('');
+  const [editMandatory, setEditMandatory] = useState(false);
+  const [editInputType, setEditInputType] = useState<'YESNO'|'COMMENT'|'IMAGE'|'DONATION'>('YESNO');
+  const [editTargetAll, setEditTargetAll] = useState(false);
+  const [editSelectedServices, setEditSelectedServices] = useState<string[]>([]);
+  const [editSelectedSectors, setEditSelectedSectors] = useState<string[]>([]);
+  const [editSelectedClubs, setEditSelectedClubs] = useState<string[]>([]);
+
+  const [servicesList, setServicesList] = useState<any[]>([]);
+  const [sectorsList, setSectorsList] = useState<any[]>([]);
+  const [clubsList, setClubsList] = useState<any[]>([]);
 
   const role = ((user as any)?.role || (session as any)?.user?.role || '');
   const canCreate = ['SECRETARIES', 'MASTER'].includes(role);
   const isSuperAdmin = ['MASTER', 'ADMIN'].includes(role);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/orgs');
+        if (res.ok) {
+          const d = await res.json();
+          setServicesList(d.services || []);
+          setSectorsList(d.sectors || []);
+          setClubsList(d.clubs || []);
+        }
+      } catch (e) {}
+    })();
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -92,12 +119,47 @@ export default function TasksPage() {
     setEditingId(t.id);
     setEditTitle(t.title || '');
     setEditDescription(t.description || '');
+    setEditPoint(t.pointsPositive ?? '');
+    setEditPointsToDeduct(t.pointsNegative ?? '');
+    setEditExpire(t.endDate ? new Date(t.endDate).toISOString().slice(0, 16) : '');
+    setEditMandatory(!!t.mandatory);
+    setEditInputType(t.taskType || 'YESNO');
+    setEditTargetAll(false);
+    setEditSelectedServices([]);
+    setEditSelectedSectors([]);
+    setEditSelectedClubs([]);
   };
 
   const saveEdit = async () => {
     if (!editingId) return;
     try {
-      const res = await fetch(`/api/secretaries/tasks/${editingId}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: editTitle, description: editDescription }) });
+      const assigned: any = {};
+      let hasAssigned = false;
+      if (editTargetAll) {
+        assigned.all = true;
+        hasAssigned = true;
+      } else {
+        if (editSelectedServices.length) { assigned.services = editSelectedServices; hasAssigned = true; }
+        if (editSelectedSectors.length) { assigned.sectors = editSelectedSectors; hasAssigned = true; }
+        if (editSelectedClubs.length) { assigned.clubs = editSelectedClubs; hasAssigned = true; }
+      }
+
+      const payload: any = {
+        title: editTitle,
+        description: editDescription,
+        points: editPoint === '' ? 0 : Number(editPoint),
+        pointsToDeduct: editPointsToDeduct === '' ? 0 : Number(editPointsToDeduct),
+        expireAt: editExpire,
+        mandatory: editMandatory,
+        inputType: editInputType,
+      };
+      if (hasAssigned) payload.assigned = assigned;
+
+      const res = await fetch(`/api/secretaries/tasks/${editingId}`, { 
+        method: 'PATCH', 
+        headers: { 'content-type': 'application/json' }, 
+        body: JSON.stringify(payload) 
+      });
       const d = await res.json();
       if (!res.ok) throw new Error(d?.error || 'Update failed');
       setEditingId(null);
@@ -211,27 +273,82 @@ export default function TasksPage() {
                     </div>
 
                     {editingId === t.id && (
-                      <div className="mt-6 bg-slate-50 border border-slate-100 p-5 rounded-2xl animate-in fade-in slide-in-from-top-2">
-                        <div className="mb-4">
-                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 px-1">Task Title</label>
-                          <input 
-                            value={editTitle} 
-                            onChange={e=>setEditTitle(e.target.value)} 
-                            className="w-full p-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium" 
-                          />
+                      <div className="mt-6 bg-slate-50 border border-slate-200 p-6 rounded-2xl animate-in fade-in slide-in-from-top-2 space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="md:col-span-2">
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 px-1">Task Title</label>
+                            <input 
+                              value={editTitle} 
+                              onChange={e=>setEditTitle(e.target.value)} 
+                              className="w-full p-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-sm" 
+                            />
+                          </div>
+                          <div className="md:col-span-2">
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 px-1">Description</label>
+                            <textarea 
+                              value={editDescription} 
+                              onChange={e=>setEditDescription(e.target.value)} 
+                              className="w-full p-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm" 
+                              rows={3} 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 px-1">Deadline</label>
+                            <input type="datetime-local" value={editExpire} onChange={e=>setEditExpire(e.target.value)} className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-sm" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 px-1">Points</label>
+                            <input type="number" value={editPoint as any} onChange={e=>setEditPoint(e.target.value==='' ? '' : Number(e.target.value))} className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-sm" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 px-1">Task Type</label>
+                            <select value={editInputType} onChange={e=>setEditInputType(e.target.value as any)} className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-sm">
+                              <option value="YESNO">Yes / No</option>
+                              <option value="COMMENT">Comment</option>
+                              <option value="IMAGE">Image</option>
+                              <option value="DONATION">Donation</option>
+                            </select>
+                          </div>
+                          <div className="flex flex-col justify-center">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input type="checkbox" checked={editMandatory} onChange={e=>setEditMandatory(e.target.checked)} className="h-4 w-4" />
+                              <span className="text-xs font-bold text-slate-500 uppercase">Mandatory</span>
+                            </label>
+                            {editMandatory && (
+                              <div className="mt-2">
+                                <input type="number" value={editPointsToDeduct as any} onChange={e=>setEditPointsToDeduct(e.target.value==='' ? '' : Number(e.target.value))} placeholder="Deduction points" className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs" />
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <div className="mb-4">
-                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 px-1">Description</label>
-                          <textarea 
-                            value={editDescription} 
-                            onChange={e=>setEditDescription(e.target.value)} 
-                            className="w-full p-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all" 
-                            rows={3} 
-                          />
+
+                        <div className="border-t border-slate-200 pt-4">
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 px-1">Update Audience (Optional)</label>
+                          <label className="flex items-center gap-2 mb-2">
+                            <input type="checkbox" checked={editTargetAll} onChange={e=>{
+                              setEditTargetAll(e.target.checked);
+                              if (e.target.checked) { setEditSelectedServices([]); setEditSelectedSectors([]); setEditSelectedClubs([]); }
+                            }} />
+                            <span className="text-xs text-slate-600">Notify All Volunteers</span>
+                          </label>
+                          {!editTargetAll && (
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                              <select multiple value={editSelectedServices} onChange={e=>setEditSelectedServices(Array.from(e.target.selectedOptions).map(o=>o.value))} className="text-xs border rounded-xl p-2 h-24">
+                                {servicesList.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                              </select>
+                              <select multiple value={editSelectedSectors} onChange={e=>setEditSelectedSectors(Array.from(e.target.selectedOptions).map(o=>o.value))} className="text-xs border rounded-xl p-2 h-24">
+                                {sectorsList.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                              </select>
+                              <select multiple value={editSelectedClubs} onChange={e=>setEditSelectedClubs(Array.from(e.target.selectedOptions).map(o=>o.value))} className="text-xs border rounded-xl p-2 h-24">
+                                {clubsList.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                              </select>
+                            </div>
+                          )}
                         </div>
-                        <div className="flex items-center gap-3">
-                          <button onClick={saveEdit} className="px-6 py-2 bg-slate-800 text-white font-medium rounded-xl hover:bg-slate-900 transition-colors">Save Changes</button>
-                          <button onClick={()=>setEditingId(null)} className="px-6 py-2 bg-white border border-slate-200 text-slate-600 font-medium rounded-xl hover:bg-slate-50">Cancel</button>
+
+                        <div className="flex items-center gap-3 pt-2">
+                          <button onClick={saveEdit} className="px-6 py-2 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-sm">Save Changes</button>
+                          <button onClick={()=>setEditingId(null)} className="px-6 py-2 bg-white border border-slate-200 text-slate-500 font-medium rounded-xl hover:bg-slate-50">Cancel</button>
                         </div>
                       </div>
                     )}
@@ -256,25 +373,83 @@ export default function TasksPage() {
                         <div className="p-8 bg-dashed border border-slate-200 rounded-2xl text-center text-slate-400 font-medium">No tasks created by you yet.</div>
                       ) : (
                         createdTasks.map(t => (
-                          <div key={t.id} className="bg-white border border-slate-100 rounded-2xl p-6 flex items-center justify-between hover:border-blue-200 transition-colors">
-                            <div className="flex-1 min-w-0 pr-4">
-                              <div className="text-lg font-bold text-slate-800 truncate">{t.title}</div>
-                              <div className="text-sm text-slate-500 truncate">{t.description}</div>
+                          <div key={t.id} className="bg-white border border-slate-100 rounded-2xl p-6 hover:border-blue-200 transition-colors">
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1 min-w-0 pr-4">
+                                <div className="text-lg font-bold text-slate-800 truncate">{t.title}</div>
+                                <div className="text-sm text-slate-500 truncate">{t.description}</div>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <button 
+                                  onClick={() => startEdit(t)} 
+                                  className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                                </button>
+                                <button 
+                                  onClick={() => deleteTask(t.id)} 
+                                  className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                                </button>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <button 
-                                onClick={() => startEdit(t)} 
-                                className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                              >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
-                              </button>
-                              <button 
-                                onClick={() => deleteTask(t.id)} 
-                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                              >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-                              </button>
-                            </div>
+                            {editingId === t.id && (
+                              <div className="mt-4 bg-slate-50 border border-slate-200 p-6 rounded-2xl space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div className="md:col-span-2">
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 px-1">Title</label>
+                                    <input value={editTitle} onChange={e=>setEditTitle(e.target.value)} className="w-full p-2.5 border rounded-xl bg-white text-sm font-medium" />
+                                  </div>
+                                  <div className="md:col-span-2">
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 px-1">Description</label>
+                                    <textarea value={editDescription} onChange={e=>setEditDescription(e.target.value)} className="w-full p-2.5 border rounded-xl bg-white text-sm" rows={2} />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 px-1">Deadline</label>
+                                    <input type="datetime-local" value={editExpire} onChange={e=>setEditExpire(e.target.value)} className="w-full p-2.5 border rounded-xl bg-white text-sm" />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 px-1">Points</label>
+                                    <input type="number" value={editPoint as any} onChange={e=>setEditPoint(e.target.value==='' ? '' : Number(e.target.value))} className="w-full p-2.5 border rounded-xl bg-white text-sm" />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 px-1">Type</label>
+                                    <select value={editInputType} onChange={e=>setEditInputType(e.target.value as any)} className="w-full p-2.5 border rounded-xl bg-white text-sm">
+                                      <option value="YESNO">Yes/No</option>
+                                      <option value="COMMENT">Comment</option>
+                                      <option value="IMAGE">Image</option>
+                                      <option value="DONATION">Donation</option>
+                                    </select>
+                                  </div>
+                                  <div className="flex flex-col justify-center">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                      <input type="checkbox" checked={editMandatory} onChange={e=>setEditMandatory(e.target.checked)} className="h-4 w-4" />
+                                      <span className="text-xs font-bold text-slate-500 uppercase">Mandatory</span>
+                                    </label>
+                                    {editMandatory && <input type="number" value={editPointsToDeduct as any} onChange={e=>setEditPointsToDeduct(e.target.value==='' ? '' : Number(e.target.value))} placeholder="Deduction" className="mt-1 p-2 border rounded-lg bg-white text-xs" />}
+                                  </div>
+                                </div>
+                                <div className="border-t border-slate-200 pt-4">
+                                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Update Audience</label>
+                                  <label className="flex items-center gap-2 mb-2">
+                                    <input type="checkbox" checked={editTargetAll} onChange={e=>{setEditTargetAll(e.target.checked); if(e.target.checked){setEditSelectedServices([]);setEditSelectedSectors([]);setEditSelectedClubs([]);}}} />
+                                    <span className="text-xs">All Volunteers</span>
+                                  </label>
+                                  {!editTargetAll && (
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                      <select multiple value={editSelectedServices} onChange={e=>setEditSelectedServices(Array.from(e.target.selectedOptions).map(o=>o.value))} className="text-[10px] border rounded-lg p-1 h-16">{servicesList.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select>
+                                      <select multiple value={editSelectedSectors} onChange={e=>setEditSelectedSectors(Array.from(e.target.selectedOptions).map(o=>o.value))} className="text-[10px] border rounded-lg p-1 h-16">{sectorsList.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select>
+                                      <select multiple value={editSelectedClubs} onChange={e=>setEditSelectedClubs(Array.from(e.target.selectedOptions).map(o=>o.value))} className="text-[10px] border rounded-lg p-1 h-16">{clubsList.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex gap-2 pt-2">
+                                  <button onClick={saveEdit} className="px-4 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium">Save</button>
+                                  <button onClick={()=>setEditingId(null)} className="px-4 py-1.5 bg-white border rounded-lg text-sm font-medium">Cancel</button>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         ))
                       )}
@@ -292,17 +467,43 @@ export default function TasksPage() {
                 <div className="grid grid-cols-1 gap-4">
                   {createdTasks.length === 0 ? <div className="bg-white border rounded p-6">No tasks available</div> : (
                     createdTasks.map(t => (
-                      <div key={t.id} className="bg-white border rounded-2xl p-6 shadow-sm">
+                      <div key={t.id} className="bg-white border rounded-2xl p-6 shadow-sm hover:border-blue-200 transition-colors">
                         <div className="flex items-center justify-between">
                           <div>
                             <div className="text-lg font-semibold text-[#07223f]">{t.title}</div>
                             <div className="text-sm text-slate-700">{t.description}</div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <button onClick={() => startEdit(t)} className="px-3 py-1 bg-white border rounded">Edit</button>
-                            <button onClick={() => deleteTask(t.id)} className="px-3 py-1 bg-red-600 text-white rounded">Delete</button>
+                            <button onClick={() => startEdit(t)} className="px-3 py-1 bg-white border rounded text-sm">Edit</button>
+                            <button onClick={() => deleteTask(t.id)} className="px-3 py-1 bg-red-600 text-white rounded text-sm">Delete</button>
                           </div>
                         </div>
+                        {editingId === t.id && (
+                          <div className="mt-4 bg-slate-50 border rounded-xl p-4 space-y-3">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              <div className="md:col-span-2">
+                                <label className="block text-[10px] uppercase font-bold text-slate-400">Title</label>
+                                <input value={editTitle} onChange={e=>setEditTitle(e.target.value)} className="w-full p-2 border rounded-lg bg-white text-sm" />
+                              </div>
+                              <div className="md:col-span-2">
+                                <label className="block text-[10px] uppercase font-bold text-slate-400">Description</label>
+                                <textarea value={editDescription} onChange={e=>setEditDescription(e.target.value)} className="w-full p-2 border rounded-lg bg-white text-sm" rows={2} />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] uppercase font-bold text-slate-400">Deadline</label>
+                                <input type="datetime-local" value={editExpire} onChange={e=>setEditExpire(e.target.value)} className="w-full p-2 border rounded-lg bg-white text-sm" />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] uppercase font-bold text-slate-400">Points</label>
+                                <input type="number" value={editPoint as any} onChange={e=>setEditPoint(e.target.value==='' ? '' : Number(e.target.value))} className="w-full p-2 border rounded-lg bg-white text-sm" />
+                              </div>
+                            </div>
+                            <div className="flex gap-2 justify-end mt-2">
+                              <button onClick={saveEdit} className="px-4 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium">Save All Changes</button>
+                              <button onClick={()=>setEditingId(null)} className="px-4 py-1.5 bg-white border rounded-lg text-xs font-medium">Cancel</button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))
                   )}
