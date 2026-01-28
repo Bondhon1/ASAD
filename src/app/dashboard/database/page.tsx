@@ -107,27 +107,26 @@ export default function DatabaseDeptPage() {
   };
 
   const saveRank = async () => {
-    if (!newRankName) return setRankMsg('Provide rank name');
+    if (!editingRank) return setRankMsg('Select a rank to update');
     setRankMsg('Saving...');
     try {
-      const r = await fetch('/api/hr/ranks', { 
-        method: 'PATCH', 
-        headers: { 'content-type': 'application/json' }, 
-        body: JSON.stringify({ 
-          name: newRankName, 
+      // Only update threshold and description for an existing rank.
+      const r = await fetch('/api/hr/ranks', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          name: editingRank,
           thresholdPoints: Number(newThreshold || 0),
           description: newDescription,
-          parentId: newParentId || null
-        }) 
+        }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d?.error || 'Failed');
-      setRankMsg('Rank saved successfully');
-      setEditingRank(null);
-      setNewRankName("");
-      setNewThreshold("");
-      setNewDescription("");
-      setNewParentId("");
+      setRankMsg('Rank updated successfully');
+      // keep editing open so user can tweak; update local inputs
+      setNewRankName(d.rank?.name || editingRank || "");
+      setNewThreshold(d.rank?.thresholdPoints ?? "");
+      setNewDescription(d.rank?.description || "");
       await loadRanks();
     } catch (e: any) {
       setRankMsg(e?.message || 'Error');
@@ -292,16 +291,11 @@ export default function DatabaseDeptPage() {
 
             <div className="space-y-4 flex-1">
               <div className="bg-slate-50 border border-slate-100 rounded-xl p-4">
-                <h3 className="text-sm font-semibold text-slate-700 mb-3">{editingRank ? `Editing: ${editingRank}` : 'Create/Update Rank'}</h3>
+                <h3 className="text-sm font-semibold text-slate-700 mb-3">{editingRank ? `Editing: ${editingRank}` : 'Select a rank to update'}</h3>
                 <div className="grid grid-cols-2 gap-3 mb-3">
                   <div className="col-span-2">
                     <label className="block text-xs font-medium text-slate-500 mb-1">Rank Name</label>
-                    <input 
-                      value={newRankName} 
-                      onChange={(e) => setNewRankName(e.target.value)} 
-                      placeholder="e.g. Commander *" 
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white outline-none focus:ring-2 focus:ring-amber-500"
-                    />
+                    <div className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-slate-700">{editingRank || '—'}</div>
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-slate-500 mb-1">Threshold Points</label>
@@ -310,21 +304,9 @@ export default function DatabaseDeptPage() {
                       value={newThreshold} 
                       onChange={(e) => setNewThreshold(e.target.value === "" ? "" : Number(e.target.value))} 
                       placeholder="e.g. 100" 
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white outline-none focus:ring-2 focus:ring-amber-500"
+                      disabled={!editingRank}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-60 disabled:cursor-not-allowed"
                     />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Parent Rank</label>
-                    <select 
-                      value={newParentId} 
-                      onChange={(e) => setNewParentId(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white outline-none focus:ring-2 focus:ring-amber-500"
-                    >
-                      <option value="">None (Top level)</option>
-                      {ranks?.filter(r => r.name !== newRankName).map(r => (
-                        <option key={r.id} value={r.id}>{r.name}</option>
-                      ))}
-                    </select>
                   </div>
                   <div className="col-span-2">
                     <label className="block text-xs font-medium text-slate-500 mb-1">Description</label>
@@ -332,13 +314,14 @@ export default function DatabaseDeptPage() {
                       value={newDescription} 
                       onChange={(e) => setNewDescription(e.target.value)} 
                       placeholder="e.g. Need 100 points, Award Badge" 
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white outline-none focus:ring-2 focus:ring-amber-500"
+                      disabled={!editingRank}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-60 disabled:cursor-not-allowed"
                     />
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={saveRank} className="px-4 py-2 bg-slate-800 text-white text-sm font-medium rounded-lg hover:bg-slate-900 transition-colors">
-                    Save Rank
+                  <button onClick={saveRank} disabled={!editingRank} className="px-4 py-2 bg-slate-800 text-white text-sm font-medium rounded-lg hover:bg-slate-900 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+                    Update Rank
                   </button>
                   {editingRank && (
                     <button onClick={() => { setEditingRank(null); setNewRankName(""); setNewThreshold(""); setNewDescription(""); setNewParentId(""); }} className="px-4 py-2 bg-white border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50">
