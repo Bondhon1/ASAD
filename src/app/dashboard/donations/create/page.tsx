@@ -17,6 +17,7 @@ export default function CreateDonationPage() {
   const [mandatory, setMandatory] = useState(false);
   const [pointsToDeduct, setPointsToDeduct] = useState<number | "">("");
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
+  const [broadcastAll, setBroadcastAll] = useState(true);
 
   useEffect(() => {
     if (status === "loading") return;
@@ -39,6 +40,7 @@ export default function CreateDonationPage() {
         pointsPerDonation: points === "" ? 0 : Number(points),
         mandatory,
         pointsToDeduct: mandatory ? (pointsToDeduct === "" ? 0 : Number(pointsToDeduct)) : undefined,
+        broadcastAll,
       };
       const res = await fetch("/api/donations/create", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
       const data = await res.json();
@@ -111,6 +113,10 @@ export default function CreateDonationPage() {
             )}
 
             <div className="flex items-center gap-3">
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" className="h-4 w-4" checked={broadcastAll} onChange={(e)=>setBroadcastAll(e.target.checked)} />
+                <span>Broadcast to all OFFICIAL users</span>
+              </label>
               <button type="submit" className="px-5 py-2.5 bg-[#2b6cb0] hover:bg-[#1f5aa0] text-white rounded-lg shadow transition">Create Donation</button>
               {statusMsg && <div className="text-sm text-gray-700">{statusMsg}</div>}
             </div>

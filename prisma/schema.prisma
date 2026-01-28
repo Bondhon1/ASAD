@@ -86,6 +86,7 @@ model User {
   
   // Notifications
   notifications         Notification[]
+  broadcastReads        BroadcastRead[]
   interviewApprovedById String?
   interviewApprovedBy   User?             @relation("InterviewApprovedBy", fields: [interviewApprovedById], references: [id], onDelete: SetNull)
   interviewApprovedUsers User[]            @relation("InterviewApprovedBy")
@@ -710,16 +711,31 @@ model Notification {
   id                    String           @id @default(cuid())
   user                  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId                String
+  broadcast             Boolean          @default(false)
   type                  NotificationType
   title                 String
   message               String?
   link                  String?          // Optional link to navigate to
   read                  Boolean          @default(false)
   createdAt             DateTime         @default(now())
+  broadcastReads        BroadcastRead[]
   
   @@index([userId])
   @@index([read])
   @@index([createdAt])
+}
+
+model BroadcastRead {
+  id             String       @id @default(cuid())
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  notificationId String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String
+  readAt         DateTime     @default(now())
+
+  @@unique([notificationId, userId])
+  @@index([userId])
+  @@index([notificationId])
 }
 
 enum NotificationType {

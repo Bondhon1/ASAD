@@ -127,16 +127,18 @@ export function NotificationProvider({ children, userId }: NotificationProviderP
         
         if (!isMounted) return;
 
+        // Fetch a token request first to know the server-side clientId we should subscribe to
+        const tokenRes = await fetch("/api/ably/token");
+        if (!tokenRes.ok) {
+          console.error('Failed to fetch Ably token request');
+          return;
+        }
+        const tokenRequest = await tokenRes.json();
+
         const client = new Ably.Realtime({
-          authCallback: async (tokenParams: any, callback: any) => {
-            try {
-              const res = await fetch("/api/ably/token");
-              if (!res.ok) throw new Error("Failed to get token");
-              const tokenRequest = await res.json();
-              callback(null, tokenRequest);
-            } catch (error) {
-              callback(error instanceof Error ? error.message : String(error), null);
-            }
+          authCallback: async (_tokenParams: any, callback: any) => {
+            // Return the previously fetched token request to Ably SDK
+            callback(null, tokenRequest);
           },
         });
 
@@ -154,7 +156,10 @@ export function NotificationProvider({ children, userId }: NotificationProviderP
           if (isMounted) setIsConnected(false);
         });
 
-        const channel = client.channels.get(`user-${userId}-notifications`);
+        // Use the clientId supplied in the token request to subscribe to the correct channel
+        const tokenClientId = tokenRequest.clientId || tokenRequest.clientId === 0 ? tokenRequest.clientId : null;
+        const subscribeChannelId = tokenClientId ? `user-${tokenClientId}-notifications` : `user-${userId}-notifications`;
+        const channel = client.channels.get(subscribeChannelId);
         
         channel.subscribe("notification", (message: any) => {
           if (!isMounted) return;

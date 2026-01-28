@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
+import { publishNotification } from '@/lib/ably';
 
 export async function POST(req: Request) {
   try {
@@ -41,6 +42,43 @@ export async function POST(req: Request) {
       pointsToDeduct: typeof pointsToDeduct === 'number' && mandatory ? Math.max(0, Math.floor(pointsToDeduct)) : undefined,
       isPublic: false,
     } });
+
+    // If caller requested a broadcast to all OFFICIAL users, create a single DB notification
+    // (attached to the creator) and publish a real-time message to everyone. This avoids
+    // creating hundreds of persistent notification rows while still delivering live alerts.
+    if ((body as any).broadcastAll) {
+      try {
+        const singleNotification = await prisma.notification.create({
+          data: {
+            userId: requester.id,
+            broadcast: true,
+            type: 'DONATION_REQUIRED',
+            title: `New donation campaign: ${created.title}`,
+            message: created.purpose?.slice(0, 200) || null,
+            link: `/dashboard/donations/${created.id}`,
+          },
+        });
+
+        // publish to all OFFICIAL users via Ably (no DB rows created for each user)
+        const officialUsers = await prisma.user.findMany({ where: { status: 'OFFICIAL' }, select: { id: true } });
+        for (const u of officialUsers) {
+          try {
+            await publishNotification(u.id, {
+              id: singleNotification.id,
+              type: singleNotification.type,
+              title: singleNotification.title,
+              message: singleNotification.message,
+              link: singleNotification.link,
+              createdAt: singleNotification.createdAt,
+            });
+          } catch (pubErr) {
+            console.error('Failed to publish donation broadcast to user', u.id, pubErr);
+          }
+        }
+      } catch (notifErr) {
+        console.error('Failed to create or publish donation broadcast', notifErr);
+      }
+    }
 
     return NextResponse.json({ ok: true, id: created.id, campaign: created });
   } catch (err: any) {
