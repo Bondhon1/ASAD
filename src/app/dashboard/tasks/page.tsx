@@ -32,6 +32,15 @@ export default function TasksPage() {
   const [sectorsList, setSectorsList] = useState<any[]>([]);
   const [clubsList, setClubsList] = useState<any[]>([]);
 
+  // Task submission state
+  const [submittingTask, setSubmittingTask] = useState<any | null>(null);
+  const [submissionData, setSubmissionData] = useState<string>('');
+  const [submissionFiles, setSubmissionFiles] = useState<string[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const [submissionSuccess, setSubmissionSuccess] = useState<{ points: number; rankUpdate?: any } | null>(null);
+  const [userSubmissions, setUserSubmissions] = useState<Record<string, any>>({});
+
   const role = ((user as any)?.role || (session as any)?.user?.role || '');
   const canCreate = ['SECRETARIES', 'MASTER'].includes(role);
   const isSuperAdmin = ['MASTER', 'ADMIN'].includes(role);
@@ -57,6 +66,21 @@ export default function TasksPage() {
         if (!res.ok) return;
         const d = await res.json();
         setTasks(d.tasks || []);
+        
+        // Fetch submission status for each task
+        const submissions: Record<string, any> = {};
+        for (const task of (d.tasks || [])) {
+          try {
+            const subRes = await fetch(`/api/tasks/${task.id}`);
+            if (subRes.ok) {
+              const subData = await subRes.json();
+              if (subData.userSubmission) {
+                submissions[task.id] = subData.userSubmission;
+              }
+            }
+          } catch (e) {}
+        }
+        setUserSubmissions(submissions);
       } catch (e) {
         // ignore
       } finally { setLoading(false); }
@@ -111,6 +135,91 @@ export default function TasksPage() {
       await refresh();
     } catch (err: any) {
       alert('Delete failed: ' + (err?.message || 'Unknown'));
+    }
+  };
+
+  // Task submission handlers
+  const openSubmissionModal = (task: any) => {
+    setSubmittingTask(task);
+    setSubmissionData('');
+    setSubmissionFiles([]);
+    setSubmissionError(null);
+    setSubmissionSuccess(null);
+  };
+
+  const closeSubmissionModal = () => {
+    setSubmittingTask(null);
+    setSubmissionData('');
+    setSubmissionFiles([]);
+    setSubmissionError(null);
+    setSubmissionSuccess(null);
+  };
+
+  const handleSubmitTask = async () => {
+    if (!submittingTask) return;
+    
+    setSubmitting(true);
+    setSubmissionError(null);
+    
+    try {
+      const payload: any = {
+        taskId: submittingTask.id,
+      };
+
+      // Set submission data based on task type
+      if (submittingTask.taskType === 'YESNO') {
+        if (!submissionData) {
+          throw new Error('Please select Yes or No');
+        }
+        payload.submissionData = submissionData;
+      } else if (submittingTask.taskType === 'COMMENT') {
+        if (!submissionData.trim()) {
+          throw new Error('Please enter a comment');
+        }
+        payload.submissionData = submissionData;
+      } else if (submittingTask.taskType === 'IMAGE') {
+        if (submissionFiles.length === 0) {
+          throw new Error('Please upload at least one image');
+        }
+        payload.submissionFiles = submissionFiles;
+      } else if (submittingTask.taskType === 'DONATION') {
+        if (!submissionData.trim()) {
+          throw new Error('Please enter donation details');
+        }
+        payload.submissionData = submissionData;
+      }
+
+      const res = await fetch('/api/tasks/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.error || 'Submission failed');
+      }
+
+      setSubmissionSuccess({
+        points: data.pointsAwarded || 0,
+        rankUpdate: data.rankUpdate,
+      });
+
+      // Update local state
+      setUserSubmissions(prev => ({
+        ...prev,
+        [submittingTask.id]: data.submission,
+      }));
+
+      // Refresh tasks after a short delay
+      setTimeout(() => {
+        refresh();
+      }, 2000);
+    } catch (err: any) {
+      setSubmissionError(err.message || 'Failed to submit task');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -283,9 +392,26 @@ export default function TasksPage() {
                       </div>
 
                       <div className="flex flex-row md:flex-col items-center md:items-end gap-3 shrink-0">
-                        <button className="w-full md:w-32 px-4 py-2 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors shadow-sm shadow-blue-100">
-                          Open Task
-                        </button>
+                        {userSubmissions[t.id] ? (
+                          <div className={`w-full md:w-40 px-4 py-2 text-center font-semibold rounded-xl ${
+                            userSubmissions[t.id].status === 'APPROVED' 
+                              ? 'bg-green-100 text-green-700 border border-green-200' 
+                              : userSubmissions[t.id].status === 'REJECTED'
+                              ? 'bg-red-100 text-red-700 border border-red-200'
+                              : 'bg-yellow-100 text-yellow-700 border border-yellow-200'
+                          }`}>
+                            {userSubmissions[t.id].status === 'APPROVED' ? '✓ Completed' : 
+                             userSubmissions[t.id].status === 'REJECTED' ? '✗ Rejected' : 
+                             '⏳ Pending Review'}
+                          </div>
+                        ) : (
+                          <button 
+                            onClick={() => openSubmissionModal(t)}
+                            className="w-full md:w-32 px-4 py-2 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors shadow-sm shadow-blue-100"
+                          >
+                            Open Task
+                          </button>
+                        )}
                         {isSuperAdmin && (
                           <div className="flex gap-2">
                             <button 
@@ -655,6 +781,165 @@ export default function TasksPage() {
           )}
         </div>
       </div>
+
+      {/* Task Submission Modal */}
+      {submittingTask && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-slate-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-slate-800">Submit Task</h3>
+                <button 
+                  onClick={closeSubmissionModal}
+                  className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+              </div>
+            </div>
+
+            {submissionSuccess ? (
+              <div className="p-6 text-center">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="text-green-600" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                </div>
+                <h4 className="text-lg font-bold text-slate-800 mb-2">Task Submitted!</h4>
+                {submissionSuccess.points > 0 && (
+                  <p className="text-amber-600 font-semibold mb-2">+{submissionSuccess.points} Points Earned!</p>
+                )}
+                {submissionSuccess.rankUpdate?.rankChanged && (
+                  <p className="text-blue-600 font-medium">
+                    🎉 Rank upgraded to {submissionSuccess.rankUpdate.newRank}!
+                  </p>
+                )}
+                <button 
+                  onClick={closeSubmissionModal}
+                  className="mt-6 px-6 py-2 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            ) : (
+              <div className="p-6">
+                <div className="mb-6">
+                  <h4 className="font-semibold text-slate-800 mb-1">{submittingTask.title}</h4>
+                  <p className="text-sm text-slate-500">{submittingTask.description}</p>
+                  <div className="flex items-center gap-4 mt-3 text-xs">
+                    <span className="bg-amber-50 text-amber-700 px-2 py-1 rounded-lg font-semibold">
+                      +{submittingTask.pointsPositive ?? 0} Points
+                    </span>
+                    {submittingTask.mandatory && submittingTask.pointsNegative > 0 && (
+                      <span className="bg-red-50 text-red-600 px-2 py-1 rounded-lg font-semibold">
+                        -{submittingTask.pointsNegative} if missed
+                      </span>
+                    )}
+                    <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded-lg">
+                      Due: {new Date(submittingTask.endDate).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+
+                {submissionError && (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+                    {submissionError}
+                  </div>
+                )}
+
+                {/* YESNO Task Type */}
+                {submittingTask.taskType === 'YESNO' && (
+                  <div className="space-y-3">
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">Did you complete this task?</label>
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setSubmissionData('YES')}
+                        className={`flex-1 py-3 px-4 rounded-xl font-semibold transition-all ${
+                          submissionData === 'YES' 
+                            ? 'bg-green-600 text-white shadow-lg' 
+                            : 'bg-green-50 text-green-700 border border-green-200 hover:bg-green-100'
+                        }`}
+                      >
+                        ✓ Yes
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSubmissionData('NO')}
+                        className={`flex-1 py-3 px-4 rounded-xl font-semibold transition-all ${
+                          submissionData === 'NO' 
+                            ? 'bg-red-600 text-white shadow-lg' 
+                            : 'bg-red-50 text-red-700 border border-red-200 hover:bg-red-100'
+                        }`}
+                      >
+                        ✗ No
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* COMMENT Task Type */}
+                {submittingTask.taskType === 'COMMENT' && (
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">Your Response</label>
+                    <textarea
+                      value={submissionData}
+                      onChange={(e) => setSubmissionData(e.target.value)}
+                      placeholder="Enter your response..."
+                      className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all resize-none"
+                      rows={4}
+                    />
+                  </div>
+                )}
+
+                {/* IMAGE Task Type */}
+                {submittingTask.taskType === 'IMAGE' && (
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">Upload Images</label>
+                    <input
+                      type="text"
+                      value={submissionFiles.join(', ')}
+                      onChange={(e) => setSubmissionFiles(e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+                      placeholder="Enter image URLs (comma separated)"
+                      className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                    />
+                    <p className="text-xs text-slate-400 mt-1">Upload images to a service like Imgur and paste the URLs here</p>
+                  </div>
+                )}
+
+                {/* DONATION Task Type */}
+                {submittingTask.taskType === 'DONATION' && (
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">Donation Details</label>
+                    <textarea
+                      value={submissionData}
+                      onChange={(e) => setSubmissionData(e.target.value)}
+                      placeholder="Enter donation details (amount, transaction ID, etc.)"
+                      className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all resize-none"
+                      rows={4}
+                    />
+                  </div>
+                )}
+
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={handleSubmitTask}
+                    disabled={submitting}
+                    className="flex-1 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {submitting ? 'Submitting...' : 'Submit Task'}
+                  </button>
+                  <button
+                    onClick={closeSubmissionModal}
+                    disabled={submitting}
+                    className="px-6 py-3 bg-slate-100 text-slate-600 font-semibold rounded-xl hover:bg-slate-200 transition-colors disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }
