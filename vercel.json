@@ -5,5 +5,11 @@
     "env": {
       "NODE_OPTIONS": "--max-old-space-size=4096"
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/tasks/process-expired",
+      "schedule": "0 0 * * *"
+    }
+  ]
 }
