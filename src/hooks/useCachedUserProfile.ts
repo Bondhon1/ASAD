@@ -79,6 +79,9 @@ export function useCachedUserProfile<T = any>(email?: string | null, ttlMs: numb
     if (cached) {
       setUser(cached);
       setLoading(false);
+      // Still fetch fresh data in background to update cache
+      // This ensures status changes are picked up quickly
+      refresh();
       return;
     }
     refresh();
