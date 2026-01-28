@@ -37,7 +37,21 @@ export async function POST(req: Request) {
 
     const now = new Date();
     const startDate = now;
-    const endDate = body.expireAt ? new Date(body.expireAt) : new Date(now.getTime() + 7 * 24 * 3600 * 1000);
+    
+    // Parse expireAt as Dhaka timezone (UTC+6) if no timezone specified
+    let endDate: Date;
+    if (body.expireAt) {
+      // If the date string doesn't have timezone info, treat it as Dhaka time (UTC+6)
+      const dateStr = body.expireAt;
+      if (!dateStr.includes('Z') && !dateStr.includes('+') && !dateStr.includes('-', 10)) {
+        // Append Dhaka timezone offset (+06:00)
+        endDate = new Date(dateStr + '+06:00');
+      } else {
+        endDate = new Date(dateStr);
+      }
+    } else {
+      endDate = new Date(now.getTime() + 7 * 24 * 3600 * 1000);
+    }
 
     // Build target user set BEFORE creating task so we can persist it to the task row
     const assigned = body.assigned || {};

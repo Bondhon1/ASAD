@@ -101,13 +101,34 @@ export default function SecretariesPage() {
     }
   };
 
+  // Format date in Dhaka timezone (UTC+6)
+  const formatDhakaDate = (dateStr: string | Date, includeTime = false) => {
+    const date = new Date(dateStr);
+    const options: Intl.DateTimeFormatOptions = {
+      timeZone: 'Asia/Dhaka',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      ...(includeTime ? { hour: '2-digit', minute: '2-digit' } : {}),
+    };
+    return date.toLocaleString('en-US', options);
+  };
+
+  // Convert UTC date to Dhaka local datetime-local format for input
+  const toDhakaInputFormat = (dateStr: string | Date) => {
+    const date = new Date(dateStr);
+    // Convert to Dhaka timezone by adding 6 hours offset
+    const dhakaDate = new Date(date.getTime() + (6 * 60 * 60 * 1000));
+    return dhakaDate.toISOString().slice(0, 16);
+  };
+
   const startEdit = (t: any) => {
     setEditingTaskId(t.id);
     setEditTitle(t.title || '');
     setEditDescription(t.description || '');
     setEditPoint(t.pointsPositive ?? '');
     setEditPointsToDeduct(t.pointsNegative ?? '');
-    setEditExpire(t.endDate ? new Date(t.endDate).toISOString().slice(0, 16) : '');
+    setEditExpire(t.endDate ? toDhakaInputFormat(t.endDate) : '');
     setEditMandatory(!!t.mandatory);
     setEditInputType(t.taskType || 'YESNO');
     
@@ -478,7 +499,7 @@ export default function SecretariesPage() {
                         <>
                           <div className="font-semibold text-slate-900">{t.title}</div>
                           <div className="text-sm text-slate-600">{t.description}</div>
-                          <div className="text-xs text-slate-500 mt-1">Points: {t.pointsPositive ?? 0} • Expires: {t.endDate ? new Date(t.endDate).toLocaleString() : '—'}</div>
+                          <div className="text-xs text-slate-500 mt-1">Points: {t.pointsPositive ?? 0} • Expires: {t.endDate ? formatDhakaDate(t.endDate, true) : '—'}</div>
                         </>
                       )}
                     </div>

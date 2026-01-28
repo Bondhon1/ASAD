@@ -51,11 +51,18 @@ interface User {
 }
 
 const formatDateRange = (start?: string | null, end?: string | null, isCurrent?: boolean) => {
-  const startText = start ? new Date(start).toLocaleDateString(undefined, { month: 'short', year: 'numeric' }) : '';
-  const endText = isCurrent ? 'Present' : end ? new Date(end).toLocaleDateString(undefined, { month: 'short', year: 'numeric' }) : '';
+  const options: Intl.DateTimeFormatOptions = { month: 'short', year: 'numeric', timeZone: 'Asia/Dhaka' };
+  const startText = start ? new Date(start).toLocaleDateString('en-US', options) : '';
+  const endText = isCurrent ? 'Present' : end ? new Date(end).toLocaleDateString('en-US', options) : '';
   if (startText && endText) return `${startText} – ${endText}`;
   if (startText) return `Started ${startText}`;
   return endText || '';
+};
+
+// Format date in Dhaka timezone (UTC+6)
+const formatDhakaDate = (dateStr: string | Date) => {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('en-US', { timeZone: 'Asia/Dhaka', month: 'short', day: 'numeric' });
 };
 
 type TabKey = "experience" | "tasks" | "donations";
@@ -222,7 +229,7 @@ export default function DashboardPage() {
           pendingTasks.slice(0, 6).map((t) => (
             <div key={t.id} onClick={() => router.push('/dashboard/tasks')} className="bg-white border border-gray-100 rounded-lg p-4 h-16 flex items-center justify-between cursor-pointer hover:shadow-sm hover:translate-y-[-1px] transition-transform">
               <div className="text-sm text-gray-800">{t.title || 'Task'}</div>
-              <div className="text-xs text-gray-500">{t.endDate ? new Date(t.endDate).toLocaleDateString() : ''}</div>
+              <div className="text-xs text-gray-500">{t.endDate ? formatDhakaDate(t.endDate) : ''}</div>
             </div>
           ))
         ) : (

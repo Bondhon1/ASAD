@@ -46,12 +46,20 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (typeof body.title === 'string') data.title = body.title;
     if (typeof body.description === 'string') data.description = body.description;
     
+    // Parse dates as Dhaka timezone (UTC+6) if no timezone specified
+    const parseDhakaDate = (dateStr: string): Date => {
+      if (!dateStr.includes('Z') && !dateStr.includes('+') && !dateStr.includes('-', 10)) {
+        return new Date(dateStr + '+06:00');
+      }
+      return new Date(dateStr);
+    };
+    
     let newEndDate: Date | null = null;
     if (body.expireAt) {
-      newEndDate = new Date(body.expireAt);
+      newEndDate = parseDhakaDate(body.expireAt);
       data.endDate = newEndDate;
     } else if (body.endDate) {
-      newEndDate = new Date(body.endDate);
+      newEndDate = parseDhakaDate(body.endDate);
       data.endDate = newEndDate;
     }
 
