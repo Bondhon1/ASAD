@@ -180,7 +180,7 @@ export default function SecretariesPage() {
       <div className="max-w-5xl mx-auto">
         <div className="flex flex-col gap-3 mb-6">
           <p className="text-sm uppercase tracking-[0.2em] text-[#0b1c33]">Secretaries Console</p>
-          <h1 className="text-3xl md:text-4xl font-semibold leading-tight text-[#0b1c33]">Create Tasks</h1>
+          <h1 className="text-3xl md:text-4xl font-semibold leading-tight text-[#0b1c33]">Create & Manage Tasks</h1>
           <p className="text-[#0b1c33] text-sm md:text-base">Target services, sectors, or clubs with one action. Everyone selected receives a notification.</p>
         </div>
 
