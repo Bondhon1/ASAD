@@ -266,6 +266,23 @@ export async function calculateRankUpgrade(
     };
   }
 
+  // IMPORTANT: Ensure we only upgrade to a HIGHER rank in the sequence
+  // This prevents going backwards due to misconfigured thresholds in DB
+  const currentRankIndex = currentRank ? getRankSequenceIndex(currentRank.name) : -1;
+  const newRankIndex = getRankSequenceIndex(newRank.name);
+  
+  // If the "new" rank is not higher in sequence, don't change rank (just accumulate points)
+  if (currentRank && newRankIndex <= currentRankIndex) {
+    return {
+      newRankId: currentRank.id,
+      newPoints: totalPoints,
+      rankChanged: false,
+      pointsReset: false,
+      oldRankName,
+      newRankName: currentRank.name,
+    };
+  }
+
   // Rank changed - check if we need to reset points
   const needsReset = shouldResetPointsOnUpgrade(currentRank?.name || null, newRank.name);
   
