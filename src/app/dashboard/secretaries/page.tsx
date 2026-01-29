@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { useCachedUserProfile } from "@/hooks/useCachedUserProfile";
@@ -238,9 +238,21 @@ export default function SecretariesPage() {
   const displayName = viewer?.fullName || viewer?.username || (session as any)?.user?.name || 'Secretaries';
   const displayEmail = viewer?.email || (session as any)?.user?.email || '';
   const displayRole = (session as any)?.user?.role || (viewer?.role as "VOLUNTEER" | "HR" | "MASTER" | "ADMIN" | "DIRECTOR" | "DATABASE_DEPT" | "SECRETARIES") || "HR";
-  const searchParams = useSearchParams();
-  const queryTaskId = searchParams?.get('taskId') || null;
-  const [currentTaskId, setCurrentTaskId] = useState<string | null>(queryTaskId);
+  const [queryTaskId, setQueryTaskId] = useState<string | null>(null);
+  const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      if (typeof window === 'undefined') return;
+      const sp = new URLSearchParams(window.location.search || '');
+      setQueryTaskId(sp.get('taskId') || null);
+      // initialize currentTaskId if present on load
+      const initial = sp.get('taskId') || null;
+      if (initial) setCurrentTaskId(initial);
+    } catch (e) {
+      setQueryTaskId(null);
+    }
+  }, []);
 
   // Modal state for viewing submissions (approve flow)
   const [submissionsModalOpen, setSubmissionsModalOpen] = useState(false);
