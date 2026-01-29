@@ -206,8 +206,8 @@ function findRankForPoints(points: number, ranks: RankFromDB[]): RankFromDB | nu
 }
 
 /**
- * Find the next rank in the sequence that the user qualifies for
- * This ensures we follow the RANK_SEQUENCE order, not DB threshold order
+ * Find the next rank in the sequence if user exceeds current rank's threshold
+ * Logic: If points > current rank threshold, move to the next rank in sequence
  */
 function findNextRankInSequence(
   currentRankName: string | null,
@@ -219,11 +219,35 @@ function findNextRankInSequence(
   console.log('[findNextRank] Current rank name:', currentRankName);
   console.log('[findNextRank] Current index in RANK_SEQUENCE:', currentIndex);
   console.log('[findNextRank] Total points:', totalPoints);
-  console.log('[findNextRank] Looking from index:', currentIndex + 1, 'to', RANK_SEQUENCE.length - 1);
   
-  // Look for the highest rank in sequence (after current) that the user qualifies for
-  let highestQualifiedRank: RankFromDB | null = null;
+  // Get current rank from DB to check its threshold
+  const currentRankFromDB = currentRankName ? findRankByName(currentRankName, ranks) : null;
   
+  if (!currentRankFromDB) {
+    console.log('[findNextRank] Current rank not found in DB, checking from beginning');
+    // No current rank - find the first rank user qualifies for
+    for (let i = 0; i < RANK_SEQUENCE.length; i++) {
+      const rankName = RANK_SEQUENCE[i];
+      if (isParentOnlyRank(rankName) || shouldSkipAutoUpgrade(rankName)) continue;
+      const rankFromDB = findRankByName(rankName, ranks);
+      if (rankFromDB && totalPoints >= rankFromDB.thresholdPoints) {
+        return rankFromDB;
+      }
+    }
+    return null;
+  }
+  
+  console.log('[findNextRank] Current rank threshold:', currentRankFromDB.thresholdPoints);
+  
+  // Check if points exceed current rank's threshold
+  if (totalPoints <= currentRankFromDB.thresholdPoints) {
+    console.log('[findNextRank] Points do not exceed current rank threshold - no upgrade');
+    return null;
+  }
+  
+  console.log('[findNextRank] Points exceed current threshold! Looking for next rank...');
+  
+  // Find the next rank in sequence (skip parent-only and Adviser)
   for (let i = currentIndex + 1; i < RANK_SEQUENCE.length; i++) {
     const rankName = RANK_SEQUENCE[i];
     
@@ -238,29 +262,19 @@ function findNextRankInSequence(
       continue;
     }
     
-    // Find this rank in DB using normalized comparison
+    // Find this rank in DB
     const rankFromDB = findRankByName(rankName, ranks);
     if (!rankFromDB) {
       console.log('[findNextRank] Rank not found in DB:', rankName);
       continue;
     }
     
-    console.log('[findNextRank] Checking rank:', rankName, '- threshold:', rankFromDB.thresholdPoints, '- points:', totalPoints);
-    
-    // Check if user qualifies for this rank
-    if (totalPoints >= rankFromDB.thresholdPoints) {
-      console.log('[findNextRank] User qualifies for:', rankName);
-      highestQualifiedRank = rankFromDB;
-    } else {
-      // Points not enough for this rank, stop looking further
-      // (ranks later in sequence should have higher thresholds)
-      console.log('[findNextRank] Points not enough for:', rankName, '- stopping search');
-      break;
-    }
+    console.log('[findNextRank] Found next rank:', rankName);
+    return rankFromDB;
   }
   
-  console.log('[findNextRank] Final result:', highestQualifiedRank?.name || 'none');
-  return highestQualifiedRank;
+  console.log('[findNextRank] No next rank found in sequence');
+  return null;
 }
 
 /**
