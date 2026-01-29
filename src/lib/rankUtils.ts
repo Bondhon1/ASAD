@@ -116,9 +116,19 @@ function shouldSkipAutoUpgrade(rankName: string): boolean {
 
 /**
  * Get the index of a rank in the sequence
+ * Uses normalized comparison to handle minor differences
  */
 function getRankSequenceIndex(rankName: string): number {
-  return RANK_SEQUENCE.indexOf(rankName as any);
+  const normalized = rankName.trim().toLowerCase();
+  return RANK_SEQUENCE.findIndex(r => r.toLowerCase() === normalized);
+}
+
+/**
+ * Find rank in DB by name (normalized comparison)
+ */
+function findRankByName(rankName: string, ranks: RankFromDB[]): RankFromDB | null {
+  const normalized = rankName.trim().toLowerCase();
+  return ranks.find(r => r.name.trim().toLowerCase() === normalized) || null;
 }
 
 /**
@@ -206,6 +216,11 @@ function findNextRankInSequence(
 ): RankFromDB | null {
   const currentIndex = currentRankName ? getRankSequenceIndex(currentRankName) : -1;
   
+  console.log('[findNextRank] Current rank name:', currentRankName);
+  console.log('[findNextRank] Current index in RANK_SEQUENCE:', currentIndex);
+  console.log('[findNextRank] Total points:', totalPoints);
+  console.log('[findNextRank] Looking from index:', currentIndex + 1, 'to', RANK_SEQUENCE.length - 1);
+  
   // Look for the highest rank in sequence (after current) that the user qualifies for
   let highestQualifiedRank: RankFromDB | null = null;
   
@@ -214,29 +229,37 @@ function findNextRankInSequence(
     
     // Skip parent-only ranks
     if (isParentOnlyRank(rankName)) {
+      console.log('[findNextRank] Skipping parent-only rank:', rankName);
       continue;
     }
     // Skip Adviser for auto upgrade
     if (shouldSkipAutoUpgrade(rankName)) {
+      console.log('[findNextRank] Skipping auto-upgrade skip rank:', rankName);
       continue;
     }
     
-    // Find this rank in DB
-    const rankFromDB = ranks.find(r => r.name === rankName);
+    // Find this rank in DB using normalized comparison
+    const rankFromDB = findRankByName(rankName, ranks);
     if (!rankFromDB) {
+      console.log('[findNextRank] Rank not found in DB:', rankName);
       continue;
     }
+    
+    console.log('[findNextRank] Checking rank:', rankName, '- threshold:', rankFromDB.thresholdPoints, '- points:', totalPoints);
     
     // Check if user qualifies for this rank
     if (totalPoints >= rankFromDB.thresholdPoints) {
+      console.log('[findNextRank] User qualifies for:', rankName);
       highestQualifiedRank = rankFromDB;
     } else {
       // Points not enough for this rank, stop looking further
       // (ranks later in sequence should have higher thresholds)
+      console.log('[findNextRank] Points not enough for:', rankName, '- stopping search');
       break;
     }
   }
   
+  console.log('[findNextRank] Final result:', highestQualifiedRank?.name || 'none');
   return highestQualifiedRank;
 }
 
@@ -250,7 +273,7 @@ function findPreviousRank(currentRankName: string, ranks: RankFromDB[]): RankFro
   }
   
   const previousRankName = RANK_SEQUENCE[currentIndex - 1];
-  return ranks.find(r => r.name === previousRankName) || null;
+  return findRankByName(previousRankName, ranks);
 }
 
 /**
@@ -278,18 +301,29 @@ export async function calculateRankUpgrade(
   const ranks = await getAllRanksOrdered();
   
   let totalPoints = currentPoints + pointsToAdd;
+  
+  // Fetch current rank by ID from the ranks list
   const currentRank: RankFromDB | null = currentRankId 
     ? ranks.find((r) => r.id === currentRankId) || null 
     : null;
   
   const oldRankName = currentRank?.name || null;
   
+  // Debug logging
+  console.log('[RankUpgrade] Current rank ID:', currentRankId);
+  console.log('[RankUpgrade] Current rank name:', oldRankName);
+  console.log('[RankUpgrade] Current points:', currentPoints, '+ Added:', pointsToAdd, '= Total:', totalPoints);
+  console.log('[RankUpgrade] Current rank index in sequence:', oldRankName ? getRankSequenceIndex(oldRankName) : -1);
+  
   // Find the next rank in sequence that the user qualifies for
   // This ensures we follow RANK_SEQUENCE order, not DB threshold order
   const newRank = findNextRankInSequence(oldRankName, totalPoints, ranks);
   
+  console.log('[RankUpgrade] New rank found:', newRank?.name || 'none');
+  
   // If no higher rank qualified, stay at current rank with accumulated points
   if (!newRank) {
+    console.log('[RankUpgrade] No upgrade - staying at current rank');
     return {
       newRankId: currentRank?.id || null,
       newPoints: totalPoints,
