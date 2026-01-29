@@ -196,6 +196,51 @@ function findRankForPoints(points: number, ranks: RankFromDB[]): RankFromDB | nu
 }
 
 /**
+ * Find the next rank in the sequence that the user qualifies for
+ * This ensures we follow the RANK_SEQUENCE order, not DB threshold order
+ */
+function findNextRankInSequence(
+  currentRankName: string | null,
+  totalPoints: number,
+  ranks: RankFromDB[]
+): RankFromDB | null {
+  const currentIndex = currentRankName ? getRankSequenceIndex(currentRankName) : -1;
+  
+  // Look for the highest rank in sequence (after current) that the user qualifies for
+  let highestQualifiedRank: RankFromDB | null = null;
+  
+  for (let i = currentIndex + 1; i < RANK_SEQUENCE.length; i++) {
+    const rankName = RANK_SEQUENCE[i];
+    
+    // Skip parent-only ranks
+    if (isParentOnlyRank(rankName)) {
+      continue;
+    }
+    // Skip Adviser for auto upgrade
+    if (shouldSkipAutoUpgrade(rankName)) {
+      continue;
+    }
+    
+    // Find this rank in DB
+    const rankFromDB = ranks.find(r => r.name === rankName);
+    if (!rankFromDB) {
+      continue;
+    }
+    
+    // Check if user qualifies for this rank
+    if (totalPoints >= rankFromDB.thresholdPoints) {
+      highestQualifiedRank = rankFromDB;
+    } else {
+      // Points not enough for this rank, stop looking further
+      // (ranks later in sequence should have higher thresholds)
+      break;
+    }
+  }
+  
+  return highestQualifiedRank;
+}
+
+/**
  * Find the previous rank in sequence for downgrade
  */
 function findPreviousRank(currentRankName: string, ranks: RankFromDB[]): RankFromDB | null {
@@ -239,10 +284,11 @@ export async function calculateRankUpgrade(
   
   const oldRankName = currentRank?.name || null;
   
-  // Find the new rank based on total points (skips parent-only ranks)
-  const newRank = findRankForPoints(totalPoints, ranks);
+  // Find the next rank in sequence that the user qualifies for
+  // This ensures we follow RANK_SEQUENCE order, not DB threshold order
+  const newRank = findNextRankInSequence(oldRankName, totalPoints, ranks);
   
-  // If no rank found, return with updated points
+  // If no higher rank qualified, stay at current rank with accumulated points
   if (!newRank) {
     return {
       newRankId: currentRank?.id || null,
@@ -251,35 +297,6 @@ export async function calculateRankUpgrade(
       pointsReset: false,
       oldRankName,
       newRankName: currentRank?.name || null,
-    };
-  }
-  
-  // Same rank - no change, just accumulate points
-  if (currentRank && newRank.id === currentRank.id) {
-    return {
-      newRankId: currentRank.id,
-      newPoints: totalPoints,
-      rankChanged: false,
-      pointsReset: false,
-      oldRankName,
-      newRankName: currentRank.name,
-    };
-  }
-
-  // IMPORTANT: Ensure we only upgrade to a HIGHER rank in the sequence
-  // This prevents going backwards due to misconfigured thresholds in DB
-  const currentRankIndex = currentRank ? getRankSequenceIndex(currentRank.name) : -1;
-  const newRankIndex = getRankSequenceIndex(newRank.name);
-  
-  // If the "new" rank is not higher in sequence, don't change rank (just accumulate points)
-  if (currentRank && newRankIndex <= currentRankIndex) {
-    return {
-      newRankId: currentRank.id,
-      newPoints: totalPoints,
-      rankChanged: false,
-      pointsReset: false,
-      oldRankName,
-      newRankName: currentRank.name,
     };
   }
 
