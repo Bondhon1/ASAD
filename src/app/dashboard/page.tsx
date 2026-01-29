@@ -75,6 +75,8 @@ export default function DashboardPage() {
   const { user, loading: userLoading, error, refresh } = useCachedUserProfile<User>(userEmail);
   const [pendingTasks, setPendingTasks] = useState<any[] | null>(null);
   const [pendingTasksLoading, setPendingTasksLoading] = useState(true);
+  const [campaigns, setCampaigns] = useState<any[] | null>(null);
+  const [campaignsLoading, setCampaignsLoading] = useState(true);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -137,6 +139,26 @@ export default function DashboardPage() {
         setPendingTasks([]);
       } finally {
         if (mounted) setPendingTasksLoading(false);
+      }
+    })();
+    // fetch donation campaigns to keep donations panel consistent with /dashboard/donations
+    (async () => {
+      if (!userEmail) return;
+      setCampaignsLoading(true);
+      try {
+        const r = await fetch('/api/donations');
+        if (!r.ok) {
+          setCampaigns([]);
+          return;
+        }
+        const j = await r.json();
+        if (!mounted) return;
+        setCampaigns(j.donations || []);
+      } catch (e) {
+        if (!mounted) return;
+        setCampaigns([]);
+      } finally {
+        if (mounted) setCampaignsLoading(false);
       }
     })();
     return () => { mounted = false; };
@@ -271,30 +293,25 @@ export default function DashboardPage() {
     <aside className="bg-gray-50 border border-gray-200 rounded-lg p-4">
       <h3 className="text-sm font-medium text-[#0b2545] mb-4">Pending Donations</h3>
       <div className="space-y-4">
-        {user?.donations?.some(d => d.status === 'PENDING') ? (
-          user.donations.filter(d => d.status === 'PENDING').slice(0, 6).map(d => (
-            <div key={d.id} className="bg-white border border-gray-100 rounded-lg p-4 cursor-pointer hover:shadow-sm">
+        {campaignsLoading ? (
+          <div className="text-sm text-gray-600">Loading…</div>
+        ) : (campaigns && campaigns.length ? (
+          campaigns.slice(0,6).map((d:any) => (
+            <div key={d.id || d.purpose} className="bg-white border border-gray-100 rounded-lg p-4 cursor-pointer hover:shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-sm font-semibold text-gray-900">{d.trxId || 'Donation'}</div>
-                  <div className="text-xs text-gray-500">{d.paymentMethod || ''} · {new Date(d.donatedAt).toLocaleDateString()}</div>
+                  <div className="text-sm font-semibold text-gray-900">{d.purpose || d.title || 'Campaign'}</div>
+                  <div className="text-xs text-gray-500">{d.bkashNumber || ''} {d.nagadNumber ? ` • ${d.nagadNumber}` : ''}</div>
                 </div>
-                <div className="text-sm text-gray-800">৳{d.amount.toFixed(2)}</div>
+                <div className="text-sm text-gray-800">৳{d.amountTarget?.toLocaleString() ?? 0}</div>
               </div>
             </div>
           ))
         ) : (
-          <>
-            <div className="bg-white border border-gray-100 rounded-lg p-6 cursor-pointer hover:bg-gradient-to-r hover:from-[#0b2545]/5 hover:to-white">
-              <div className="text-base font-semibold text-[#07223f]">Monthly Donations</div>
-              <div className="text-sm text-gray-500">Manage recurring donors and pledges</div>
-            </div>
-            <div className="bg-white border border-gray-100 rounded-lg p-6 cursor-pointer hover:bg-gradient-to-r hover:from-[#0b2545]/5 hover:to-white">
-              <div className="text-base font-semibold text-[#07223f]">Event Donations</div>
-              <div className="text-sm text-gray-500">Review incoming event donations</div>
-            </div>
-          </>
-        )}
+          <div className="bg-white border border-slate-100 rounded-lg p-6 text-center">
+            <div className="text-sm text-gray-600">No active campaigns.</div>
+          </div>
+        ))}
       </div>
     </aside>
   );
