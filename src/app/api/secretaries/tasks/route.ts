@@ -85,12 +85,11 @@ export async function POST(req: Request) {
         }
 
         if (assigned.sectors && assigned.sectors.length) {
-          const sectorRows = await prisma.sector.findMany({ where: { id: { in: assigned.sectors } }, select: { name: true } });
-          const sectorNames = sectorRows.map((s) => s.name).filter(Boolean);
-
-          if (sectorNames.length) {
+          // VolunteerProfile.sectors stores sector IDs. Match directly by IDs.
+          const sectorIds = assigned.sectors.filter(Boolean);
+          if (sectorIds.length) {
             const profiles = await prisma.volunteerProfile.findMany({
-              where: { sectors: { hasSome: sectorNames } },
+              where: { sectors: { hasSome: sectorIds } },
               select: { userId: true },
             });
             const uids = profiles.map((p) => p.userId);
@@ -110,12 +109,11 @@ export async function POST(req: Request) {
         }
 
         if (assigned.clubs && assigned.clubs.length) {
-          // volunteerProfile.clubs stores club NAMES; resolve IDs to names first
-          const clubRows = await prisma.club.findMany({ where: { id: { in: assigned.clubs } }, select: { name: true } });
-          const clubNames = clubRows.map((c) => c.name).filter(Boolean);
-          if (clubNames.length) {
+          // volunteerProfile.clubs stores club IDs. Match directly by IDs.
+          const clubIds = assigned.clubs.filter(Boolean);
+          if (clubIds.length) {
             const profiles = await prisma.volunteerProfile.findMany({
-              where: { clubs: { hasSome: clubNames } },
+              where: { clubs: { hasSome: clubIds } },
               select: { userId: true },
             });
             const uids = profiles.map((p) => p.userId);

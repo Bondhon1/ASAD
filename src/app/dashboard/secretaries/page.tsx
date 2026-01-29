@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { useCachedUserProfile } from "@/hooks/useCachedUserProfile";
@@ -233,16 +233,108 @@ export default function SecretariesPage() {
     })();
   }, []);
 
-  if (status === 'unauthenticated') return null;
-
+  // Hooks used for client-side query handling and modal state must be
+  // declared before any conditional return to preserve hook order.
   const displayName = viewer?.fullName || viewer?.username || (session as any)?.user?.name || 'Secretaries';
   const displayEmail = viewer?.email || (session as any)?.user?.email || '';
   const displayRole = (session as any)?.user?.role || (viewer?.role as "VOLUNTEER" | "HR" | "MASTER" | "ADMIN" | "DIRECTOR" | "DATABASE_DEPT" | "SECRETARIES") || "HR";
+  const searchParams = useSearchParams();
+  const queryTaskId = searchParams?.get('taskId') || null;
+  const [currentTaskId, setCurrentTaskId] = useState<string | null>(queryTaskId);
+
+  // Modal state for viewing submissions (approve flow)
+  const [submissionsModalOpen, setSubmissionsModalOpen] = useState(false);
+  const [submissionsLoading, setSubmissionsLoading] = useState(false);
+  const [submissionsList, setSubmissionsList] = useState<any[]>([]);
+  const [submissionsError, setSubmissionsError] = useState<string | null>(null);
+
+  // Perform client-side redirect if unauthorized
+  useEffect(() => {
+    if (!userLoading && displayRole !== 'MASTER' && displayRole !== 'SECRETARIES') {
+      router.push('/dashboard');
+    }
+  }, [userLoading, displayRole, router]);
+
+  // If opened with ?taskId=..., fetch submissions and open modal (client-side)
+  useEffect(() => {
+    const id = queryTaskId;
+    if (!id) return;
+    if (userLoading) return;
+    if (displayRole !== 'MASTER' && displayRole !== 'SECRETARIES') return;
+
+    (async () => {
+      setSubmissionsError(null);
+      setSubmissionsLoading(true);
+      try {
+        const res = await fetch(`/api/tasks/${id}/approve`);
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({}));
+          throw new Error(d?.error || 'Failed to load submissions');
+        }
+        const d = await res.json();
+        setSubmissionsList(d.submissions || []);
+        setCurrentTaskId(id);
+        setSubmissionsModalOpen(true);
+      } catch (e: any) {
+        setSubmissionsError(e?.message || 'Failed to load submissions');
+      } finally {
+        setSubmissionsLoading(false);
+      }
+    })();
+  }, [queryTaskId, userLoading, displayRole]);
+
+  // Approve / Reject handlers
+  const handleApprove = async (submissionId: string) => {
+    const taskId = currentTaskId || queryTaskId;
+    if (!taskId) return;
+    try {
+      setSubmissionsLoading(true);
+      const res = await fetch(`/api/tasks/${taskId}/approve`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ submissionId, action: 'APPROVE' }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d?.error || 'Approve failed');
+      const updated = d.submission;
+      setSubmissionsList(prev => prev.map(s => s.id === updated.id ? updated : s));
+    } catch (e: any) {
+      alert('Approve failed: ' + (e?.message || 'Unknown'));
+    } finally {
+      setSubmissionsLoading(false);
+    }
+  };
+
+  const handleReject = async (submissionId: string) => {
+    const taskId = currentTaskId || queryTaskId;
+    if (!taskId) return;
+    const reason = prompt('Reason for rejection (optional):');
+    if (reason === null) return;
+    try {
+      setSubmissionsLoading(true);
+      const res = await fetch(`/api/tasks/${taskId}/approve`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ submissionId, action: 'REJECT', reason }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d?.error || 'Reject failed');
+      const updated = d.submission;
+      setSubmissionsList(prev => prev.map(s => s.id === updated.id ? updated : s));
+    } catch (e: any) {
+      alert('Reject failed: ' + (e?.message || 'Unknown'));
+    } finally {
+      setSubmissionsLoading(false);
+    }
+  };
+
+  if (status === 'unauthenticated') return null;
+
 
   // allow only MASTER or SECRETARIES (MASTER should still have access)
-  if (displayRole !== 'MASTER' && displayRole !== 'SECRETARIES') {
-    // redirect to dashboard for unauthorized
-    router.push('/dashboard');
+  // Avoid calling router.push during render (server) — return null while
+  // loading or if unauthorized; perform redirect client-side in useEffect.
+  if (!userLoading && displayRole !== 'MASTER' && displayRole !== 'SECRETARIES') {
     return null;
   }
 
@@ -270,6 +362,49 @@ export default function SecretariesPage() {
       })}
     </div>
   );
+
+  // Render structured submission data (donation tidy formatting)
+  const renderSubmissionData = (raw: any) => {
+    if (!raw) return null;
+    let parsed: any = null;
+    if (typeof raw === 'string') {
+      try { parsed = JSON.parse(raw); } catch (e) { parsed = raw; }
+    } else {
+      parsed = raw;
+    }
+
+    // If parsed is an object with donation-like keys, render nicely
+    if (parsed && typeof parsed === 'object' && (parsed.amount || parsed.trxId || parsed.paymentMethod || parsed.donationId)) {
+      return (
+        <div className="mt-2 bg-slate-50 p-3 rounded-md border border-slate-100 text-sm text-slate-800">
+          {parsed.amount !== undefined && (
+            <div><strong>Amount:</strong> ৳ {parsed.amount}</div>
+          )}
+          {parsed.trxId && (
+            <div><strong>Transaction ID:</strong> {parsed.trxId}</div>
+          )}
+          {parsed.paymentMethod && (
+            <div><strong>Method:</strong> {parsed.paymentMethod}</div>
+          )}
+          {parsed.senderNumber && (
+            <div><strong>Sender Number:</strong> {parsed.senderNumber}</div>
+          )}
+          {parsed.donatedAt && (
+            <div><strong>Donated At:</strong> {new Date(parsed.donatedAt).toLocaleString()}</div>
+          )}
+          {parsed.donationId && (
+            <div><strong>Donation ID:</strong> {parsed.donationId}</div>
+          )}
+        </div>
+      );
+    }
+
+    // Fallback: pretty-print JSON or show raw string
+    if (parsed && typeof parsed === 'object') {
+      return <pre className="mt-2 p-3 bg-slate-50 rounded-md text-sm text-slate-700 overflow-auto">{JSON.stringify(parsed, null, 2)}</pre>;
+    }
+    return <div className="mt-2 text-sm text-slate-700">{String(parsed)}</div>;
+  };
 
   const content = (
     <div className="min-h-[calc(100vh-140px)] bg-transparent py-10 px-4">
@@ -507,7 +642,24 @@ export default function SecretariesPage() {
                       {editingTaskId !== t.id && (
                         <>
                           <button onClick={() => startEdit(t)} className="px-3 py-1.5 bg-white border border-slate-200 rounded-md text-sm">Edit</button>
+                          <button onClick={() => fetchTasks()} className="px-3 py-1.5 bg-white border border-slate-200 rounded-md text-sm">Refresh</button>
                           <button onClick={() => deleteTask(t.id)} className="px-3 py-1.5 bg-red-50 border border-red-200 text-red-600 rounded-md text-sm">Delete</button>
+                          <button onClick={async () => {
+                                try {
+                                  setSubmissionsError(null);
+                                  setSubmissionsLoading(true);
+                                  const res = await fetch(`/api/tasks/${t.id}/approve`);
+                                  if (!res.ok) { const d = await res.json().catch(()=>({})); throw new Error(d?.error || 'Failed'); }
+                                  const d = await res.json();
+                                  setSubmissionsList(d.submissions || []);
+                                  setSubmissionsModalOpen(true);
+                                  // set current queryTaskId-like variable so approve uses it
+                                  // We reuse queryTaskId variable for modal API calls by setting location (client only)
+                                  try { window.history.replaceState({}, '', '/dashboard/secretaries?taskId=' + t.id); } catch(e) {}
+                                  setCurrentTaskId(t.id);
+                                } catch (e:any) { alert('Failed to open submissions: ' + (e?.message || 'Unknown')); }
+                                finally { setSubmissionsLoading(false); }
+                            }} className="px-3 py-1.5 bg-white border border-slate-200 rounded-md text-sm">View Submissions</button>
                         </>
                       )}
                     </div>
@@ -524,6 +676,65 @@ export default function SecretariesPage() {
   return (
     <DashboardLayout userRole={displayRole} userName={displayName} userEmail={displayEmail} userId={viewer?.id || ""}>
       {content}
+
+      {submissionsModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-6">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setSubmissionsModalOpen(false)} />
+          <div className="relative bg-white w-full max-w-3xl rounded-xl shadow-lg p-6 overflow-auto max-h-[80vh]">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Submissions for Task</h3>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setSubmissionsModalOpen(false)} className="px-3 py-1 bg-white border border-slate-200 rounded-md">Close</button>
+              </div>
+            </div>
+
+            {submissionsLoading ? (
+              <div className="text-sm text-slate-600">Loading submissions...</div>
+            ) : submissionsError ? (
+              <div className="text-sm text-red-600">{submissionsError}</div>
+            ) : submissionsList.length === 0 ? (
+              <div className="text-sm text-slate-600">No submissions yet.</div>
+            ) : (
+              <div className="space-y-3">
+                {submissionsList.map((s) => (
+                  <div key={s.id} className="border border-slate-100 rounded-xl p-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium">{s.user?.fullName || s.user?.email || 'Unknown'}</div>
+                        <div className="text-xs text-slate-500">{s.user?.email || ''} • Volunteer ID: {s.user?.volunteerId || '—'}</div>
+                      </div>
+                      <div className="text-sm font-semibold">
+                        {s.status}
+                      </div>
+                    </div>
+                    <div className="text-xs text-slate-500 mt-2">Submitted: {s.submittedAt ? new Date(s.submittedAt).toLocaleString() : '—'}</div>
+                    {s.submissionData ? (
+                      <div>{renderSubmissionData(s.submissionData)}</div>
+                    ) : null}
+                    {s.submissionFiles && s.submissionFiles.length ? (
+                      <div className="mt-2 flex gap-2 flex-wrap">
+                        {s.submissionFiles.map((f: string, idx: number) => (
+                          <a key={idx} href={f} target="_blank" rel="noreferrer" className="inline-block border border-slate-200 rounded-md overflow-hidden">
+                            <img src={f} alt={`file-${idx}`} className="w-28 h-20 object-cover" />
+                          </a>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    {s.status === 'PENDING' && (
+                      <div className="mt-3 flex items-center gap-2">
+                        <button onClick={() => handleApprove(s.id)} disabled={submissionsLoading} className="px-3 py-1.5 bg-green-600 text-white rounded-md text-sm">Approve</button>
+                        <button onClick={() => handleReject(s.id)} disabled={submissionsLoading} className="px-3 py-1.5 bg-red-50 border border-red-200 text-red-600 rounded-md text-sm">Reject</button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
     </DashboardLayout>
   );
 }

@@ -225,16 +225,44 @@ export default function DashboardPage() {
       <div className="space-y-3">
         {pendingTasksLoading ? (
           <div className="text-sm text-gray-600">Loading…</div>
-        ) : (pendingTasks && pendingTasks.length ? (
-          pendingTasks.slice(0, 6).map((t) => (
-            <div key={t.id} onClick={() => router.push('/dashboard/tasks')} className="bg-white border border-gray-100 rounded-lg p-4 h-16 flex items-center justify-between cursor-pointer hover:shadow-sm hover:translate-y-[-1px] transition-transform">
-              <div className="text-sm text-gray-800">{t.title || 'Task'}</div>
-              <div className="text-xs text-gray-500">{t.endDate ? formatDhakaDate(t.endDate) : ''}</div>
-            </div>
-          ))
         ) : (
-          <div className="text-sm text-gray-600">No pending tasks.</div>
-        ))}
+          (() => {
+            const submittedPending = (user?.taskSubmissions || []).filter(s => s.status === 'PENDING');
+            const visiblePending = (pendingTasks || []).filter(t => !((user?.taskSubmissions || []).some(s => s.task?.id === t.id)));
+
+            if (!visiblePending.length && !submittedPending.length) {
+              return <div className="text-sm text-gray-600">No pending tasks.</div>;
+            }
+
+            return (
+              <div className="space-y-3">
+                {visiblePending.slice(0, 6).map((t) => (
+                  <div key={t.id} onClick={() => router.push('/dashboard/tasks')} className="bg-white border border-gray-100 rounded-lg p-4 h-16 flex items-center justify-between cursor-pointer hover:shadow-sm hover:translate-y-[-1px] transition-transform">
+                    <div className="text-sm text-gray-800">{t.title || 'Task'}</div>
+                    <div className="text-xs text-gray-500">{t.endDate ? formatDhakaDate(t.endDate) : ''}</div>
+                  </div>
+                ))}
+
+                {submittedPending.length > 0 && (
+                  <div className="pt-4 border-t border-gray-100">
+                    <div className="text-xs text-slate-500 mb-2 font-medium">Submitted (Pending Review)</div>
+                    <div className="space-y-2">
+                      {submittedPending.slice(0, 6).map((s) => (
+                        <div key={s.id} className="bg-white border border-gray-100 rounded-lg p-3 flex items-center justify-between">
+                          <div>
+                            <div className="text-sm text-gray-800">{s.task?.title || 'Task'}</div>
+                            <div className="text-xs text-gray-500">Submitted: {s.submittedAt ? new Date(s.submittedAt).toLocaleDateString() : '—'}</div>
+                          </div>
+                          <div className="text-xs text-amber-700 font-semibold">Pending Review</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()
+        )}
       </div>
     </section>
   );

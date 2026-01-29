@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { useCachedUserProfile } from '@/hooks/useCachedUserProfile';
@@ -36,10 +36,19 @@ export default function TasksPage() {
   const [submittingTask, setSubmittingTask] = useState<any | null>(null);
   const [submissionData, setSubmissionData] = useState<string>('');
   const [submissionFiles, setSubmissionFiles] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [submissionSuccess, setSubmissionSuccess] = useState<{ points: number; rankUpdate?: any } | null>(null);
   const [userSubmissions, setUserSubmissions] = useState<Record<string, any>>({});
+  // Donation-specific submission fields
+  const [donationAmount, setDonationAmount] = useState<number | ''>('');
+  const [donationTrx, setDonationTrx] = useState('');
+  const [donationSender, setDonationSender] = useState('');
+  const [donationMethod, setDonationMethod] = useState<'bkash'|'nagad'|'visa'|'mastercard'>('bkash');
+  const [donationDatetime, setDonationDatetime] = useState('');
+  const [donationProof, setDonationProof] = useState('');
 
   const role = ((user as any)?.role || (session as any)?.user?.role || '');
   const canCreate = ['SECRETARIES', 'MASTER'].includes(role);
@@ -64,6 +73,47 @@ export default function TasksPage() {
     // Convert to Dhaka timezone by adding 6 hours offset
     const dhakaDate = new Date(date.getTime() + (6 * 60 * 60 * 1000));
     return dhakaDate.toISOString().slice(0, 16);
+  };
+
+  // Render structured submission data (donation tidy formatting)
+  const renderSubmissionData = (raw: any) => {
+    if (!raw) return null;
+    let parsed: any = null;
+    if (typeof raw === 'string') {
+      try { parsed = JSON.parse(raw); } catch (e) { parsed = raw; }
+    } else {
+      parsed = raw;
+    }
+
+    if (parsed && typeof parsed === 'object' && (parsed.amount || parsed.trxId || parsed.paymentMethod || parsed.donationId)) {
+      return (
+        <div className="mt-2 bg-slate-50 p-3 rounded-md border border-slate-100 text-sm text-slate-800">
+          {parsed.amount !== undefined && (
+            <div><strong>Amount:</strong> ৳ {parsed.amount}</div>
+          )}
+          {parsed.trxId && (
+            <div><strong>Transaction ID:</strong> {parsed.trxId}</div>
+          )}
+          {parsed.paymentMethod && (
+            <div><strong>Method:</strong> {parsed.paymentMethod}</div>
+          )}
+          {parsed.senderNumber && (
+            <div><strong>Sender Number:</strong> {parsed.senderNumber}</div>
+          )}
+          {parsed.donatedAt && (
+            <div><strong>Donated At:</strong> {new Date(parsed.donatedAt).toLocaleString()}</div>
+          )}
+          {parsed.donationId && (
+            <div><strong>Donation ID:</strong> {parsed.donationId}</div>
+          )}
+        </div>
+      );
+    }
+
+    if (parsed && typeof parsed === 'object') {
+      return <pre className="mt-2 p-3 bg-slate-50 rounded-md text-sm text-slate-700 overflow-auto">{JSON.stringify(parsed, null, 2)}</pre>;
+    }
+    return <div className="mt-2 text-sm text-slate-700">{String(parsed)}</div>;
   };
 
   useEffect(() => {
@@ -121,6 +171,38 @@ export default function TasksPage() {
     })();
   }, [isSuperAdmin, userEmail]);
 
+  // Keep a ref to latest userSubmissions so interval callback can read current value
+  const userSubRef = useRef<Record<string, any>>(userSubmissions);
+  useEffect(() => { userSubRef.current = userSubmissions; }, [userSubmissions]);
+
+  // Periodically refresh PENDING submissions so UI reflects approvals done by secretaries
+  useEffect(() => {
+    let stopped = false;
+    const checkPending = async () => {
+      const current = userSubRef.current || {};
+      const pendingIds = Object.entries(current).filter(([, v]) => Boolean(v) && (v as any).status === 'PENDING').map(([k]) => k);
+      if (pendingIds.length === 0) return;
+      for (const id of pendingIds) {
+        try {
+          const res = await fetch(`/api/tasks/${id}`);
+          if (!res.ok) continue;
+          const d = await res.json();
+          if (d.userSubmission && d.userSubmission.status && d.userSubmission.status !== current[id]?.status) {
+            setUserSubmissions(prev => ({ ...prev, [id]: d.userSubmission }));
+          }
+        } catch (e) {
+          // ignore per-id
+        }
+        if (stopped) return;
+      }
+    };
+
+    const iv = setInterval(checkPending, 8000);
+    // also run once shortly after mount
+    const t = setTimeout(checkPending, 2000);
+    return () => { stopped = true; clearInterval(iv); clearTimeout(t); };
+  }, []);
+
   const refresh = async () => {
     setLoading(true);
     try {
@@ -166,6 +248,13 @@ export default function TasksPage() {
     setSubmissionFiles([]);
     setSubmissionError(null);
     setSubmissionSuccess(null);
+    // reset donation fields
+    setDonationAmount('');
+    setDonationTrx('');
+    setDonationSender('');
+    setDonationMethod('bkash');
+    setDonationDatetime('');
+    setDonationProof('');
   };
 
   const closeSubmissionModal = () => {
@@ -204,10 +293,20 @@ export default function TasksPage() {
         }
         payload.submissionFiles = submissionFiles;
       } else if (submittingTask.taskType === 'DONATION') {
-        if (!submissionData.trim()) {
-          throw new Error('Please enter donation details');
+        // Send structured donation payload
+        const amountNum = donationAmount === '' ? undefined : Number(donationAmount);
+        if ((!submissionData || submissionData.trim() === '') && (!amountNum && !donationTrx)) {
+          throw new Error('Please provide donation amount or transaction ID');
         }
-        payload.submissionData = submissionData;
+        payload.donation = {
+          amount: amountNum,
+          trxId: donationTrx || undefined,
+          paymentMethod: donationMethod || undefined,
+          senderNumber: donationSender || undefined,
+          donatedAt: donationDatetime || undefined,
+          proofUrl: donationProof || undefined,
+        };
+        if (submissionData && submissionData.trim()) payload.submissionData = submissionData;
       }
 
       const res = await fetch('/api/tasks/submit', {
@@ -243,6 +342,11 @@ export default function TasksPage() {
       setSubmitting(false);
     }
   };
+
+  // View submission modal
+  const [viewSubmission, setViewSubmission] = useState<any | null>(null);
+  const openViewSubmission = (submission: any) => setViewSubmission(submission);
+  const closeViewSubmission = () => setViewSubmission(null);
 
   // Note: Creation is handled on the Secretaries page; Tasks page links there.
 
@@ -335,6 +439,7 @@ export default function TasksPage() {
   );
 
   return (
+    <>
     <DashboardLayout userRole={(user as any)?.role || (session as any)?.user?.role || 'VOLUNTEER'} userName={(user as any)?.fullName || (session as any)?.user?.name || 'User'} userEmail={(user as any)?.email || (session as any)?.user?.email || ''} userId={(user as any)?.id || (session as any)?.user?.id || ''}>
       <div className="min-h-[calc(100vh-140px)] bg-slate-50/30 py-10 px-4">
         <div className="max-w-5xl mx-auto">
@@ -425,6 +530,9 @@ export default function TasksPage() {
                              userSubmissions[t.id].status === 'REJECTED' ? '✗ Rejected' : 
                              '⏳ Pending Review'}
                           </div>
+                        ) : null}
+                        {userSubmissions[t.id] ? (
+                          <button onClick={() => openViewSubmission(userSubmissions[t.id])} className="w-full md:w-32 px-4 py-2 bg-white text-slate-700 border border-slate-200 rounded-xl hover:bg-slate-50 transition">View Submission</button>
                         ) : (
                           <button 
                             onClick={() => openSubmissionModal(t)}
@@ -914,29 +1022,110 @@ export default function TasksPage() {
                 {/* IMAGE Task Type */}
                 {submittingTask.taskType === 'IMAGE' && (
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">Upload Images</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">Upload Images (max 1MB each)</label>
                     <input
-                      type="text"
-                      value={submissionFiles.join(', ')}
-                      onChange={(e) => setSubmissionFiles(e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
-                      placeholder="Enter image URLs (comma separated)"
-                      className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={async (e) => {
+                        setUploadError(null);
+                        const files = e.target.files;
+                        if (!files || files.length === 0) return;
+                        try {
+                          setUploading(true);
+                          for (let i = 0; i < files.length; i++) {
+                            const f = files[i];
+                            if (f.size > 1 * 1024 * 1024) {
+                              throw new Error(`${f.name} exceeds 1MB limit`);
+                            }
+                            const dataUrl = await new Promise<string>((resolve, reject) => {
+                              const reader = new FileReader();
+                              reader.onload = () => resolve(String(reader.result));
+                              reader.onerror = (err) => reject(err);
+                              reader.readAsDataURL(f);
+                            });
+                            const base64 = dataUrl.split(',')[1];
+                            const res = await fetch('/api/user/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fileName: f.name, mimeType: f.type, data: base64 }) });
+                            const json = await res.json();
+                            if (!res.ok || !json?.url) throw new Error(json?.error || 'Upload failed');
+                            setSubmissionFiles(prev => [...prev, json.url]);
+                          }
+                        } catch (err: any) {
+                          console.error('upload error', err);
+                          setUploadError(err?.message || 'Upload failed');
+                        } finally {
+                          setUploading(false);
+                          // clear the file input
+                          (e.target as HTMLInputElement).value = '';
+                        }
+                      }}
+                      className="w-full"
                     />
-                    <p className="text-xs text-slate-400 mt-1">Upload images to a service like Imgur and paste the URLs here</p>
+                    {uploading && <div className="text-sm text-slate-500 mt-2">Uploading...</div>}
+                    {uploadError && <div className="text-sm text-red-600 mt-2">{uploadError}</div>}
+
+                    {submissionFiles.length > 0 && (
+                      <div className="mt-3 grid grid-cols-3 md:grid-cols-6 gap-3">
+                        {submissionFiles.map((url, idx) => (
+                          <div key={idx} className="relative rounded-lg overflow-hidden border border-slate-200">
+                            <img src={url} alt={`upload-${idx}`} className="w-full h-24 object-cover" />
+                            <button type="button" onClick={() => setSubmissionFiles(prev => prev.filter((_, i) => i !== idx))} className="absolute top-1 right-1 bg-white/80 p-1 rounded-full text-red-600">✕</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-xs text-slate-400 mt-1">Images are uploaded to the server and saved with your submission.</p>
                   </div>
                 )}
 
                 {/* DONATION Task Type */}
                 {submittingTask.taskType === 'DONATION' && (
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">Donation Details</label>
-                    <textarea
-                      value={submissionData}
-                      onChange={(e) => setSubmissionData(e.target.value)}
-                      placeholder="Enter donation details (amount, transaction ID, etc.)"
-                      className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all resize-none"
-                      rows={4}
-                    />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-1">Amount (৳)</label>
+                      <input
+                        type="number"
+                        value={donationAmount as any}
+                        onChange={(e) => setDonationAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                        placeholder="Amount"
+                        className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-1">Payment Method</label>
+                      <select value={donationMethod} onChange={(e) => setDonationMethod(e.target.value as any)} className="w-full p-3 border border-slate-200 rounded-xl">
+                        <option value="bkash">Bkash</option>
+                        <option value="nagad">Nagad</option>
+                        <option value="visa">Visa</option>
+                        <option value="mastercard">Mastercard</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-1">Sender Number</label>
+                      <input type="text" value={donationSender} onChange={(e) => setDonationSender(e.target.value)} placeholder="01XXXXXXXXX" className="w-full p-3 border border-slate-200 rounded-xl" />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-1">Transaction ID</label>
+                      <input type="text" value={donationTrx} onChange={(e) => setDonationTrx(e.target.value)} placeholder="Transaction ID" className="w-full p-3 border border-slate-200 rounded-xl" />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-1">Date & Time</label>
+                      <input type="datetime-local" value={donationDatetime} onChange={(e) => setDonationDatetime(e.target.value)} className="w-full p-3 border border-slate-200 rounded-xl" />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-1">Proof URL (optional)</label>
+                      <input type="text" value={donationProof} onChange={(e) => setDonationProof(e.target.value)} placeholder="Image/receipt URL" className="w-full p-3 border border-slate-200 rounded-xl" />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-semibold text-slate-700 mb-1">Notes / Details (optional)</label>
+                      <textarea value={submissionData} onChange={(e) => setSubmissionData(e.target.value)} placeholder="Any additional details" className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all resize-none" rows={3} />
+                    </div>
                   </div>
                 )}
 
@@ -962,5 +1151,44 @@ export default function TasksPage() {
         </div>
       )}
     </DashboardLayout>
+      {viewSubmission && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl p-6 max-w-3xl w-full mx-4">
+            <div className="flex items-start justify-between gap-4">
+              <h3 className="text-lg font-semibold">Submission Details</h3>
+              <button onClick={closeViewSubmission} className="text-slate-500 hover:text-slate-800">Close</button>
+            </div>
+            <div className="mt-4 space-y-3">
+              {viewSubmission.submissionData && (
+                <div>
+                  <h4 className="text-sm font-medium text-slate-600">Notes</h4>
+                  <div className="mt-1">{renderSubmissionData(viewSubmission.submissionData)}</div>
+                </div>
+              )}
+
+              {viewSubmission.submissionFiles && viewSubmission.submissionFiles.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium text-slate-600">Images</h4>
+                  <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {viewSubmission.submissionFiles.map((u: string, i: number) => (
+                      <a key={i} href={u} target="_blank" rel="noreferrer" className="block border rounded overflow-hidden">
+                        <img src={u} className="w-full h-28 object-cover" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="text-xs text-slate-500">Status: {viewSubmission.status}</div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
+
+// Submission viewer modal (rendered outside main component scope via portal-like pattern)
+// Render by React at module scope: we add simple DOM injection when viewSubmission is set.
+
+// View submission modal markup appended at end of file (inside module scope)

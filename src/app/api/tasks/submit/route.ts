@@ -25,6 +25,15 @@ type SubmissionBody = {
   taskId: string;
   submissionData?: string;
   submissionFiles?: string[];
+  // Optional structured donation payload for DONATION task type
+  donation?: {
+    amount?: number;
+    trxId?: string;
+    paymentMethod?: string;
+    senderNumber?: string;
+    donatedAt?: string; // ISO datetime
+    proofUrl?: string;
+  };
 };
 
 export async function POST(req: Request) {
@@ -105,14 +114,50 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: validationError }, { status: 400 });
     }
 
-    // Create the submission
-    const submission = await prisma.taskSubmission.create({
+    // For DONATION type, if donation details provided, create a Donation record
+    let createdDonation: any = null;
+    if (task.taskType === 'DONATION') {
+      const donationPayload = body.donation || (body.submissionData ? tryParseJSON(body.submissionData) : null);
+      if (donationPayload) {
+        try {
+          const donatedAt = donationPayload.donatedAt ? new Date(donationPayload.donatedAt) : new Date();
+          createdDonation = await prisma.donation.create({
+            data: {
+              userId: requester.id,
+              amount: typeof donationPayload.amount === 'number' ? donationPayload.amount : 0,
+              trxId: donationPayload.trxId || (donationPayload.trxID || '') || 'unknown',
+              paymentMethod: donationPayload.paymentMethod || 'bkash',
+              proofUrl: donationPayload.proofUrl || undefined,
+              donatedAt: isNaN(donatedAt.getTime()) ? new Date() : donatedAt,
+              status: 'PENDING',
+            },
+          });
+        } catch (e) {
+          console.error('Failed to create Donation record from task submission', e);
+        }
+      }
+    }
+
+    // Create the submission (include donation details and donationId if present)
+    let submission = await prisma.taskSubmission.create({
       data: {
         taskId: body.taskId,
         userId: requester.id,
-        submissionData: body.submissionData || null,
+        submissionData: (() => {
+          try {
+            const base = body.submissionData ? tryParseJSON(body.submissionData) : null;
+            const merged = {
+              ...(base || {}),
+              ...(body.donation || {}),
+              donationId: createdDonation?.id || undefined,
+            } as any;
+            return Object.keys(merged).length ? JSON.stringify(merged) : null;
+          } catch (e) {
+            return body.submissionData || null;
+          }
+        })(),
         submissionFiles: body.submissionFiles || [],
-        status: 'PENDING', // Start as pending, can be auto-approved for YESNO
+        status: 'PENDING', // Start as pending
       },
     });
 
@@ -121,7 +166,7 @@ export async function POST(req: Request) {
 
     // For YESNO type, auto-approve if answered YES
     if (task.taskType === 'YESNO' && body.submissionData === 'YES') {
-      await prisma.taskSubmission.update({
+      submission = await prisma.taskSubmission.update({
         where: { id: submission.id },
         data: { 
           status: 'APPROVED',
@@ -192,11 +237,33 @@ function validateSubmission(taskType: string, body: SubmissionBody): string | nu
       }
       break;
     case 'DONATION':
-      // Donation tasks may have special handling
-      if (!body.submissionData) {
-        return 'Donation details are required';
-      }
+        // Donation tasks may have structured donation payload either in `donation` or
+        // inside `submissionData` (JSON). Require at least a trxId or amount.
+        if (!body.donation && !body.submissionData) {
+          return 'Donation details are required';
+        }
+        if (body.donation) {
+          const d = body.donation;
+          if ((!d.trxId || d.trxId.trim() === '') && (typeof d.amount !== 'number' || d.amount <= 0)) {
+            return 'Please provide a valid transaction ID or amount for the donation';
+          }
+        } else if (body.submissionData) {
+          const parsed = tryParseJSON(body.submissionData);
+          if (!parsed || ((!parsed.trxId || parsed.trxId.trim() === '') && (typeof parsed.amount !== 'number' || parsed.amount <= 0))) {
+            return 'Please provide valid donation details (amount or trxId)';
+          }
+        }
       break;
   }
   return null;
 }
+
+  function tryParseJSON(input: any) {
+    if (!input) return null;
+    if (typeof input === 'object') return input;
+    try {
+      return JSON.parse(input as string);
+    } catch (e) {
+      return null;
+    }
+  }
