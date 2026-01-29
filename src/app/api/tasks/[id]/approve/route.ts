@@ -96,6 +96,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       },
     });
 
+    // Re-fetch submission with related user/task/approvedBy for frontend use
+    const fullSubmission = await prisma.taskSubmission.findUnique({
+      where: { id: updatedSubmission.id },
+      include: {
+        user: { select: { id: true, fullName: true, email: true, volunteerId: true, profilePicUrl: true } },
+        approvedBy: { select: { id: true, fullName: true } },
+        task: { select: { id: true, title: true } },
+      },
+    });
+
     let pointsAwarded = 0;
     let rankResult = null;
 
@@ -131,7 +141,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     return NextResponse.json({
       ok: true,
-      submission: updatedSubmission,
+      submission: fullSubmission || updatedSubmission,
       pointsAwarded,
       rankUpdate: rankResult ? {
         newPoints: rankResult.newPoints,
