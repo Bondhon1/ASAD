@@ -54,8 +54,18 @@ export async function PATCH(req: Request, context: any) {
       try {
         await prisma.user.update({ where: { id }, data: { volunteerId: volunteerId === null ? null : volunteerId } });
       } catch (err: any) {
-        // likely uniqueness constraint or other DB error
+        // Handle Prisma unique constraint for volunteerId specially
         console.error('PATCH /api/hr/users/[id] volunteerId update error', err);
+        try {
+          const code = err?.code;
+          const meta = err?.meta;
+          const target = Array.isArray(meta?.target) ? meta.target : [];
+          if (code === 'P2002' && target.includes('volunteerId')) {
+            return NextResponse.json({ error: 'Volunteer ID already in use' }, { status: 409 });
+          }
+        } catch (e) {
+          // fallthrough to generic error
+        }
         return NextResponse.json({ error: err?.message || 'Failed to update volunteerId' }, { status: 500 });
       }
     }
