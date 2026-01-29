@@ -13,8 +13,8 @@
  * by creating a TaskSubmission with status 'REJECTED' and a special marker.
  * 
  * Can be triggered by:
- * - Vercel Cron: Add to vercel.json with schedule
- * - Manual trigger by MASTER/ADMIN
+ * - Vercel Cron: Uses CRON_SECRET header for authentication
+ * - Manual trigger by MASTER/ADMIN via authenticated session
  */
 
 import { NextResponse } from 'next/server';
@@ -29,9 +29,9 @@ const DEDUCTION_MARKER = '__DEADLINE_MISSED_DEDUCTION__';
 
 export async function POST(req: Request) {
   try {
-    // Allow cron jobs (with secret) or authenticated admins
-    const cronSecret = req.headers.get('x-cron-secret');
-    const isValidCron = cronSecret && cronSecret === process.env.CRON_SECRET;
+    // Check for Vercel Cron authentication header
+    const authHeader = req.headers.get('authorization');
+    const isValidCron = authHeader === `Bearer ${process.env.CRON_SECRET}`;
 
     if (!isValidCron) {
       const session = await getServerSession(authOptions);
@@ -167,10 +167,121 @@ export async function POST(req: Request) {
 /**
  * GET /api/tasks/process-expired
  * 
- * Preview what would be processed (dry run)
+ * Vercel Cron jobs call GET endpoints. This will process expired tasks.
+ * Also serves as preview for authenticated admins without the cron header.
  */
 export async function GET(req: Request) {
   try {
+    // Check for Vercel Cron authentication header
+    const authHeader = req.headers.get('authorization');
+    const isValidCron = authHeader === `Bearer ${process.env.CRON_SECRET}`;
+
+    // If valid cron, process the tasks (same as POST)
+    if (isValidCron) {
+      const now = new Date();
+      
+      // Find all mandatory tasks that have expired
+      const expiredMandatoryTasks = await prisma.task.findMany({
+        where: {
+          mandatory: true,
+          endDate: { lt: now },
+          pointsNegative: { gt: 0 },
+        },
+        select: {
+          id: true,
+          title: true,
+          targetUserIds: true,
+          pointsNegative: true,
+          endDate: true,
+        },
+      });
+
+      const results = {
+        tasksProcessed: 0,
+        usersDeducted: 0,
+        usersDowngraded: 0,
+        errors: [] as string[],
+      };
+
+      for (const task of expiredMandatoryTasks) {
+        results.tasksProcessed++;
+
+        const existingSubmissions = await prisma.taskSubmission.findMany({
+          where: { taskId: task.id },
+          select: { userId: true, submissionData: true },
+        });
+
+        const submittedUserIds = new Set(existingSubmissions.map((s: { userId: string }) => s.userId));
+
+        for (const targetUserId of task.targetUserIds) {
+          if (submittedUserIds.has(targetUserId)) {
+            continue;
+          }
+
+          const user = await prisma.user.findUnique({
+            where: { id: targetUserId },
+            select: { 
+              id: true, 
+              status: true,
+              volunteerProfile: {
+                select: { points: true, rankId: true },
+              },
+            },
+          });
+
+          if (!user || user.status !== 'OFFICIAL') {
+            continue;
+          }
+
+          try {
+            await prisma.taskSubmission.create({
+              data: {
+                taskId: task.id,
+                userId: targetUserId,
+                submissionData: DEDUCTION_MARKER,
+                status: 'REJECTED',
+              },
+            });
+
+            const deductionResult = await applyPointsChange(
+              targetUserId,
+              -task.pointsNegative,
+              `Missed deadline: ${task.title}`,
+              task.id
+            );
+
+            results.usersDeducted++;
+
+            if (deductionResult.rankChanged) {
+              results.usersDowngraded++;
+            }
+
+            await prisma.notification.create({
+              data: {
+                userId: targetUserId,
+                type: NotificationType.TASK_REJECTED,
+                title: '⚠️ Points Deducted',
+                message: `You missed the deadline for "${task.title}". ${task.pointsNegative} points have been deducted.${deductionResult.rankChanged ? ` Your rank has changed to ${deductionResult.newRankName}.` : ''}`,
+                link: '/dashboard/tasks',
+              },
+            });
+          } catch (err: any) {
+            if (err?.code === 'P2002') {
+              continue;
+            }
+            results.errors.push(`User ${targetUserId} on task ${task.id}: ${err?.message}`);
+          }
+        }
+      }
+
+      return NextResponse.json({
+        ok: true,
+        message: 'Expired tasks processed via cron',
+        results,
+      });
+    }
+
+    // For non-cron requests, require authentication and show preview
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

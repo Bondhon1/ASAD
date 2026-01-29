@@ -3,114 +3,39 @@
  * 
  * Handles rank upgrade/downgrade logic based on the volunteer hierarchy.
  * 
- * Hierarchy (from rank.txt):
- * - Aspiring Volunteer
- * - Ready to Serve (RS)
- * - Mentor
- * - Dedicated Volunteer (parent of * variants)
- *   - Dedicated Volunteer *
- *   - Dedicated Volunteer **
- * - Ability to Lead (AL) (parent of * variants)
- *   - Ability to Lead (AL) *
- *   - Ability to Lead (AL) **
- *   - Ability to Lead (AL) ***
- * - Deputy Commander (DC) (parent of * variants)
- *   - Deputy Commander (DC) *
- *   - Deputy Commander (DC) **
- * - Commander (parent of * variants)
- *   - Commander *
- *   - Commander **
- *   - Commander ***
- * - Asadian Star (parent of * variants)
- *   - Asadian Star (AS) *
- *   - Asadian Star (AS) **
- * - General Volunteer (GV)
- * - Senior Volunteer
- * - Senior Commander
- * - Community Builder
- * - Strategic Leader
- * - Adviser (special - skip auto rank upgrade)
+ * ACTUAL UPGRADE SEQUENCE (parent ranks are skipped):
+ * 0. VOLUNTEER (lowest rank, reset) - minimum rank on downgrade
+ * 1. Aspiring Volunteer (reset)
+ * 2. Ready to Serve (RS) (reset)
+ * 3. Mentor (reset)
+ * 4. Dedicated Volunteer * (reset - entering parent group)
+ * 5. Dedicated Volunteer ** (no reset - same parent)
+ * 6. Ability to Lead (AL) * (reset - new parent group)
+ * 7. Ability to Lead (AL) ** (no reset)
+ * 8. Ability to Lead (AL) *** (no reset)
+ * 9. Deputy Commander (DC) * (reset - new parent group)
+ * 10. Deputy Commander (DC) ** (no reset)
+ * 11. Commander * (reset - new parent group)
+ * 12. Commander ** (no reset)
+ * 13. Commander *** (no reset)
+ * 14. Asadian Star (AS) * (reset - new parent group)
+ * 15. Asadian Star (AS) ** (no reset)
+ * 16. General Volunteer (GV) (reset - exiting parent group)
+ * 17. Senior Volunteer (reset)
+ * 18. Senior Commander (reset)
+ * 19. Community Builder (reset)
+ * 20. Strategic Leader (reset)
+ * 21. Adviser (SKIP auto upgrade)
  * 
- * Rules:
- * - Actual rank threshold changes don't reset points
- * - Parent rank threshold changes reset points to 0
- * - Downgrade threshold is 0 (when points reach 0, downgrade)
- * - Adviser rank skips auto upgrade
+ * RULES:
+ * - Parent ranks (Dedicated Volunteer, Ability to Lead, etc.) are NEVER assigned
+ * - Points reset when entering a new group/rank (most transitions)
+ * - Points do NOT reset within same parent group (star variants)
+ * - Downgrade follows same logic but in reverse, threshold is 0
+ * - Minimum points is 0, minimum rank is VOLUNTEER
  */
 
 import { prisma } from './prisma';
-
-// Ordered hierarchy of ranks (index = level)
-// Ranks with parent are grouped - the parent name appears first, then children in order
-export const RANK_HIERARCHY = [
-  'Aspiring Volunteer',
-  'Ready to Serve (RS)',
-  'Mentor',
-  // Dedicated Volunteer group
-  'Dedicated Volunteer',
-  'Dedicated Volunteer *',
-  'Dedicated Volunteer **',
-  // Ability to Lead group
-  'Ability to Lead (AL)',
-  'Ability to Lead (AL) *',
-  'Ability to Lead (AL) **',
-  'Ability to Lead (AL) ***',
-  // Deputy Commander group
-  'Deputy Commander (DC)',
-  'Deputy Commander (DC) *',
-  'Deputy Commander (DC) **',
-  // Commander group
-  'Commander',
-  'Commander *',
-  'Commander **',
-  'Commander ***',
-  // Asadian Star group
-  'Asadian Star',
-  'Asadian Star (AS) *',
-  'Asadian Star (AS) **',
-  // Post-star ranks
-  'General Volunteer (GV)',
-  'Senior Volunteer',
-  'Senior Commander',
-  'Community Builder',
-  'Strategic Leader',
-  'Adviser',
-] as const;
-
-// Parent ranks that reset points when crossed
-export const PARENT_RANKS = [
-  'Dedicated Volunteer',
-  'Ability to Lead (AL)',
-  'Deputy Commander (DC)',
-  'Commander',
-  'Asadian Star',
-] as const;
-
-// Ranks that skip auto upgrade
-export const SKIP_AUTO_UPGRADE_RANKS = ['Adviser'] as const;
-
-export type RankName = typeof RANK_HIERARCHY[number];
-
-/**
- * Check if a rank is a parent rank (points reset when crossing)
- */
-export function isParentRank(rankName: string): boolean {
-  return PARENT_RANKS.includes(rankName as any);
-}
-
-/**
- * Check if a rank should skip auto upgrade
- */
-export function shouldSkipAutoUpgrade(rankName: string): boolean {
-  return SKIP_AUTO_UPGRADE_RANKS.includes(rankName as any);
-}
-
-/**
- * Get the index of a rank in the hierarchy
- */
-export function getRankIndex(rankName: string): number {
-  return RANK_HIERARCHY.indexOf(rankName as RankName);
-}
 
 // Type for rank from DB
 type RankFromDB = {
@@ -123,14 +48,164 @@ type RankFromDB = {
   createdAt: Date;
 };
 
+// Ordered sequence of ACTUAL ranks (excluding parent-only ranks)
+// This is the real progression path
+// VOLUNTEER is the lowest rank (index 0) - users cannot go below this
+const RANK_SEQUENCE = [
+  'VOLUNTEER',
+  'Aspiring Volunteer',
+  'Ready to Serve (RS)',
+  'Mentor',
+  'Dedicated Volunteer *',
+  'Dedicated Volunteer **',
+  'Ability to Lead (AL) *',
+  'Ability to Lead (AL) **',
+  'Ability to Lead (AL) ***',
+  'Deputy Commander (DC) *',
+  'Deputy Commander (DC) **',
+  'Commander *',
+  'Commander **',
+  'Commander ***',
+  'Asadian Star (AS) *',
+  'Asadian Star (AS) **',
+  'General Volunteer (GV)',
+  'Senior Volunteer',
+  'Senior Commander',
+  'Community Builder',
+  'Strategic Leader',
+  'Adviser',
+] as const;
+
+// Parent-only ranks that should NEVER be assigned (skipped during upgrade)
+const PARENT_ONLY_RANKS = [
+  'Dedicated Volunteer',
+  'Ability to Lead (AL)',
+  'Deputy Commander (DC)',
+  'Commander',
+  'Asadian Star', 
+] as const;
+
+// Ranks where points DO NOT reset on upgrade (within same parent group)
+// These are transitions where both ranks share the same parent
+const NO_RESET_TRANSITIONS: Record<string, string[]> = {
+  'Dedicated Volunteer *': ['Dedicated Volunteer **'],
+  'Ability to Lead (AL) *': ['Ability to Lead (AL) **'],
+  'Ability to Lead (AL) **': ['Ability to Lead (AL) ***'],
+  'Deputy Commander (DC) *': ['Deputy Commander (DC) **'],
+  'Commander *': ['Commander **'],
+  'Commander **': ['Commander ***'],
+  'Asadian Star (AS) *': ['Asadian Star (AS) **'],
+};
+
+// Ranks that skip auto upgrade
+const SKIP_AUTO_UPGRADE_RANKS = ['Adviser'];
+
+/**
+ * Check if a rank is a parent-only rank (should be skipped)
+ */
+function isParentOnlyRank(rankName: string): boolean {
+  return PARENT_ONLY_RANKS.includes(rankName as any);
+}
+
+/**
+ * Check if a rank should skip auto upgrade
+ */
+function shouldSkipAutoUpgrade(rankName: string): boolean {
+  return SKIP_AUTO_UPGRADE_RANKS.includes(rankName);
+}
+
+/**
+ * Get the index of a rank in the sequence
+ */
+function getRankSequenceIndex(rankName: string): number {
+  return RANK_SEQUENCE.indexOf(rankName as any);
+}
+
+/**
+ * Check if upgrading from one rank to another should reset points
+ * Returns true if points should reset, false if they should accumulate
+ */
+function shouldResetPointsOnUpgrade(fromRank: string | null, toRank: string): boolean {
+  if (!fromRank) {
+    // First rank assignment - reset to start fresh
+    return true;
+  }
+  
+  // Check if this is a no-reset transition (within same parent group)
+  const noResetTargets = NO_RESET_TRANSITIONS[fromRank];
+  if (noResetTargets && noResetTargets.includes(toRank)) {
+    return false;
+  }
+  
+  // All other transitions reset points
+  return true;
+}
+
+/**
+ * Check if downgrading from one rank to another should reset points
+ */
+function shouldResetPointsOnDowngrade(fromRank: string | null, toRank: string): boolean {
+  if (!fromRank) {
+    return false;
+  }
+  
+  // Check reverse - if upgrading from toRank to fromRank would NOT reset,
+  // then downgrading also should NOT reset (same parent group)
+  const noResetTargets = NO_RESET_TRANSITIONS[toRank];
+  if (noResetTargets && noResetTargets.includes(fromRank)) {
+    return false;
+  }
+  
+  // All other downgrades reset points
+  return true;
+}
+
 /**
  * Get all ranks from DB ordered by threshold
  */
-export async function getAllRanksOrdered(): Promise<RankFromDB[]> {
+async function getAllRanksOrdered(): Promise<RankFromDB[]> {
   return prisma.rank.findMany({
     orderBy: { thresholdPoints: 'asc' },
     include: { parent: true },
   });
+}
+
+/**
+ * Find the appropriate rank for given points
+ * Skips parent-only ranks and Adviser (for auto upgrade)
+ */
+function findRankForPoints(points: number, ranks: RankFromDB[]): RankFromDB | null {
+  let matchedRank: RankFromDB | null = null;
+  
+  for (const rank of ranks) {
+    // Skip parent-only ranks (they're never assigned)
+    if (isParentOnlyRank(rank.name)) {
+      continue;
+    }
+    // Skip Adviser for auto upgrade
+    if (shouldSkipAutoUpgrade(rank.name)) {
+      continue;
+    }
+    
+    if (points >= rank.thresholdPoints) {
+      matchedRank = rank;
+    }
+  }
+  
+  return matchedRank;
+}
+
+/**
+ * Find the previous rank in sequence for downgrade
+ */
+function findPreviousRank(currentRankName: string, ranks: RankFromDB[]): RankFromDB | null {
+  const currentIndex = getRankSequenceIndex(currentRankName);
+  if (currentIndex <= 0) {
+    return null; // Already at first rank
+  }
+  
+  const previousRankName = RANK_SEQUENCE[currentIndex - 1];
+  return ranks.find(r => r.name === previousRankName) || null;
 }
 
 /**
@@ -157,62 +232,67 @@ export async function calculateRankUpgrade(
 }> {
   const ranks = await getAllRanksOrdered();
   
-  let newPoints = currentPoints + pointsToAdd;
-  let currentRank: RankFromDB | null | undefined = currentRankId ? ranks.find((r: RankFromDB) => r.id === currentRankId) : null;
-  
-  // If no current rank, assign the first rank
-  if (!currentRank && ranks.length > 0) {
-    currentRank = ranks[0];
-  }
+  let totalPoints = currentPoints + pointsToAdd;
+  const currentRank: RankFromDB | null = currentRankId 
+    ? ranks.find((r) => r.id === currentRankId) || null 
+    : null;
   
   const oldRankName = currentRank?.name || null;
-  let newRank = currentRank;
-  let pointsReset = false;
   
-  // Check if we should upgrade to a higher rank
-  for (let i = ranks.length - 1; i >= 0; i--) {
-    const rank = ranks[i];
-    
-    // Skip if this is the Adviser rank (auto upgrade disabled)
-    if (shouldSkipAutoUpgrade(rank.name)) {
-      continue;
-    }
-    
-    // Check if points exceed this rank's threshold
-    if (newPoints >= rank.thresholdPoints) {
-      // Only upgrade if this rank is higher than current
-      const currentIndex = currentRank ? getRankIndex(currentRank.name) : -1;
-      const newIndex = getRankIndex(rank.name);
-      
-      if (newIndex > currentIndex) {
-        // Check if we're crossing a parent rank boundary
-        const crossedParentRank = checkParentRankCrossing(currentRank?.name || '', rank.name);
-        
-        if (crossedParentRank) {
-          // Reset points to 0 when crossing parent rank boundary
-          newPoints = newPoints - rank.thresholdPoints; // Keep excess points
-          if (newPoints < 0) newPoints = 0;
-          pointsReset = true;
-        }
-        
-        newRank = rank;
-        break;
-      }
-    }
+  // Find the new rank based on total points (skips parent-only ranks)
+  const newRank = findRankForPoints(totalPoints, ranks);
+  
+  // If no rank found, return with updated points
+  if (!newRank) {
+    return {
+      newRankId: currentRank?.id || null,
+      newPoints: totalPoints,
+      rankChanged: false,
+      pointsReset: false,
+      oldRankName,
+      newRankName: currentRank?.name || null,
+    };
+  }
+  
+  // Same rank - no change, just accumulate points
+  if (currentRank && newRank.id === currentRank.id) {
+    return {
+      newRankId: currentRank.id,
+      newPoints: totalPoints,
+      rankChanged: false,
+      pointsReset: false,
+      oldRankName,
+      newRankName: currentRank.name,
+    };
+  }
+
+  // Rank changed - check if we need to reset points
+  const needsReset = shouldResetPointsOnUpgrade(currentRank?.name || null, newRank.name);
+  
+  let finalPoints: number;
+  if (needsReset) {
+    // Reset points to 0 (or keep small excess if any)
+    finalPoints = totalPoints - newRank.thresholdPoints;
+    if (finalPoints < 0) finalPoints = 0;
+  } else {
+    // No reset: keep the full points (within same parent group)
+    finalPoints = totalPoints;
   }
   
   return {
-    newRankId: newRank?.id || null,
-    newPoints,
-    rankChanged: newRank?.id !== currentRankId,
-    pointsReset,
+    newRankId: newRank.id,
+    newPoints: finalPoints,
+    rankChanged: true,
+    pointsReset: needsReset,
     oldRankName,
-    newRankName: newRank?.name || null,
+    newRankName: newRank.name,
   };
 }
 
 /**
  * Calculate new rank and points after deducting points
+ * 
+ * Downgrade happens when points reach 0.
  * 
  * @param userId - The user's ID
  * @param currentPoints - Current points before change
@@ -238,96 +318,85 @@ export async function calculateRankDowngrade(
   let newPoints = currentPoints - pointsToDeduct;
   if (newPoints < 0) newPoints = 0;
   
-  let currentRank: RankFromDB | null | undefined = currentRankId ? ranks.find((r: RankFromDB) => r.id === currentRankId) : null;
-  const oldRankName = currentRank?.name || null;
-  let newRank = currentRank;
-  let pointsReset = false;
+  const currentRank: RankFromDB | null = currentRankId 
+    ? ranks.find((r) => r.id === currentRankId) || null 
+    : null;
   
-  // If points reach 0, we need to check for downgrade
-  if (newPoints === 0 && currentRank) {
-    const currentIndex = getRankIndex(currentRank.name);
-    
-    // Find the previous rank in hierarchy
-    if (currentIndex > 0) {
-      // Check if current rank is a parent rank or within a parent group
-      const parentRankCrossed = findPreviousParentRankBoundary(currentRank.name);
-      
-      if (parentRankCrossed) {
-        // When downgrading across parent boundary, find the last rank before the parent
-        for (let i = ranks.length - 1; i >= 0; i--) {
-          const rank = ranks[i];
-          const rankIndex = getRankIndex(rank.name);
-          if (rankIndex < getRankIndex(parentRankCrossed)) {
-            newRank = rank;
-            // Reset points to max threshold of the previous rank
-            newPoints = Math.max(0, rank.thresholdPoints - 1);
-            pointsReset = true;
-            break;
-          }
-        }
-      } else {
-        // Simple downgrade within same parent group
-        const prevRankName = RANK_HIERARCHY[currentIndex - 1];
-        const prevRank = ranks.find((r: RankFromDB) => r.name === prevRankName);
-        if (prevRank) {
-          newRank = prevRank;
-          // Set points to threshold - 1 to be at the max of previous rank
-          newPoints = Math.max(0, prevRank.thresholdPoints);
-        }
-      }
+  const oldRankName = currentRank?.name || null;
+  
+  // If points are still above 0, no downgrade - just update points
+  if (newPoints > 0) {
+    return {
+      newRankId: currentRank?.id || null,
+      newPoints,
+      rankChanged: false,
+      pointsReset: false,
+      oldRankName,
+      newRankName: currentRank?.name || null,
+    };
+  }
+  
+  // Points reached 0 - need to downgrade
+  if (!currentRank) {
+    // No current rank, nothing to downgrade
+    return {
+      newRankId: null,
+      newPoints: 0,
+      rankChanged: false,
+      pointsReset: false,
+      oldRankName: null,
+      newRankName: null,
+    };
+  }
+  
+  // Find previous rank in sequence
+  const previousRank = findPreviousRank(currentRank.name, ranks);
+  
+  if (!previousRank) {
+    // Already at VOLUNTEER (lowest rank), stay there with 0 points
+    // Try to find VOLUNTEER rank in DB, or stay at current
+    const volunteerRank = ranks.find(r => r.name === 'VOLUNTEER');
+    if (volunteerRank && volunteerRank.id !== currentRank.id) {
+      return {
+        newRankId: volunteerRank.id,
+        newPoints: 0,
+        rankChanged: true,
+        pointsReset: true,
+        oldRankName,
+        newRankName: 'VOLUNTEER',
+      };
     }
+    return {
+      newRankId: currentRank.id,
+      newPoints: 0,
+      rankChanged: false,
+      pointsReset: false,
+      oldRankName,
+      newRankName: currentRank.name,
+    };
+  }
+  
+  // Check if this downgrade should reset points
+  const needsReset = shouldResetPointsOnDowngrade(currentRank.name, previousRank.name);
+  
+  let finalPoints: number;
+  if (needsReset) {
+    // Reset: set points to just below the current rank's threshold
+    // This means they're at the "top" of the previous rank
+    finalPoints = Math.max(0, currentRank.thresholdPoints - 1);
+  } else {
+    // No reset (within same parent group): set to threshold of previous rank
+    finalPoints = previousRank.thresholdPoints;
   }
   
   return {
-    newRankId: newRank?.id || null,
-    newPoints,
-    rankChanged: newRank?.id !== currentRankId,
-    pointsReset,
+    newRankId: previousRank.id,
+    newPoints: finalPoints,
+    rankChanged: true,
+    pointsReset: needsReset,
     oldRankName,
-    newRankName: newRank?.name || null,
+    newRankName: previousRank.name,
   };
-}
-
-/**
- * Check if upgrading from one rank to another crosses a parent rank boundary
- */
-function checkParentRankCrossing(fromRank: string, toRank: string): string | null {
-  const fromIndex = getRankIndex(fromRank);
-  const toIndex = getRankIndex(toRank);
-  
-  // Check each parent rank to see if we cross it
-  for (const parentRank of PARENT_RANKS) {
-    const parentIndex = getRankIndex(parentRank);
-    if (fromIndex < parentIndex && toIndex >= parentIndex) {
-      return parentRank;
-    }
-  }
-  
-  return null;
-}
-
-/**
- * Find if the current rank is at or after a parent rank boundary
- * Returns the parent rank name if found
- */
-function findPreviousParentRankBoundary(currentRank: string): string | null {
-  const currentIndex = getRankIndex(currentRank);
-  
-  // Find the parent rank that this rank belongs to (or is itself)
-  for (let i = PARENT_RANKS.length - 1; i >= 0; i--) {
-    const parentRank = PARENT_RANKS[i];
-    const parentIndex = getRankIndex(parentRank);
-    
-    if (currentIndex >= parentIndex) {
-      // Check if current rank is the parent itself or its first variant
-      if (currentRank === parentRank || currentRank === `${parentRank} *` || 
-          currentRank.startsWith(parentRank.replace(' (', '').replace(')', ''))) {
-        return parentRank;
-      }
-    }
-  }
-  
-  return null;
 }
 
 /**
