@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import Link from 'next/link';
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
@@ -160,6 +161,13 @@ export default function DatabaseDeptPage() {
         <div className="mb-10">
           <h1 className="text-3xl font-bold text-slate-800">Database Administration</h1>
           <p className="text-slate-500">Manage user points, ranks, and thresholds.</p>
+
+          <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:gap-4">
+            <Link href="/dashboard/database/manual-points" className="inline-flex items-center gap-3 px-4 py-2 bg-[#07223f] text-white rounded-lg shadow-sm hover:opacity-95">
+              Manual Point Upgrade
+            </Link>
+            <p className="text-sm text-slate-500 mt-3 sm:mt-0">Quickly add or deduct points for multiple volunteers via CSV of IDs.</p>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
