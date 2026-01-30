@@ -27,11 +27,33 @@ import { NotificationType } from '@prisma/client';
 // Special marker for auto-created deduction submissions
 const DEDUCTION_MARKER = '__DEADLINE_MISSED_DEDUCTION__';
 
+// Helper: create an audit log entry if we can determine an actor user id
+async function createAuditLog(actorUserId: string | null | undefined, action: string, meta?: any) {
+  try {
+    if (!actorUserId) {
+      console.warn('AuditLog skipped: no actorUserId for', action);
+      return;
+    }
+
+    await prisma.auditLog.create({
+      data: {
+        actorUserId,
+        action,
+        meta: meta ? JSON.stringify(meta) : undefined,
+      },
+    });
+  } catch (e: any) {
+    console.error('Failed to write AuditLog:', e?.message || e);
+  }
+}
+
 export async function POST(req: Request) {
   try {
     // Check for Vercel Cron authentication header
     const authHeader = req.headers.get('authorization');
     const isValidCron = authHeader === `Bearer ${process.env.CRON_SECRET}`;
+
+    let actorUserId: string | null | undefined = null;
 
     if (!isValidCron) {
       const session = await getServerSession(authOptions);
@@ -47,9 +69,26 @@ export async function POST(req: Request) {
       if (!requester || !['MASTER', 'ADMIN'].includes(requester.role)) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
+      actorUserId = requester.id;
+    }
+
+    // If this is a cron trigger, try to resolve a system actor id
+    if (isValidCron) {
+      actorUserId = process.env.SYSTEM_BOT_USER_ID || process.env.SYSTEM_USER_ID || null;
+      if (!actorUserId) {
+        const sys = await prisma.user.findFirst({ where: { role: 'MASTER' } });
+        actorUserId = sys?.id || null;
+      }
     }
 
     const now = new Date();
+
+    // Log cron/manual start
+    await createAuditLog(actorUserId, isValidCron ? 'CRON_PROCESS_EXPIRED_START' : 'MANUAL_PROCESS_EXPIRED_START', {
+      route: '/api/tasks/process-expired',
+      timestamp: now.toISOString(),
+      isCron: !!isValidCron,
+    });
     
     // Find all mandatory tasks that have expired
     const expiredMandatoryTasks = await prisma.task.findMany({
@@ -153,6 +192,14 @@ export async function POST(req: Request) {
       }
     }
 
+    // Log cron/manual success with results
+    await createAuditLog(actorUserId, isValidCron ? 'CRON_PROCESS_EXPIRED_END' : 'MANUAL_PROCESS_EXPIRED_END', {
+      route: '/api/tasks/process-expired',
+      timestamp: new Date().toISOString(),
+      results,
+      isCron: !!isValidCron,
+    });
+
     return NextResponse.json({
       ok: true,
       message: 'Expired tasks processed',
@@ -160,6 +207,15 @@ export async function POST(req: Request) {
     });
   } catch (err: any) {
     console.error('POST /api/tasks/process-expired error:', err);
+    // attempt to write audit log for error
+    try {
+      const actor = process.env.SYSTEM_BOT_USER_ID || process.env.SYSTEM_USER_ID || null;
+      const sys = !actor ? await prisma.user.findFirst({ where: { role: 'MASTER' } }) : null;
+      await createAuditLog(actor || sys?.id || null, 'PROCESS_EXPIRED_ERROR', { message: err?.message, stack: err?.stack });
+    } catch (e) {
+      console.error('Failed to write audit log for error:', e);
+    }
+
     return NextResponse.json({ error: err?.message || 'Server error' }, { status: 500 });
   }
 }
@@ -178,6 +234,20 @@ export async function GET(req: Request) {
 
     // If valid cron, process the tasks (same as POST)
     if (isValidCron) {
+      let actorUserId: string | null | undefined = null;
+      // resolve actor for cron
+      actorUserId = process.env.SYSTEM_BOT_USER_ID || process.env.SYSTEM_USER_ID || null;
+      if (!actorUserId) {
+        const sys = await prisma.user.findFirst({ where: { role: 'MASTER' } });
+        actorUserId = sys?.id || null;
+      }
+
+      // Log cron start
+      await createAuditLog(actorUserId, 'CRON_PROCESS_EXPIRED_START', {
+        route: '/api/tasks/process-expired',
+        timestamp: new Date().toISOString(),
+      });
+
       const now = new Date();
       
       // Find all mandatory tasks that have expired
@@ -274,6 +344,13 @@ export async function GET(req: Request) {
         }
       }
 
+      // log end
+      await createAuditLog(actorUserId, 'CRON_PROCESS_EXPIRED_END', {
+        route: '/api/tasks/process-expired',
+        timestamp: new Date().toISOString(),
+        results,
+      });
+
       return NextResponse.json({
         ok: true,
         message: 'Expired tasks processed via cron',
@@ -357,6 +434,13 @@ export async function GET(req: Request) {
     });
   } catch (err: any) {
     console.error('GET /api/tasks/process-expired error:', err);
+    try {
+      const actor = process.env.SYSTEM_BOT_USER_ID || process.env.SYSTEM_USER_ID || null;
+      const sys = !actor ? await prisma.user.findFirst({ where: { role: 'MASTER' } }) : null;
+      await createAuditLog(actor || sys?.id || null, 'PROCESS_EXPIRED_ERROR', { message: err?.message, stack: err?.stack });
+    } catch (e) {
+      console.error('Failed to write audit log for GET error:', e);
+    }
     return NextResponse.json({ error: err?.message || 'Server error' }, { status: 500 });
   }
 }
