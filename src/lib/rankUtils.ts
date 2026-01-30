@@ -240,7 +240,7 @@ function findNextRankInSequence(
   console.log('[findNextRank] Current rank threshold:', currentRankFromDB.thresholdPoints);
   
   // Check if points exceed current rank's threshold
-  if (totalPoints <= currentRankFromDB.thresholdPoints) {
+  if (totalPoints < currentRankFromDB.thresholdPoints) {
     console.log('[findNextRank] Points do not exceed current rank threshold - no upgrade');
     return null;
   }
@@ -268,9 +268,26 @@ function findNextRankInSequence(
       console.log('[findNextRank] Rank not found in DB:', rankName);
       continue;
     }
-    
-    console.log('[findNextRank] Found next rank:', rankName);
-    return rankFromDB;
+
+    // Only upgrade to this rank if totalPoints meets its threshold
+    // Determine whether this transition would reset points (i.e., new parent group)
+    const willReset = shouldResetPointsOnUpgrade(currentRankFromDB?.name || null, rankFromDB.name);
+
+    // If the transition does NOT reset points (same parent group), allow upgrade
+    // when totalPoints exceeds the CURRENT rank's threshold. Otherwise require
+    // meeting the NEXT rank's threshold as before.
+    const requiredThreshold = willReset
+      ? rankFromDB.thresholdPoints
+      : (currentRankFromDB ? currentRankFromDB.thresholdPoints : rankFromDB.thresholdPoints);
+
+    if (totalPoints >= requiredThreshold) {
+      console.log('[findNextRank] Found next rank:', rankName, 'requiredThreshold:', requiredThreshold);
+      return rankFromDB;
+    }
+
+    // If totalPoints doesn't reach the required threshold, no further higher rank
+    console.log('[findNextRank] Not enough points for rank:', rankName, 'needed:', requiredThreshold, 'have:', totalPoints);
+    return null;
   }
   
   console.log('[findNextRank] No next rank found in sequence');
@@ -353,8 +370,14 @@ export async function calculateRankUpgrade(
   
   let finalPoints: number;
   if (needsReset) {
-    // Reset points to 0 (or keep small excess if any)
-    finalPoints = totalPoints - newRank.thresholdPoints;
+    // Reset points to remainder after crossing the previous threshold.
+    // If we had a current rank, subtract its threshold (common case).
+    // If there was no current rank (first assignment), subtract the new rank threshold.
+    if (currentRank) {
+      finalPoints = totalPoints - currentRank.thresholdPoints;
+    } else {
+      finalPoints = totalPoints - newRank.thresholdPoints;
+    }
     if (finalPoints < 0) finalPoints = 0;
   } else {
     // No reset: keep the full points (within same parent group)
