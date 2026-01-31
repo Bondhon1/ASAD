@@ -508,16 +508,16 @@ export async function calculateRankDowngrade(
     };
   }
   
-  // Simple downgrade: move to previous rank, reset points to that rank's threshold
-  // This places them at the "top" of the previous rank
-  const resetPoints = previousRank.thresholdPoints;
-  
+  // Downgrade: move to previous rank, keep points at 0
+  // Previously we reset points to the previous rank's threshold which caused
+  // deducted users to suddenly receive points equal to that threshold.
+  // For deductions, points should remain at 0.
   console.log('[RankDowngrade] Downgrading from', currentRank.name, 'to', previousRank.name);
-  console.log('[RankDowngrade] Reset points to:', resetPoints);
-  
+  console.log('[RankDowngrade] Setting points to 0 after downgrade');
+
   return {
     newRankId: previousRank.id,
-    newPoints: resetPoints,
+    newPoints: 0,
     rankChanged: true,
     pointsReset: true,
     oldRankName,
