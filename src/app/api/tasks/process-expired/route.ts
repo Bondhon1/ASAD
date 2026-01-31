@@ -90,12 +90,36 @@ export async function POST(req: Request) {
       isCron: !!isValidCron,
     });
     
+    // First, let's see all mandatory tasks for debugging
+    const allMandatoryTasks = await prisma.task.findMany({
+      where: {
+        mandatory: true,
+      },
+      select: {
+        id: true,
+        title: true,
+        targetUserIds: true,
+        pointsNegative: true,
+        endDate: true,
+        mandatory: true,
+      },
+    });
+    
+    console.log('[ProcessExpired] Current time:', now.toISOString());
+    console.log('[ProcessExpired] Total mandatory tasks found:', allMandatoryTasks.length);
+    for (const t of allMandatoryTasks) {
+      const isExpired = t.endDate < now;
+      console.log(`[ProcessExpired] Task: "${t.title}" | endDate: ${t.endDate.toISOString()} | expired: ${isExpired} | pointsNegative: ${t.pointsNegative} | targetUsers: ${t.targetUserIds.length}`);
+    }
+    
     // Find all mandatory tasks that have expired
+    // Note: We check for mandatory tasks with either:
+    // 1. pointsNegative > 0 (will deduct points), OR
+    // 2. Any expired mandatory task (to mark as missed even without deduction)
     const expiredMandatoryTasks = await prisma.task.findMany({
       where: {
         mandatory: true,
         endDate: { lt: now },
-        pointsNegative: { gt: 0 },
       },
       select: {
         id: true,
@@ -105,6 +129,11 @@ export async function POST(req: Request) {
         endDate: true,
       },
     });
+    
+    console.log('[ProcessExpired] Expired mandatory tasks to process:', expiredMandatoryTasks.length);
+    for (const t of expiredMandatoryTasks) {
+      console.log(`[ProcessExpired] Processing: "${t.title}" | pointsNegative: ${t.pointsNegative}`);
+    }
 
     const results = {
       tasksProcessed: 0,
@@ -115,6 +144,9 @@ export async function POST(req: Request) {
 
     for (const task of expiredMandatoryTasks) {
       results.tasksProcessed++;
+      
+      console.log(`[ProcessExpired] Processing task: "${task.title}" (${task.id})`);
+      console.log(`[ProcessExpired] Target users count: ${task.targetUserIds.length}`);
 
       // Get all existing submissions for this task
       const existingSubmissions = await prisma.taskSubmission.findMany({
@@ -123,6 +155,7 @@ export async function POST(req: Request) {
       });
 
       const submittedUserIds = new Set(existingSubmissions.map((s: { userId: string }) => s.userId));
+      console.log(`[ProcessExpired] Already submitted/processed count: ${submittedUserIds.size}`);
 
       // Find users who should have submitted but didn't
       for (const targetUserId of task.targetUserIds) {
@@ -137,6 +170,7 @@ export async function POST(req: Request) {
           select: { 
             id: true, 
             status: true,
+            fullName: true,
             volunteerProfile: {
               select: { points: true, rankId: true },
             },
@@ -144,8 +178,11 @@ export async function POST(req: Request) {
         });
 
         if (!user || user.status !== 'OFFICIAL') {
+          console.log(`[ProcessExpired] Skipping user ${targetUserId} - status: ${user?.status || 'not found'}`);
           continue;
         }
+
+        console.log(`[ProcessExpired] Processing user: ${user.fullName} (${targetUserId}) | Current points: ${user.volunteerProfile?.points || 0}`);
 
         try {
           // Create a deduction submission record to prevent duplicate deductions
@@ -158,35 +195,48 @@ export async function POST(req: Request) {
             },
           });
 
-          // Deduct points
-          const deductionResult = await applyPointsChange(
-            targetUserId,
-            -task.pointsNegative,
-            `Missed deadline: ${task.title}`,
-            task.id
-          );
+          // Only deduct points if pointsNegative > 0
+          let deductionResult = null;
+          if (task.pointsNegative > 0) {
+            deductionResult = await applyPointsChange(
+              targetUserId,
+              -task.pointsNegative,
+              `Missed deadline: ${task.title}`,
+              task.id
+            );
 
-          results.usersDeducted++;
+            results.usersDeducted++;
 
-          if (deductionResult.rankChanged) {
-            results.usersDowngraded++;
+            if (deductionResult.rankChanged) {
+              results.usersDowngraded++;
+            }
+            
+            console.log(`[ProcessExpired] Deducted ${task.pointsNegative} points from ${user.fullName}. New points: ${deductionResult.newPoints}, Rank changed: ${deductionResult.rankChanged}`);
+          } else {
+            console.log(`[ProcessExpired] No points to deduct for ${user.fullName} (pointsNegative=0)`);
           }
 
-          // Notify user about the deduction
+          // Notify user about missing the deadline
+          const notificationMessage = task.pointsNegative > 0
+            ? `You missed the deadline for "${task.title}". ${task.pointsNegative} points have been deducted.${deductionResult?.rankChanged ? ` Your rank has changed to ${deductionResult.newRankName}.` : ''}`
+            : `You missed the deadline for "${task.title}".`;
+          
           await prisma.notification.create({
             data: {
               userId: targetUserId,
               type: NotificationType.TASK_REJECTED,
-              title: '⚠️ Points Deducted',
-              message: `You missed the deadline for "${task.title}". ${task.pointsNegative} points have been deducted.${deductionResult.rankChanged ? ` Your rank has changed to ${deductionResult.newRankName}.` : ''}`,
+              title: task.pointsNegative > 0 ? '⚠️ Points Deducted' : '⚠️ Deadline Missed',
+              message: notificationMessage,
               link: '/dashboard/tasks',
             },
           });
         } catch (err: any) {
           // If unique constraint violation, user was already processed
           if (err?.code === 'P2002') {
+            console.log(`[ProcessExpired] User ${targetUserId} already processed (unique constraint)`);
             continue; // Already processed, skip
           }
+          console.error(`[ProcessExpired] Error processing user ${targetUserId}:`, err);
           results.errors.push(`User ${targetUserId} on task ${task.id}: ${err?.message}`);
         }
       }
@@ -250,12 +300,33 @@ export async function GET(req: Request) {
 
       const now = new Date();
       
+      // First, let's see all mandatory tasks for debugging
+      const allMandatoryTasks = await prisma.task.findMany({
+        where: {
+          mandatory: true,
+        },
+        select: {
+          id: true,
+          title: true,
+          targetUserIds: true,
+          pointsNegative: true,
+          endDate: true,
+          mandatory: true,
+        },
+      });
+      
+      console.log('[GET/ProcessExpired] Current time:', now.toISOString());
+      console.log('[GET/ProcessExpired] Total mandatory tasks found:', allMandatoryTasks.length);
+      for (const t of allMandatoryTasks) {
+        const isExpired = t.endDate < now;
+        console.log(`[GET/ProcessExpired] Task: "${t.title}" | endDate: ${t.endDate.toISOString()} | expired: ${isExpired} | pointsNegative: ${t.pointsNegative} | targetUsers: ${t.targetUserIds.length}`);
+      }
+      
       // Find all mandatory tasks that have expired
       const expiredMandatoryTasks = await prisma.task.findMany({
         where: {
           mandatory: true,
           endDate: { lt: now },
-          pointsNegative: { gt: 0 },
         },
         select: {
           id: true,
@@ -265,6 +336,8 @@ export async function GET(req: Request) {
           endDate: true,
         },
       });
+      
+      console.log('[GET/ProcessExpired] Expired mandatory tasks to process:', expiredMandatoryTasks.length);
 
       const results = {
         tasksProcessed: 0,
@@ -275,6 +348,8 @@ export async function GET(req: Request) {
 
       for (const task of expiredMandatoryTasks) {
         results.tasksProcessed++;
+        
+        console.log(`[GET/ProcessExpired] Processing task: "${task.title}" (${task.id})`);
 
         const existingSubmissions = await prisma.taskSubmission.findMany({
           where: { taskId: task.id },
@@ -282,6 +357,7 @@ export async function GET(req: Request) {
         });
 
         const submittedUserIds = new Set(existingSubmissions.map((s: { userId: string }) => s.userId));
+        console.log(`[GET/ProcessExpired] Target users: ${task.targetUserIds.length}, Already submitted: ${submittedUserIds.size}`);
 
         for (const targetUserId of task.targetUserIds) {
           if (submittedUserIds.has(targetUserId)) {
@@ -293,6 +369,7 @@ export async function GET(req: Request) {
             select: { 
               id: true, 
               status: true,
+              fullName: true,
               volunteerProfile: {
                 select: { points: true, rankId: true },
               },
@@ -313,25 +390,35 @@ export async function GET(req: Request) {
               },
             });
 
-            const deductionResult = await applyPointsChange(
-              targetUserId,
-              -task.pointsNegative,
-              `Missed deadline: ${task.title}`,
-              task.id
-            );
+            // Only deduct points if pointsNegative > 0
+            let deductionResult = null;
+            if (task.pointsNegative > 0) {
+              deductionResult = await applyPointsChange(
+                targetUserId,
+                -task.pointsNegative,
+                `Missed deadline: ${task.title}`,
+                task.id
+              );
 
-            results.usersDeducted++;
+              results.usersDeducted++;
 
-            if (deductionResult.rankChanged) {
-              results.usersDowngraded++;
+              if (deductionResult.rankChanged) {
+                results.usersDowngraded++;
+              }
+              
+              console.log(`[GET/ProcessExpired] Deducted ${task.pointsNegative} points from ${user.fullName}`);
             }
+
+            const notificationMessage = task.pointsNegative > 0
+              ? `You missed the deadline for "${task.title}". ${task.pointsNegative} points have been deducted.${deductionResult?.rankChanged ? ` Your rank has changed to ${deductionResult.newRankName}.` : ''}`
+              : `You missed the deadline for "${task.title}".`;
 
             await prisma.notification.create({
               data: {
                 userId: targetUserId,
                 type: NotificationType.TASK_REJECTED,
-                title: '⚠️ Points Deducted',
-                message: `You missed the deadline for "${task.title}". ${task.pointsNegative} points have been deducted.${deductionResult.rankChanged ? ` Your rank has changed to ${deductionResult.newRankName}.` : ''}`,
+                title: task.pointsNegative > 0 ? '⚠️ Points Deducted' : '⚠️ Deadline Missed',
+                message: notificationMessage,
                 link: '/dashboard/tasks',
               },
             });
@@ -375,12 +462,11 @@ export async function GET(req: Request) {
 
     const now = new Date();
 
-    // Find all mandatory tasks that have expired with deduction points
+    // Find all mandatory tasks that have expired (with or without deduction points)
     const expiredMandatoryTasks = await prisma.task.findMany({
       where: {
         mandatory: true,
         endDate: { lt: now },
-        pointsNegative: { gt: 0 },
       },
       select: {
         id: true,

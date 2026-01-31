@@ -397,7 +397,11 @@ export async function calculateRankUpgrade(
 /**
  * Calculate new rank and points after deducting points
  * 
- * Downgrade happens when points reach 0.
+ * SIMPLIFIED DOWNGRADE LOGIC:
+ * - Deduct points from current total
+ * - If points reach 0, move to the previous rank (skipping parent-only ranks)
+ * - Reset points to the previous rank's threshold (so they start at the "top" of that rank)
+ * - VOLUNTEER is the minimum rank - cannot go below it
  * 
  * @param userId - The user's ID
  * @param currentPoints - Current points before change
@@ -429,8 +433,12 @@ export async function calculateRankDowngrade(
   
   const oldRankName = currentRank?.name || null;
   
+  console.log('[RankDowngrade] Current rank:', oldRankName);
+  console.log('[RankDowngrade] Current points:', currentPoints, '- Deducting:', pointsToDeduct, '= New points:', newPoints);
+  
   // If points are still above 0, no downgrade - just update points
   if (newPoints > 0) {
+    console.log('[RankDowngrade] Points still > 0, no rank change');
     return {
       newRankId: currentRank?.id || null,
       newPoints,
@@ -442,35 +450,26 @@ export async function calculateRankDowngrade(
   }
   
   // Points reached 0 - need to downgrade
+  console.log('[RankDowngrade] Points reached 0 - checking for downgrade');
+  
   if (!currentRank) {
-    // No current rank, nothing to downgrade
+    // No current rank - assign VOLUNTEER as minimum
+    const volunteerRank = ranks.find(r => r.name === 'VOLUNTEER');
+    console.log('[RankDowngrade] No current rank, assigning VOLUNTEER');
     return {
-      newRankId: null,
+      newRankId: volunteerRank?.id || null,
       newPoints: 0,
-      rankChanged: false,
-      pointsReset: false,
+      rankChanged: !!volunteerRank,
+      pointsReset: true,
       oldRankName: null,
-      newRankName: null,
+      newRankName: volunteerRank?.name || null,
     };
   }
   
-  // Find previous rank in sequence
-  const previousRank = findPreviousRank(currentRank.name, ranks);
-  
-  if (!previousRank) {
-    // Already at VOLUNTEER (lowest rank), stay there with 0 points
-    // Try to find VOLUNTEER rank in DB, or stay at current
-    const volunteerRank = ranks.find(r => r.name === 'VOLUNTEER');
-    if (volunteerRank && volunteerRank.id !== currentRank.id) {
-      return {
-        newRankId: volunteerRank.id,
-        newPoints: 0,
-        rankChanged: true,
-        pointsReset: true,
-        oldRankName,
-        newRankName: 'VOLUNTEER',
-      };
-    }
+  // Check if already at VOLUNTEER (lowest rank)
+  const currentIndex = getRankSequenceIndex(currentRank.name);
+  if (currentIndex <= 0 || currentRank.name === 'VOLUNTEER') {
+    console.log('[RankDowngrade] Already at VOLUNTEER (lowest rank), staying with 0 points');
     return {
       newRankId: currentRank.id,
       newPoints: 0,
@@ -481,24 +480,46 @@ export async function calculateRankDowngrade(
     };
   }
   
-  // Check if this downgrade should reset points
-  const needsReset = shouldResetPointsOnDowngrade(currentRank.name, previousRank.name);
+  // Find previous rank in sequence (skipping parent-only ranks)
+  const previousRank = findPreviousRank(currentRank.name, ranks);
   
-  let finalPoints: number;
-  if (needsReset) {
-    // Reset: set points to just below the current rank's threshold
-    // This means they're at the "top" of the previous rank
-    finalPoints = Math.max(0, currentRank.thresholdPoints - 1);
-  } else {
-    // No reset (within same parent group): set to threshold of previous rank
-    finalPoints = previousRank.thresholdPoints;
+  if (!previousRank) {
+    // Couldn't find previous rank - try to go to VOLUNTEER
+    const volunteerRank = ranks.find(r => r.name === 'VOLUNTEER');
+    if (volunteerRank && volunteerRank.id !== currentRank.id) {
+      console.log('[RankDowngrade] No previous rank found, falling back to VOLUNTEER');
+      return {
+        newRankId: volunteerRank.id,
+        newPoints: 0,
+        rankChanged: true,
+        pointsReset: true,
+        oldRankName,
+        newRankName: 'VOLUNTEER',
+      };
+    }
+    // Stay at current rank with 0 points
+    return {
+      newRankId: currentRank.id,
+      newPoints: 0,
+      rankChanged: false,
+      pointsReset: false,
+      oldRankName,
+      newRankName: currentRank.name,
+    };
   }
+  
+  // Simple downgrade: move to previous rank, reset points to that rank's threshold
+  // This places them at the "top" of the previous rank
+  const resetPoints = previousRank.thresholdPoints;
+  
+  console.log('[RankDowngrade] Downgrading from', currentRank.name, 'to', previousRank.name);
+  console.log('[RankDowngrade] Reset points to:', resetPoints);
   
   return {
     newRankId: previousRank.id,
-    newPoints: finalPoints,
+    newPoints: resetPoints,
     rankChanged: true,
-    pointsReset: needsReset,
+    pointsReset: true,
     oldRankName,
     newRankName: previousRank.name,
   };
