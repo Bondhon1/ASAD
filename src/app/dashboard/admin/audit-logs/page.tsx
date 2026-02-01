@@ -43,6 +43,7 @@ export default function AuditLogsPage() {
   const [actionTypes, setActionTypes] = useState<string[]>([]);
   
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
+  const [resolvedVolunteers, setResolvedVolunteers] = useState<Record<string, { email?: string; fullName?: string }>>({});
 
   const displayName = user?.fullName || user?.username || session?.user?.name || "Admin";
   const displayEmail = user?.email || session?.user?.email || "";
@@ -110,6 +111,43 @@ export default function AuditLogsPage() {
       setTotal(data.total || 0);
       setTotalPages(data.totalPages || 0);
       setActionTypes(data.actionTypes || []);
+
+      // Resolve affected volunteer IDs to user info (email/fullName) when possible
+      try {
+        const ids = new Set<string>();
+        (data.logs || []).forEach((l: any) => {
+          if (l.affectedVolunteerId) ids.add(l.affectedVolunteerId);
+          try {
+            const m = l.meta ? JSON.parse(l.meta) : null;
+            const candidate = m?.volunteerId || m?.volunteer_id || m?.userId || m?.user_id || m?.affectedVolunteerId;
+            if (candidate) ids.add(candidate);
+          } catch (e) {
+            // ignore meta parse errors
+          }
+        });
+
+        const idArray = Array.from(ids).filter(Boolean);
+        if (idArray.length > 0) {
+          const pairs: Array<[string, { email?: string; fullName?: string } | null]> = await Promise.all(idArray.map(async (vid) => {
+            try {
+              const r = await fetch(`/api/hr/users?q=${encodeURIComponent(vid)}&pageSize=1`);
+              if (!r.ok) return [vid, null] as const;
+              const d = await r.json();
+              const u = Array.isArray(d.users) && d.users.length > 0 ? d.users[0] : null;
+              if (u) return [vid, { email: u.email, fullName: u.fullName } as { email?: string; fullName?: string }];
+            } catch (e) {
+              // ignore individual lookup errors
+            }
+            return [vid, null] as [string, null];
+          }));
+
+          const map: Record<string, { email?: string; fullName?: string }> = {};
+          pairs.forEach(([k, v]) => { if (v) map[String(k)] = v; });
+          setResolvedVolunteers(map);
+        }
+      } catch (e) {
+        // ignore resolution errors
+      }
     } catch (err: any) {
       console.error('Failed to fetch audit logs:', err);
       alert('Failed to load audit logs: ' + (err.message || 'Unknown error'));
@@ -133,6 +171,14 @@ export default function AuditLogsPage() {
     } catch {
       return null;
     }
+  };
+
+  const getVolunteerDisplay = (idOrNull: string | null) => {
+    if (!idOrNull) return '—';
+    const key = String(idOrNull);
+    const resolved = resolvedVolunteers[key];
+    if (resolved) return resolved.fullName || resolved.email || key;
+    return key;
   };
 
   const skeletonPage = (
@@ -333,14 +379,14 @@ export default function AuditLogsPage() {
                                       <span className="mx-2">•</span>
                                       <span className="font-medium">Txn:</span> <span className="ml-1 text-gray-800">{meta?.trxId ?? '—'}</span>
                                       <span className="mx-2">•</span>
-                                      <span className="font-medium">Volunteer ID:</span> <span className="ml-1 text-gray-800">{log.affectedVolunteerId ?? meta?.volunteerId ?? '—'}</span>
+                                      <span className="font-medium">Volunteer ID:</span> <span className="ml-1 text-gray-800">{getVolunteerDisplay(log.affectedVolunteerId ?? meta?.volunteerId ?? null)}</span>
                                     </div>
                                   )}
 
                                   {(!['TASK_CREATED','MANUAL_POINTS_ADJUSTMENT','INITIAL_PAYMENT_APPROVED','INITIAL_PAYMENT_REJECTED','FINAL_PAYMENT_APPROVED','FINAL_PAYMENT_REJECTED'].includes(log.action)) && meta && (
                                     <div>
                                       <span className="font-medium">Affected Volunteer ID:</span>{' '}
-                                      <span className="ml-1 text-gray-800">{(meta?.volunteerId || meta?.volunteer_id || meta?.userId || meta?.user_id || meta?.affectedVolunteerId) ?? '—'}</span>
+                                      <span className="ml-1 text-gray-800">{getVolunteerDisplay((meta?.volunteerId || meta?.volunteer_id || meta?.userId || meta?.user_id || meta?.affectedVolunteerId) ?? null)}</span>
                                     </div>
                                   )}
                                 </div>
