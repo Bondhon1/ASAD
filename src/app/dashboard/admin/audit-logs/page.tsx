@@ -19,6 +19,8 @@ interface AuditLog {
     volunteerId: string | null;
     role: string;
   };
+  affectedVolunteerId?: string | null;
+  points?: number | null;
 }
 
 export default function AuditLogsPage() {
@@ -307,15 +309,41 @@ export default function AuditLogsPage() {
                                   <span className="ml-2 text-xs text-gray-500">[{log.actor.role}]</span>
                                 </div>
 
-                                {/* Affected Volunteer ID (if present in meta) */}
-                                {meta && (
-                                  <div className="mt-2 text-xs text-gray-600">
-                                    <span className="font-medium">Affected Volunteer ID:</span>{' '}
-                                    <span className="ml-1 text-sm text-gray-800">{(
-                                      meta?.volunteerId || meta?.volunteer_id || meta?.userId || meta?.user_id || meta?.affectedVolunteerId || '—'
-                                    )}</span>
-                                  </div>
-                                )}
+                                {/* Action-specific summary fields */}
+                                <div className="mt-2 text-sm text-gray-600">
+                                  {log.action === 'TASK_CREATED' && (
+                                    <div>
+                                      <span className="font-medium">Points:</span> <span className="ml-1 text-gray-800">{log.points ?? meta?.points ?? '—'}</span>
+                                      <span className="mx-2">•</span>
+                                      <span className="font-medium">Targets:</span> <span className="ml-1 text-gray-800">{meta?.targetUsersCount ?? '—'}</span>
+                                    </div>
+                                  )}
+
+                                  {log.action === 'MANUAL_POINTS_ADJUSTMENT' && (
+                                    <div>
+                                      <span className="font-medium">Points:</span> <span className="ml-1 text-gray-800">{log.points ?? meta?.points ?? '—'}</span>
+                                      <span className="mx-2">•</span>
+                                      <span className="font-medium">IDs:</span> <span className="ml-1 text-gray-800">{Array.isArray(meta?.ids) ? meta.ids.length : (meta?.ids ? String(meta.ids) : '—')}</span>
+                                    </div>
+                                  )}
+
+                                  {(log.action === 'INITIAL_PAYMENT_APPROVED' || log.action === 'INITIAL_PAYMENT_REJECTED' || log.action === 'FINAL_PAYMENT_APPROVED' || log.action === 'FINAL_PAYMENT_REJECTED') && (
+                                    <div>
+                                      <span className="font-medium">Amount:</span> <span className="ml-1 text-gray-800">{meta?.amount ?? '—'}</span>
+                                      <span className="mx-2">•</span>
+                                      <span className="font-medium">Txn:</span> <span className="ml-1 text-gray-800">{meta?.trxId ?? '—'}</span>
+                                      <span className="mx-2">•</span>
+                                      <span className="font-medium">Volunteer ID:</span> <span className="ml-1 text-gray-800">{log.affectedVolunteerId ?? meta?.volunteerId ?? '—'}</span>
+                                    </div>
+                                  )}
+
+                                  {(!['TASK_CREATED','MANUAL_POINTS_ADJUSTMENT','INITIAL_PAYMENT_APPROVED','INITIAL_PAYMENT_REJECTED','FINAL_PAYMENT_APPROVED','FINAL_PAYMENT_REJECTED'].includes(log.action)) && meta && (
+                                    <div>
+                                      <span className="font-medium">Affected Volunteer ID:</span>{' '}
+                                      <span className="ml-1 text-gray-800">{(meta?.volunteerId || meta?.volunteer_id || meta?.userId || meta?.user_id || meta?.affectedVolunteerId) ?? '—'}</span>
+                                    </div>
+                                  )}
+                                </div>
 
                                 {meta && isExpanded && (
                                   <div className="mt-3 p-3 bg-gray-100 rounded text-xs">

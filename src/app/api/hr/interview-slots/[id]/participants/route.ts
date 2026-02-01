@@ -66,7 +66,7 @@ export async function POST(
 
     const application = await prisma.application.findUnique({ 
       where: { id: applicationId },
-      include: { user: { select: { id: true, fullName: true, email: true } } }
+      include: { user: { select: { id: true, fullName: true, email: true, volunteerId: true } } }
     });
     if (!application || application.interviewSlotId !== id) {
       return NextResponse.json({ error: "Application not found for this slot" }, { status: 404 });
@@ -94,6 +94,7 @@ export async function POST(
             userEmail: applicantUser.email,
             slotId: id,
           }),
+          affectedVolunteerId: applicantUser.volunteerId || undefined,
         },
       });
 

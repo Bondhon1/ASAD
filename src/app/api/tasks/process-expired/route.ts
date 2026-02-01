@@ -28,7 +28,7 @@ import { NotificationType } from '@prisma/client';
 const DEDUCTION_MARKER = '__DEADLINE_MISSED_DEDUCTION__';
 
 // Helper: create an audit log entry if we can determine an actor user id
-async function createAuditLog(actorUserId: string | null | undefined, action: string, meta?: any) {
+async function createAuditLog(actorUserId: string | null | undefined, action: string, meta?: any, affectedVolunteerId?: string | null, points?: number | null) {
   try {
     if (!actorUserId) {
       console.warn('AuditLog skipped: no actorUserId for', action);
@@ -40,6 +40,8 @@ async function createAuditLog(actorUserId: string | null | undefined, action: st
         actorUserId,
         action,
         meta: meta ? JSON.stringify(meta) : undefined,
+        affectedVolunteerId: affectedVolunteerId || undefined,
+        points: points ?? undefined,
       },
     });
   } catch (e: any) {

@@ -255,6 +255,7 @@ export async function POST(req: Request) {
           mandatory: created.mandatory,
           assignedGroup: created.assignedGroup,
         }),
+        points: created.pointsPositive || undefined,
       },
     });
 

@@ -773,6 +773,8 @@ model AuditLog {
   actorUserId           String
   action                String
   meta                  String?          // JSON for additional info
+  affectedVolunteerId   String?          // volunteer ID affected by this action (if any)
+  points                Int?             // points change associated with this action (if any)
   createdAt             DateTime         @default(now())
   
   @@index([actorUserId])

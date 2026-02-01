@@ -38,6 +38,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
               trxId: payment.trxId,
               amount: payment.amount,
             }),
+            affectedVolunteerId: payment.user?.volunteerId || undefined,
           },
         });
         
@@ -81,6 +82,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
               userEmail: payment.user.email,
               trxId: payment.trxId,
             }),
+            affectedVolunteerId: payment.user?.volunteerId || undefined,
           },
         });
         
@@ -188,6 +190,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
               amount: payment.amount,
               assignMode: assignMode || 'auto',
             }),
+            affectedVolunteerId: volunteerIdToUse || undefined,
           },
         });
 
@@ -243,6 +246,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
               userEmail: payment.user.email,
               trxId: payment.trxId,
             }),
+            affectedVolunteerId: payment.user?.volunteerId || undefined,
           },
         });
 

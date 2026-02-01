@@ -46,7 +46,7 @@ export async function POST(req: Request) {
 
     // Create an audit log for this action
     try {
-      await prisma.auditLog.create({ data: { actorUserId: requester.id, action: 'MANUAL_POINTS_ADJUSTMENT', meta: JSON.stringify({ taskName, points, ids: rawIds, results }) } });
+      await prisma.auditLog.create({ data: { actorUserId: requester.id, action: 'MANUAL_POINTS_ADJUSTMENT', meta: JSON.stringify({ taskName, points, ids: rawIds, results }), points: points } });
     } catch (e) {
       console.error('Failed to create audit log', e);
     }
