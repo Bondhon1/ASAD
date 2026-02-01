@@ -48,6 +48,7 @@ export default function UsersManagementPage() {
   // final payment date range filter (YYYY-MM-DD)
   const [finalFrom, setFinalFrom] = useState<string>('');
   const [finalTo, setFinalTo] = useState<string>('');
+  const [rankFilter, setRankFilter] = useState<string>('');
   const [editingVolunteerUserId, setEditingVolunteerUserId] = useState<string | null>(null);
   const [volunteerIdInput, setVolunteerIdInput] = useState<string>('');
   const [editingVolunteerSaving, setEditingVolunteerSaving] = useState(false);
@@ -56,6 +57,7 @@ export default function UsersManagementPage() {
   const [editingRoleSaving, setEditingRoleSaving] = useState(false);
   const [listLoading, setListLoading] = useState(false);
   const [debouncedQuery, setDebouncedQuery] = useState(query);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const isCheckingAuth = status === "loading" || !authChecked;
   const isLoading = loading || isCheckingAuth;
@@ -248,10 +250,12 @@ export default function UsersManagementPage() {
 
         const qParam = encodeURIComponent(debouncedQuery || '');
         const statusParam = statusFilter === 'ANY' ? '' : `status=${statusFilter}`;
+        const rankParam = rankFilter ? `rank=${encodeURIComponent(rankFilter)}` : '';
         const finalFromParam = finalFrom ? `finalFrom=${encodeURIComponent(finalFrom)}` : '';
         const finalToParam = finalTo ? `finalTo=${encodeURIComponent(finalTo)}` : '';
         const dateParams = [finalFromParam, finalToParam].filter(Boolean).join('&');
-        const res = await fetch(`/api/hr/users?${statusParam ? statusParam + '&' : ''}page=${page}&pageSize=${pageSize}&q=${qParam}${dateParams ? '&' + dateParams : ''}`, {
+        const nonEmptyParams = [statusParam, rankParam].filter(Boolean).join('&');
+        const res = await fetch(`/api/hr/users?${nonEmptyParams ? nonEmptyParams + '&' : ''}page=${page}&pageSize=${pageSize}&q=${qParam}${dateParams ? '&' + dateParams : ''}`, {
           signal: controller.signal,
           cache: "no-store",
         });
@@ -277,7 +281,7 @@ export default function UsersManagementPage() {
       active = false;
       controller.abort();
     };
-  }, [page, pageSize, debouncedQuery, statusFilter, authChecked]);
+  }, [page, pageSize, debouncedQuery, statusFilter, rankFilter, authChecked]);
   // Re-fetch when date filters change (applies only for OFFICIAL filter)
   useEffect(() => {
     // reset page when date range changes
@@ -290,6 +294,11 @@ export default function UsersManagementPage() {
   // API returns users already filtered by status=UNOFFICIAL & isOfficial=true
   // Apply client-side final payment verifiedAt date-range filter when OFFICIAL is selected
   const filtered = users.filter(u => {
+    // Apply client-side rank filter (API may not support rank param)
+    if (rankFilter) {
+      const urank = (u.volunteerProfile?.rank || '').toString();
+      if (!urank || urank.toLowerCase() !== rankFilter.toLowerCase()) return false;
+    }
     if (statusFilter === 'OFFICIAL' && (finalFrom || finalTo)) {
       const v = (u as any).finalPayment?.verifiedAt;
       if (!v) return false;
@@ -331,21 +340,52 @@ export default function UsersManagementPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
           <h2 className="text-2xl sm:text-3xl font-semibold text-[#0b2545] mb-4">User Management</h2>
 
-          {/* Top stats cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-            <div className="bg-white border border-gray-100 rounded-lg p-4 shadow-sm">
-              <div className="text-xs text-gray-500">Total users</div>
-              <div className="text-2xl font-bold text-[#0b2545]">{stats.total ?? total}</div>
+          {/* Statistics Dashboard */}
+          <div className="flex gap-3 overflow-x-auto mb-6 sm:grid sm:grid-cols-2 lg:grid-cols-4">
+            <div className="min-w-[140px] sm:min-w-0 bg-gradient-to-br from-blue-50 to-white border border-blue-100 rounded-xl p-2 sm:p-5 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-sm font-medium text-blue-600">Total Users</div>
+                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                </div>
+              </div>
+              <div className="text-2xl sm:text-3xl font-bold text-[#0b2545]">{stats.total ?? total}</div>
             </div>
-            <div className="bg-white border border-gray-100 rounded-lg p-4 shadow-sm">
-              <div className="text-xs text-gray-500">OFFICIAL members</div>
-              <div className="text-2xl font-bold text-green-700">{stats.officialCount ?? filtered.filter(u => u.status === 'OFFICIAL' || u.volunteerProfile?.isOfficial).length}</div>
+            
+            <div className="min-w-[140px] sm:min-w-0 bg-gradient-to-br from-green-50 to-white border border-green-100 rounded-xl p-2 sm:p-5 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-sm font-medium text-green-600">Official Members</div>
+                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+              </div>
+              <div className="text-2xl sm:text-3xl font-bold text-green-700">{stats.officialCount ?? filtered.filter(u => u.status === 'OFFICIAL' || u.volunteerProfile?.isOfficial).length}</div>
             </div>
-            <div className="bg-white border border-gray-100 rounded-lg p-4 shadow-sm">
-              <div className="text-xs text-gray-500">Top ranks</div>
-              <div className="text-sm mt-2 text-gray-700">
+
+            <div className="min-w-[260px] sm:min-w-0 bg-gradient-to-br from-purple-50 to-white border border-purple-100 rounded-xl p-2 sm:p-5 shadow-sm hover:shadow-md transition-shadow lg:col-span-2">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
+                </div>
+                <div className="text-sm font-medium text-purple-600">Top Ranks Distribution</div>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {stats.rankCounts && stats.rankCounts.length > 0 ? (
-                  stats.rankCounts.slice(0,4).map(r => <div key={r.rank} className="flex items-center justify-between"><span className="truncate">{r.rank}</span><span className="ml-2 text-xs text-gray-500">{r.count}</span></div>)
+                  stats.rankCounts
+                    .filter(rc => rc.rank !== null && rc.rank !== undefined && String(rc.rank).toLowerCase() !== 'null')
+                    .slice(0,4)
+                    .map(r => (
+                      <div key={r.rank} className="bg-white rounded-lg p-1 sm:p-2 border border-gray-100">
+                        <div className="text-xs text-gray-500 truncate">{r.rank}</div>
+                        <div className="text-lg font-bold text-purple-700">{r.count}</div>
+                      </div>
+                    ))
                 ) : (
                   (() => {
                     const rankCounts: Record<string, number> = {};
@@ -354,52 +394,162 @@ export default function UsersManagementPage() {
                       rankCounts[r] = (rankCounts[r] || 0) + 1;
                     });
                     const entries = Object.entries(rankCounts).sort((a, b) => b[1] - a[1]).slice(0,4);
-                    return entries.map(([r,c]) => <div key={r} className="flex items-center justify-between"><span className="truncate">{r}</span><span className="ml-2 text-xs text-gray-500">{c}</span></div>);
+                    return entries.map(([r,c]) => (
+                      <div key={r} className="bg-white rounded-lg p-1 sm:p-2 border border-gray-100">
+                        <div className="text-xs text-gray-500 truncate">{r}</div>
+                        <div className="text-lg font-bold text-purple-700">{c}</div>
+                      </div>
+                    ));
                   })()
                 )}
               </div>
             </div>
           </div>
+          {/* Filters Section (collapsible) */}
+          <div className="mb-6">
+            {filtersOpen ? (
+              <div className="bg-white border border-gray-200 rounded-xl shadow-sm mb-4 overflow-hidden">
+                <div className="bg-gradient-to-r from-[#0b2545] to-[#1E3A5F] px-5 py-3 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                    </svg>
+                    Search & Filters
+                  </h3>
+                  <button onClick={() => setFiltersOpen(false)} aria-label="Collapse filters" className="text-white text-sm bg-white/10 px-3 py-1 rounded hover:bg-white/20">
+                    Collapse
+                  </button>
+                </div>
 
-          <div className="mb-4 bg-white border border-gray-100 rounded-lg p-4">
-            <div className="flex flex-col lg:flex-row lg:items-center gap-3 mb-3">
-              <div className="flex-1">
-                <input
-                  value={query}
-                  onChange={(e) => { setQuery(e.target.value); setPage(1); }}
-                  placeholder="Search by name, email, or volunteer ID"
-                  className="px-3 py-2 border rounded-md w-full"
-                />
-                {listLoading && <div className="text-sm text-gray-500 mt-2">Searching…</div>}
+                <div className="p-5 space-y-4">
+                  {/* Search Bar */}
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
+                    <input
+                      value={query}
+                      onChange={(e) => { setQuery(e.target.value); setPage(1); }}
+                      placeholder="Search by name, email, or volunteer ID..."
+                      className="pl-10 pr-4 py-3 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder-gray-400 text-sm"
+                    />
+                    {listLoading && (
+                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent"></div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Filter Controls */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-medium text-gray-700">Status Filter</label>
+                      <select 
+                        value={statusFilter} 
+                        onChange={(e) => { setStatusFilter(e.target.value as any); setPage(1); }} 
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm bg-white"
+                      >
+                        <option value="ANY">All Statuses</option>
+                        <option value="UNOFFICIAL">Unofficial</option>
+                        <option value="OFFICIAL">Official</option>
+                        <option value="BANNED">Banned</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-medium text-gray-700">Results Per Page</label>
+                      <select 
+                        value={pageSize} 
+                        onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }} 
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm bg-white"
+                      >
+                        <option value="10">10 users</option>
+                        <option value="20">20 users</option>
+                        <option value="50">50 users</option>
+                        <option value="100">100 users</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-medium text-gray-700">Rank</label>
+                      <select
+                        value={rankFilter}
+                        onChange={(e) => { setRankFilter(e.target.value); setPage(1); }}
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm bg-white"
+                      >
+                        <option value="">All Ranks</option>
+                        {ranksList.map(r => (
+                          <option key={r.id} value={r.name}>{r.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Date Range Filter (when OFFICIAL selected) */}
+                  {statusFilter === 'OFFICIAL' && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+                      <div className="flex items-center gap-2 text-sm font-medium text-blue-900">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        Final Payment Verification Date Range
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                        <div className="space-y-1.5">
+                          <label className="block text-xs font-medium text-gray-600">From Date</label>
+                          <input 
+                            type="date" 
+                            value={finalFrom} 
+                            onChange={(e) => { setFinalFrom(e.target.value); setPage(1); }} 
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="block text-xs font-medium text-gray-600">To Date</label>
+                          <input 
+                            type="date" 
+                            value={finalTo} 
+                            onChange={(e) => { setFinalTo(e.target.value); setPage(1); }} 
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
+                          />
+                        </div>
+                        <button 
+                          onClick={() => { setFinalFrom(''); setFinalTo(''); setPage(1); }} 
+                          className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+                        >
+                          Clear Dates
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-
-              <div className="flex items-center gap-2 flex-wrap">
-                <label className="text-sm text-gray-600 whitespace-nowrap">Status</label>
-                <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value as any); setPage(1); }} className="border rounded px-2 py-1 flex-1 sm:flex-initial">
-                  <option value="ANY">Any</option>
-                  <option value="UNOFFICIAL">Unofficial</option>
-                  <option value="OFFICIAL">Official</option>
-                  <option value="BANNED">Banned</option>
-                </select>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <label className="text-sm text-gray-600 whitespace-nowrap">Page size</label>
-                <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }} className="border rounded px-2 py-1">\n                  <option value="10">10</option>
-                  <option value="20">20</option>
-                  <option value="50">50</option>
-                  <option value="100">100</option>
-                </select>
-              </div>
-            </div>
-
-            {statusFilter === 'OFFICIAL' && (
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 bg-gray-50 px-3 py-2 rounded">
-                <label className="text-sm text-gray-600 whitespace-nowrap">Final verified:</label>
-                <input type="date" value={finalFrom} onChange={(e) => { setFinalFrom(e.target.value); setPage(1); }} className="border rounded px-2 py-1 flex-1 sm:flex-initial" />
-                <span className="text-sm text-gray-500 hidden sm:inline">to</span>
-                <input type="date" value={finalTo} onChange={(e) => { setFinalTo(e.target.value); setPage(1); }} className="border rounded px-2 py-1 flex-1 sm:flex-initial" />
-                <button onClick={() => { setFinalFrom(''); setFinalTo(''); setPage(1); }} className="px-2 py-1 border rounded text-sm">Clear</button>
+            ) : (
+              <div className="bg-white border border-gray-200 rounded-lg p-3 flex items-center gap-3">
+                <div className="flex-1">
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
+                    <input
+                      value={query}
+                      onChange={(e) => { setQuery(e.target.value); setPage(1); }}
+                      placeholder="Search by name, email, or volunteer ID"
+                      className="pl-9 pr-3 py-2 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder-gray-400 text-sm"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <button onClick={() => setFiltersOpen(true)} aria-label="Open filters" className="p-2 bg-[#0b2545] text-white rounded-md text-sm flex items-center justify-center">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -419,16 +569,20 @@ export default function UsersManagementPage() {
                     <div className="space-y-2">
                       {list.map(u => (
                         <div key={u.id} className="w-full">
-                          <button onClick={() => setSelected(selected?.id === u.id ? null : u)} className="w-full text-left bg-white border border-gray-100 rounded-lg p-4 hover:shadow-md transition">
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                          <button onClick={() => setSelected(selected?.id === u.id ? null : u)} className="w-full text-left bg-white border border-gray-100 rounded-lg p-3 md:p-4 hover:shadow-md transition">
+                            <div className="flex items-center justify-between gap-3">
                               <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-sm font-semibold text-gray-700 flex-shrink-0">{(u.fullName || u.username || u.email || '').charAt(0).toUpperCase()}</div>
+                                <div className="w-8 h-8 md:w-10 md:h-10 bg-gray-100 rounded-full flex items-center justify-center text-sm font-semibold text-gray-700 flex-shrink-0">{(u.fullName || u.username || u.email || '').charAt(0).toUpperCase()}</div>
                                 <div className="min-w-0 flex-1">
-                                  <div className="font-semibold text-gray-900 truncate">{u.fullName || u.username || u.email}</div>
+                                  <div className="flex items-center gap-2">
+                                    <div className="font-semibold text-gray-900 truncate">{u.fullName || u.username || u.email}</div>
+                                    {/* Mobile: rank next to name; hidden on sm+ */}
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-xs font-medium text-gray-800 sm:hidden">{u.volunteerProfile?.rank ?? '—'}</span>
+                                  </div>
                                   <div className="text-xs text-gray-500 truncate">{u.email} · ID: {u.volunteerId || '—'}</div>
                                 </div>
                               </div>
-                              <div className="flex items-center sm:justify-end">
+                              <div className="hidden sm:flex items-center sm:justify-end">
                                 <span className="inline-flex items-center px-3 py-1 rounded-full bg-gray-100 text-xs font-medium text-gray-800">{u.volunteerProfile?.rank ?? '—'}</span>
                               </div>
                             </div>
@@ -471,7 +625,7 @@ export default function UsersManagementPage() {
                                       (displayRole === 'ADMIN' || displayRole === 'MASTER') && u.status === 'OFFICIAL' && (
                                         <div className="flex items-center gap-2">
                                           <span className="text-xs text-gray-700">{u.role}</span>
-                                          <button onClick={() => { setEditingRoleUserId(u.id); setRoleInput(u.role || 'VOLUNTEER'); }} className="px-2 py-1 text-xs bg-gray-100 rounded">Edit role</button>
+                                          <button onClick={() => { setEditingRoleUserId(u.id); setRoleInput(u.role || 'VOLUNTEER'); }} className="px-2 py-1 text-xs md:px-3 md:py-1 bg-gray-100 rounded whitespace-nowrap">Edit role</button>
                                         </div>
                                       )
                                     )}
@@ -490,7 +644,7 @@ export default function UsersManagementPage() {
                                         <span className="inline-flex items-center gap-2">
                                           <span>{u.volunteerId || '—'}</span>
                                           {(displayRole === 'HR' || displayRole === 'MASTER' || displayRole === 'ADMIN') && u.status === 'OFFICIAL' && (
-                                            <button onClick={() => { setEditingVolunteerUserId(u.id); setVolunteerIdInput(u.volunteerId || ''); }} className="px-2 py-1 text-xs bg-gray-100 rounded">Edit</button>
+                                            <button onClick={() => { setEditingVolunteerUserId(u.id); setVolunteerIdInput(u.volunteerId || ''); }} className="px-2 py-1 text-xs md:px-3 md:py-1 bg-gray-100 rounded whitespace-nowrap">Edit</button>
                                           )}
                                         </span>
                                       )}
@@ -526,17 +680,17 @@ export default function UsersManagementPage() {
 
                                 <div className="space-y-3">
                                   { (u.status === 'OFFICIAL' || u.volunteerProfile?.isOfficial) && (displayRole === 'HR' || displayRole === 'MASTER' || displayRole === 'ADMIN') && (
-                                    <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2 flex-wrap">
-                                      <button onClick={() => { setShowRankForm(s => !s); setRankInput(u.volunteerProfile?.rank || ''); setSelected(u); }} className="px-3 py-1 bg-[#0b2545] text-white rounded flex-shrink-0">Set Rank</button>
-                                      <button onClick={() => { setShowPointsForm(s => !s); setPointsInput(u.volunteerProfile?.points ?? 0); setSelected(u); }} className="px-3 py-1 bg-gray-100 text-gray-800 rounded flex-shrink-0">Set Points</button>
+                                    <div className="flex flex-col sm:flex-row gap-2">
+                                      <button onClick={() => { setShowRankForm(s => !s); setRankInput(u.volunteerProfile?.rank || ''); setSelected(u); }} className="w-full sm:w-auto px-2 py-1.5 text-xs md:px-3 bg-[#0b2545] text-white rounded">Set Rank</button>
+                                      <button onClick={() => { setShowPointsForm(s => !s); setPointsInput(u.volunteerProfile?.points ?? 0); setSelected(u); }} className="w-full sm:w-auto px-2 py-1.5 text-xs md:px-3 bg-gray-100 text-gray-800 rounded">Set Points</button>
                                     </div>
                                   )}
 
                                   {selected && selected.id === u.id && showPointsForm && (
                                     <div className="p-3 bg-gray-50 border rounded">
                                       <label className="text-xs">Points</label>
-                                      <div className="flex items-center gap-2 mt-2 flex-wrap">
-                                          <input type="number" value={pointsInput as any} onChange={(e) => setPointsInput(e.target.value === '' ? '' : Number(e.target.value))} className="px-2 py-1 border rounded w-28 min-w-0" />
+                                      <div className="flex flex-col sm:flex-row gap-2 mt-2">
+                                          <input type="number" value={pointsInput as any} onChange={(e) => setPointsInput(e.target.value === '' ? '' : Number(e.target.value))} className="px-2 py-1 border rounded w-full sm:w-28" />
                                           <button disabled={saving} onClick={async () => {
                                           if (!selected) return;
                                           setSaving(true);
@@ -552,8 +706,8 @@ export default function UsersManagementPage() {
                                             console.error(err);
                                             alert(err?.message || 'Error saving points');
                                           } finally { setSaving(false); }
-                                          }} className="px-3 py-1 bg-[#1E90FF] text-white rounded flex-shrink-0">Save</button>
-                                          <button onClick={() => setShowPointsForm(false)} className="px-3 py-1 border rounded flex-shrink-0">Cancel</button>
+                                          }} className="w-full sm:w-auto px-2 py-1.5 text-xs md:px-3 bg-[#1E90FF] text-white rounded">Save</button>
+                                          <button onClick={() => setShowPointsForm(false)} className="w-full sm:w-auto px-2 py-1.5 text-xs md:px-3 border rounded">Cancel</button>
                                       </div>
                                     </div>
                                   )}
@@ -561,8 +715,8 @@ export default function UsersManagementPage() {
                                   {selected && selected.id === u.id && showRankForm && (
                                     <div className="p-3 bg-gray-50 border rounded">
                                       <label className="text-xs">Rank</label>
-                                        <div className="flex items-center gap-2 mt-2 flex-wrap">
-                                        <select value={rankInput} onChange={(e) => setRankInput(e.target.value)} className="px-2 py-1 border rounded min-w-0">
+                                        <div className="flex flex-col sm:flex-row gap-2 mt-2">
+                                        <select value={rankInput} onChange={(e) => setRankInput(e.target.value)} className="px-2 py-1 border rounded w-full sm:w-auto">
                                           <option value="">-- Select rank --</option>
                                           {ranksList.filter(r => r.selectable !== false).map(r => (
                                             <option key={r.id} value={r.name}>{r.name}</option>
@@ -583,8 +737,8 @@ export default function UsersManagementPage() {
                                             console.error(err);
                                             alert(err?.message || 'Error saving rank');
                                           } finally { setSaving(false); }
-                                        }} className="px-3 py-1 bg-[#1E90FF] text-white rounded flex-shrink-0">Save</button>
-                                        <button onClick={() => setShowRankForm(false)} className="px-3 py-1 border rounded flex-shrink-0">Cancel</button>
+                                        }} className="w-full sm:w-auto px-2 py-1.5 text-xs md:px-3 bg-[#1E90FF] text-white rounded">Save</button>
+                                        <button onClick={() => setShowRankForm(false)} className="w-full sm:w-auto px-2 py-1.5 text-xs md:px-3 border rounded">Cancel</button>
                                       </div>
                                     </div>
                                   )}
@@ -655,7 +809,7 @@ export default function UsersManagementPage() {
                                           </>
                                         )}
 
-                                        <div className="flex gap-2 mt-2">
+                                        <div className="flex flex-col sm:flex-row gap-2 mt-2">
                                           <button disabled={editingOrgSaving} onClick={async () => {
                                             setEditingOrgSaving(true);
                                             try {
@@ -680,25 +834,25 @@ export default function UsersManagementPage() {
                                             } catch (err: any) {
                                               alert(err?.message || 'Error saving');
                                             } finally { setEditingOrgSaving(false); }
-                                          }} className="px-3 py-1 bg-[#1E90FF] text-white rounded">Save</button>
-                                          <button onClick={() => setEditingOrgUserId(null)} className="px-3 py-1 border rounded">Cancel</button>
+                                          }} className="w-full sm:w-auto px-2 py-1.5 text-xs md:px-3 bg-[#1E90FF] text-white rounded">Save</button>
+                                          <button onClick={() => setEditingOrgUserId(null)} className="w-full sm:w-auto px-2 py-1.5 text-xs md:px-3 border rounded">Cancel</button>
                                         </div>
                                       </div>
                                     ) : (
                                       (displayRole === 'DIRECTOR' || displayRole === 'MASTER' || displayRole === 'HR' || displayRole === 'ADMIN') && (u.status === 'OFFICIAL' || u.volunteerProfile?.isOfficial) && (
-                                        <div className="flex items-center gap-2">
+                                        <div>
                                           <button onClick={() => {
                                             setEditingOrgUserId(u.id);
                                             setSelectedServiceLocal(u.volunteerProfile?.service?.id || autoAssignServiceFromInstitute(u.institute?.name) || null);
                                             setSelectedSectorsLocal(Array.isArray(u.volunteerProfile?.sectors) ? (u.volunteerProfile?.sectors as string[]) : []);
                                             setSelectedClubsLocal(Array.isArray(u.volunteerProfile?.clubs) ? (u.volunteerProfile?.clubs as string[]) : []);
-                                          }} className="px-2 py-1 text-xs bg-gray-100 rounded">Edit Service/Sectors/Clubs</button>
+                                          }} className="w-full sm:w-auto px-2 py-1.5 text-xs md:px-3 bg-gray-100 rounded">Edit Service/Sectors/Clubs</button>
                                         </div>
                                       )
                                     )}
                                   </div>
                                   {(displayRole === 'HR' || displayRole === 'MASTER' || displayRole === 'ADMIN') && (
-                                    <div className="mt-2 flex gap-2">
+                                    <div className="mt-2 flex flex-col sm:flex-row gap-2">
                                       {u.status === 'BANNED' ? (
                                         <button disabled={actionLoading} onClick={async () => {
                                           if (!confirm('Unban this user?')) return;
@@ -713,7 +867,7 @@ export default function UsersManagementPage() {
                                           } catch (err: any) {
                                             alert(err?.message || 'Error');
                                           } finally { setActionLoading(false); }
-                                        }} className="px-3 py-1 bg-green-600 text-white rounded">Unban</button>
+                                        }} className="w-full sm:w-auto px-2 py-1.5 text-xs md:px-3 bg-green-600 text-white rounded">Unban</button>
                                       ) : (
                                         <button disabled={actionLoading} onClick={async () => {
                                           if (!confirm('Ban this user? They will be immediately logged out.')) return;
@@ -728,7 +882,7 @@ export default function UsersManagementPage() {
                                           } catch (err: any) {
                                             alert(err?.message || 'Error');
                                           } finally { setActionLoading(false); }
-                                        }} className="px-3 py-1 bg-red-600 text-white rounded">Ban</button>
+                                        }} className="w-full sm:w-auto px-2 py-1.5 text-xs md:px-3 bg-red-600 text-white rounded">Ban</button>
                                       )}
 
                                       <button disabled={actionLoading} onClick={async () => {
@@ -744,7 +898,7 @@ export default function UsersManagementPage() {
                                         } catch (err: any) {
                                           alert(err?.message || 'Error');
                                         } finally { setActionLoading(false); }
-                                      }} className="px-3 py-1 border rounded">Delete</button>
+                                      }} className="w-full sm:w-auto px-2 py-1.5 text-xs md:px-3 border rounded">Delete</button>
                                     </div>
                                   )}
                                 </div>
