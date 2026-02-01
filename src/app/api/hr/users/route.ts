@@ -16,12 +16,13 @@ export async function GET(req: Request) {
     const isOfficialParam = url.searchParams.get('isOfficial');
     const finalFrom = url.searchParams.get('finalFrom');
     const finalTo = url.searchParams.get('finalTo');
+    const rankParam = url.searchParams.get('rank');
     const q = url.searchParams.get('q') || '';
     const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
     const pageSize = Math.min(200, Math.max(1, parseInt(url.searchParams.get('pageSize') || '20', 10)));
 
     // Create cache key from query params (include date filters)
-    const cacheKey = `${statusParam}-${isOfficialParam}-${finalFrom || ''}-${finalTo || ''}-${q}-${page}-${pageSize}`;
+    const cacheKey = `${statusParam}-${isOfficialParam}-${finalFrom || ''}-${finalTo || ''}-${q}-${rankParam || ''}-${page}-${pageSize}`;
 
     // Check cache first
     const cached = getCache(cacheKey);
@@ -35,7 +36,7 @@ export async function GET(req: Request) {
       }),
       cached && (now - cached.timestamp < CACHE_TTL)
         ? Promise.resolve({ ...cached.data, fromCache: true })
-        : fetchUsersData(statusParam, isOfficialParam, q, page, pageSize, finalFrom, finalTo, cacheKey),
+        : fetchUsersData(statusParam, isOfficialParam, rankParam, q, page, pageSize, finalFrom, finalTo, cacheKey),
     ]);
 
     if (!requester || requester.status === 'BANNED') {
@@ -59,6 +60,7 @@ export async function GET(req: Request) {
 async function fetchUsersData(
   statusParam: string | null,
   isOfficialParam: string | null,
+  rankParam: string | null,
   q: string,
   page: number,
   pageSize: number,
@@ -79,7 +81,24 @@ async function fetchUsersData(
   }
 
   if (isOfficialParam === 'true') {
-    where.volunteerProfile = { isOfficial: true };
+    where.volunteerProfile = { ...(where.volunteerProfile || {}), isOfficial: true };
+  }
+
+  // Filter by rank (accepts rank id or rank name)
+  if (rankParam) {
+    const volFilter: any = { ...(where.volunteerProfile || {}) };
+    // If rankParam matches an existing Rank id, filter by id; otherwise match by rank name case-insensitively
+    try {
+      const rankById = await prisma.rank.findUnique({ where: { id: rankParam }, select: { id: true } });
+      if (rankById) {
+        volFilter.rank = { id: rankParam };
+      } else {
+        volFilter.rank = { name: { contains: rankParam, mode: 'insensitive' } };
+      }
+    } catch (e) {
+      volFilter.rank = { name: { contains: rankParam, mode: 'insensitive' } };
+    }
+    where.volunteerProfile = volFilter;
   }
 
   // Filter by finalPayment.verifiedAt when date range provided

@@ -293,11 +293,12 @@ export default function UsersManagementPage() {
 
   // API returns users already filtered by status=UNOFFICIAL & isOfficial=true
   // Apply client-side final payment verifiedAt date-range filter when OFFICIAL is selected
+  const selectedRankName = rankFilter ? (ranksList.find(r => r.id === rankFilter)?.name ?? rankFilter) : '';
   const filtered = users.filter(u => {
-    // Apply client-side rank filter (API may not support rank param)
+    // Apply client-side rank filter (only used as fallback when API doesn't filter)
     if (rankFilter) {
       const urank = (u.volunteerProfile?.rank || '').toString();
-      if (!urank || urank.toLowerCase() !== rankFilter.toLowerCase()) return false;
+      if (!urank || (selectedRankName && urank.toLowerCase() !== selectedRankName.toLowerCase())) return false;
     }
     if (statusFilter === 'OFFICIAL' && (finalFrom || finalTo)) {
       const v = (u as any).finalPayment?.verifiedAt;
@@ -406,7 +407,7 @@ export default function UsersManagementPage() {
             </div>
           </div>
           {/* Filters Section (collapsible) */}
-          <div className="mb-6">
+          <div className="mb-6 lg:hidden">
             {filtersOpen ? (
               <div className="bg-white border border-gray-200 rounded-xl shadow-sm mb-4 overflow-hidden">
                 <div className="bg-gradient-to-r from-[#0b2545] to-[#1E3A5F] px-5 py-3 flex items-center justify-between">
@@ -481,7 +482,7 @@ export default function UsersManagementPage() {
                       >
                         <option value="">All Ranks</option>
                         {ranksList.map(r => (
-                          <option key={r.id} value={r.name}>{r.name}</option>
+                          <option key={r.id} value={r.id}>{r.name}</option>
                         ))}
                       </select>
                     </div>
@@ -681,7 +682,7 @@ export default function UsersManagementPage() {
                                 <div className="space-y-3">
                                   { (u.status === 'OFFICIAL' || u.volunteerProfile?.isOfficial) && (displayRole === 'HR' || displayRole === 'MASTER' || displayRole === 'ADMIN') && (
                                     <div className="flex flex-col sm:flex-row gap-2">
-                                      <button onClick={() => { setShowRankForm(s => !s); setRankInput(u.volunteerProfile?.rank || ''); setSelected(u); }} className="w-full sm:w-auto px-2 py-1.5 text-xs md:px-3 bg-[#0b2545] text-white rounded">Set Rank</button>
+                                      <button onClick={() => { setShowRankForm(s => !s); setRankInput(ranksList.find(r => r.name === (u.volunteerProfile?.rank || ''))?.id ?? ''); setSelected(u); }} className="w-full sm:w-auto px-2 py-1.5 text-xs md:px-3 bg-[#0b2545] text-white rounded">Set Rank</button>
                                       <button onClick={() => { setShowPointsForm(s => !s); setPointsInput(u.volunteerProfile?.points ?? 0); setSelected(u); }} className="w-full sm:w-auto px-2 py-1.5 text-xs md:px-3 bg-gray-100 text-gray-800 rounded">Set Points</button>
                                     </div>
                                   )}
@@ -719,7 +720,7 @@ export default function UsersManagementPage() {
                                         <select value={rankInput} onChange={(e) => setRankInput(e.target.value)} className="px-2 py-1 border rounded w-full sm:w-auto">
                                           <option value="">-- Select rank --</option>
                                           {ranksList.filter(r => r.selectable !== false).map(r => (
-                                            <option key={r.id} value={r.name}>{r.name}</option>
+                                            <option key={r.id} value={r.id}>{r.name}</option>
                                           ))}
                                         </select>
                                         <button disabled={saving} onClick={async () => {
@@ -922,7 +923,127 @@ export default function UsersManagementPage() {
               </div>
             </div>
 
-            
+            {/* Desktop right-side filters (always expanded on large screens) */}
+            <div className="hidden lg:block lg:col-span-1 lg:sticky lg:top-20 self-start">
+              <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                <div className="bg-gradient-to-r from-[#0b2545] to-[#1E3A5F] px-5 py-3 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                    </svg>
+                    Search & Filters
+                  </h3>
+                </div>
+
+                <div className="p-5 space-y-4">
+                  {/* Search Bar */}
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
+                    <input
+                      value={query}
+                      onChange={(e) => { setQuery(e.target.value); setPage(1); }}
+                      placeholder="Search by name, email, or volunteer ID..."
+                      className="pl-10 pr-4 py-3 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder-gray-400 text-sm"
+                    />
+                    {listLoading && (
+                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent"></div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Filter Controls */}
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-medium text-gray-700">Status Filter</label>
+                      <select 
+                        value={statusFilter} 
+                        onChange={(e) => { setStatusFilter(e.target.value as any); setPage(1); }} 
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm bg-white"
+                      >
+                        <option value="ANY">All Statuses</option>
+                        <option value="UNOFFICIAL">Unofficial</option>
+                        <option value="OFFICIAL">Official</option>
+                        <option value="BANNED">Banned</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-medium text-gray-700">Results Per Page</label>
+                      <select 
+                        value={pageSize} 
+                        onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }} 
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm bg-white"
+                      >
+                        <option value="10">10 users</option>
+                        <option value="20">20 users</option>
+                        <option value="50">50 users</option>
+                        <option value="100">100 users</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-medium text-gray-700">Rank</label>
+                      <select
+                        value={rankFilter}
+                        onChange={(e) => { setRankFilter(e.target.value); setPage(1); }}
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm bg-white"
+                      >
+                        <option value="">All Ranks</option>
+                        {ranksList.map(r => (
+                          <option key={r.id} value={r.id}>{r.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Date Range Filter (when OFFICIAL selected) */}
+                  {statusFilter === 'OFFICIAL' && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+                      <div className="flex items-center gap-2 text-sm font-medium text-blue-900">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        Final Payment Verification Date Range
+                      </div>
+                      <div className="grid grid-cols-1 gap-3">
+                        <div className="space-y-1.5">
+                          <label className="block text-xs font-medium text-gray-600">From Date</label>
+                          <input 
+                            type="date" 
+                            value={finalFrom} 
+                            onChange={(e) => { setFinalFrom(e.target.value); setPage(1); }} 
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="block text-xs font-medium text-gray-600">To Date</label>
+                          <input 
+                            type="date" 
+                            value={finalTo} 
+                            onChange={(e) => { setFinalTo(e.target.value); setPage(1); }} 
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
+                          />
+                        </div>
+                        <div>
+                          <button 
+                            onClick={() => { setFinalFrom(''); setFinalTo(''); setPage(1); }} 
+                            className="w-full px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+                          >
+                            Clear Dates
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
           </div>
         )}
         </div>
