@@ -47,6 +47,7 @@
     "@types/uuid": "^10.0.0",
     "@types/ws": "^8.18.1",
     "babel-plugin-react-compiler": "1.0.0",
+    "baseline-browser-mapping": "^2.9.19",
     "cross-env": "^10.1.0",
     "dotenv": "^17.2.3",
     "eslint": "^9",
@@ -57,5 +58,9 @@
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
+  }
+  ,
+  "overrides": {
+    "fast-xml-parser": "^5.3.4"
   }
 }

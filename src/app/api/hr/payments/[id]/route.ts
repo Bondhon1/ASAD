@@ -26,6 +26,21 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       if (action === "approve") {
         await prisma.initialPayment.update({ where: { id }, data: { status: "VERIFIED", verifiedAt: new Date(), approvedById: hr.id } });
         
+        // Create audit log
+        await prisma.auditLog.create({
+          data: {
+            actorUserId: hr.id,
+            action: 'INITIAL_PAYMENT_APPROVED',
+            meta: JSON.stringify({
+              paymentId: id,
+              userId: payment.userId,
+              userEmail: payment.user.email,
+              trxId: payment.trxId,
+              amount: payment.amount,
+            }),
+          },
+        });
+        
         // Create notification for initial payment approval
         const notification = await prisma.notification.create({
           data: {
@@ -54,6 +69,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         await prisma.initialPayment.update({ where: { id }, data: { status: "REJECTED", approvedById: hr.id } });
         // set user status to REJECTED so they can re-pay
         await prisma.user.update({ where: { id: payment.userId }, data: { status: "REJECTED" } });
+        
+        // Create audit log
+        await prisma.auditLog.create({
+          data: {
+            actorUserId: hr.id,
+            action: 'INITIAL_PAYMENT_REJECTED',
+            meta: JSON.stringify({
+              paymentId: id,
+              userId: payment.userId,
+              userEmail: payment.user.email,
+              trxId: payment.trxId,
+            }),
+          },
+        });
         
         // Create notification for initial payment rejection
         const notification = await prisma.notification.create({
@@ -114,8 +143,29 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         // mark final payment verified
         ops.push(prisma.finalPayment.update({ where: { id }, data: { status: "VERIFIED", verifiedAt: new Date(), approvedById: hr.id } }));
 
-        // update user to OFFICIAL (only increment institute count if user wasn't already OFFICIAL)
+        // update user to OFFICIAL and set rank to VOLUNTEER (only increment institute count if user wasn't already OFFICIAL)
         ops.push(prisma.user.update({ where: { id: payment.userId }, data: { status: "OFFICIAL", volunteerId: volunteerIdToUse } }));
+        
+        // Set volunteer rank to VOLUNTEER (find or create volunteer profile)
+        const volunteerRank = await prisma.rank.findFirst({ where: { name: 'VOLUNTEER' } });
+        if (volunteerRank) {
+          ops.push(
+            prisma.volunteerProfile.upsert({
+              where: { userId: payment.userId },
+              create: {
+                userId: payment.userId,
+                isOfficial: true,
+                rankId: volunteerRank.id,
+                points: 0,
+              },
+              update: {
+                isOfficial: true,
+                rankId: volunteerRank.id,
+                points: 0,
+              },
+            })
+          );
+        }
 
         // If user has an institute and wasn't OFFICIAL before, increment the cached count
         if (payment.user?.instituteId && payment.user.status !== "OFFICIAL") {
@@ -123,6 +173,23 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         }
 
         await prisma.$transaction(ops);
+
+        // Create audit log
+        await prisma.auditLog.create({
+          data: {
+            actorUserId: hr.id,
+            action: 'FINAL_PAYMENT_APPROVED',
+            meta: JSON.stringify({
+              paymentId: id,
+              userId: payment.userId,
+              userEmail: payment.user.email,
+              volunteerId: volunteerIdToUse,
+              trxId: payment.trxId,
+              amount: payment.amount,
+              assignMode: assignMode || 'auto',
+            }),
+          },
+        });
 
         // Create notification for final payment approval
         const notification = await prisma.notification.create({
@@ -164,6 +231,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       if (action === "reject") {
       await prisma.finalPayment.update({ where: { id }, data: { status: "REJECTED", approvedById: hr.id } });
         await prisma.user.update({ where: { id: payment.userId }, data: { status: "FINAL_PAYMENT_REJECTED" } });
+
+        // Create audit log
+        await prisma.auditLog.create({
+          data: {
+            actorUserId: hr.id,
+            action: 'FINAL_PAYMENT_REJECTED',
+            meta: JSON.stringify({
+              paymentId: id,
+              userId: payment.userId,
+              userEmail: payment.user.email,
+              trxId: payment.trxId,
+            }),
+          },
+        });
 
         // Create notification for final payment rejection
         const notification = await prisma.notification.create({

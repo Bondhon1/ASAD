@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { useCachedUserProfile } from "@/hooks/useCachedUserProfile";
 import { SERVICES, autoAssignServiceFromInstitute } from '@/lib/organizations';
+import { formatShortDhakaDateTime } from '@/lib/dateUtils';
 
 interface User {
   id: string;
@@ -327,11 +328,11 @@ export default function UsersManagementPage() {
       {(status === "loading" || !authChecked || (loading && users.length === 0)) ? (
         skeletonPage
       ) : (
-        <div className="max-w-6xl mx-auto px-6 py-8">
-          <h2 className="text-2xl font-semibold text-[#0b2545] mb-4">User Management</h2>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+          <h2 className="text-2xl sm:text-3xl font-semibold text-[#0b2545] mb-4">User Management</h2>
 
           {/* Top stats cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
             <div className="bg-white border border-gray-100 rounded-lg p-4 shadow-sm">
               <div className="text-xs text-gray-500">Total users</div>
               <div className="text-2xl font-bold text-[#0b2545]">{stats.total ?? total}</div>
@@ -360,21 +361,21 @@ export default function UsersManagementPage() {
             </div>
           </div>
 
-          <div className="mb-4 bg-white border border-gray-100 rounded-lg p-4 flex flex-col md:flex-row md:items-center gap-3">
-            <div className="flex-1">
-              <input
-                value={query}
-                onChange={(e) => { setQuery(e.target.value); setPage(1); }}
-                placeholder="Search by name, email, or volunteer ID"
-                className="px-3 py-2 border rounded-md w-full md:max-w-md"
-              />
-              {listLoading && <div className="text-sm text-gray-500 mt-2">Searching…</div>}
-            </div>
+          <div className="mb-4 bg-white border border-gray-100 rounded-lg p-4">
+            <div className="flex flex-col lg:flex-row lg:items-center gap-3 mb-3">
+              <div className="flex-1">
+                <input
+                  value={query}
+                  onChange={(e) => { setQuery(e.target.value); setPage(1); }}
+                  placeholder="Search by name, email, or volunteer ID"
+                  className="px-3 py-2 border rounded-md w-full"
+                />
+                {listLoading && <div className="text-sm text-gray-500 mt-2">Searching…</div>}
+              </div>
 
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="flex items-center gap-2">
-                <label className="text-sm text-gray-600">Status</label>
-                <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value as any); setPage(1); }} className="border rounded px-2 py-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <label className="text-sm text-gray-600 whitespace-nowrap">Status</label>
+                <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value as any); setPage(1); }} className="border rounded px-2 py-1 flex-1 sm:flex-initial">
                   <option value="ANY">Any</option>
                   <option value="UNOFFICIAL">Unofficial</option>
                   <option value="OFFICIAL">Official</option>
@@ -382,35 +383,33 @@ export default function UsersManagementPage() {
                 </select>
               </div>
 
-              {statusFilter === 'OFFICIAL' && (
-                <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded">
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm text-gray-600">Final verified</label>
-                    <input type="date" value={finalFrom} onChange={(e) => { setFinalFrom(e.target.value); setPage(1); }} className="border rounded px-2 py-1" />
-                    <span className="text-sm text-gray-500">to</span>
-                    <input type="date" value={finalTo} onChange={(e) => { setFinalTo(e.target.value); setPage(1); }} className="border rounded px-2 py-1" />
-                    <button onClick={() => { setFinalFrom(''); setFinalTo(''); setPage(1); }} className="px-2 py-1 border rounded text-sm">Clear</button>
-                  </div>
-                </div>
-              )}
-
               <div className="flex items-center gap-2">
-                <label className="text-sm text-gray-600">Page size</label>
-                <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }} className="border rounded px-2 py-1">
-                  <option value={10}>10</option>
-                  <option value={20}>20</option>
-                  <option value={50}>50</option>
+                <label className="text-sm text-gray-600 whitespace-nowrap">Page size</label>
+                <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }} className="border rounded px-2 py-1">\n                  <option value="10">10</option>
+                  <option value="20">20</option>
+                  <option value="50">50</option>
+                  <option value="100">100</option>
                 </select>
               </div>
             </div>
+
+            {statusFilter === 'OFFICIAL' && (
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 bg-gray-50 px-3 py-2 rounded">
+                <label className="text-sm text-gray-600 whitespace-nowrap">Final verified:</label>
+                <input type="date" value={finalFrom} onChange={(e) => { setFinalFrom(e.target.value); setPage(1); }} className="border rounded px-2 py-1 flex-1 sm:flex-initial" />
+                <span className="text-sm text-gray-500 hidden sm:inline">to</span>
+                <input type="date" value={finalTo} onChange={(e) => { setFinalTo(e.target.value); setPage(1); }} className="border rounded px-2 py-1 flex-1 sm:flex-initial" />
+                <button onClick={() => { setFinalFrom(''); setFinalTo(''); setPage(1); }} className="px-2 py-1 border rounded text-sm">Clear</button>
+              </div>
+            )}
           </div>
 
         {/* Debug summary removed */}
   {error && <div className="text-sm text-red-600">{error}</div>}
 
   {!error && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-2">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
               {Object.keys(grouped).length === 0 ? (
                 <div className="bg-white border border-gray-100 rounded-lg p-6">No matching users found.</div>
               ) : (
@@ -420,16 +419,16 @@ export default function UsersManagementPage() {
                     <div className="space-y-2">
                       {list.map(u => (
                         <div key={u.id} className="w-full">
-                          <button onClick={() => setSelected(selected?.id === u.id ? null : u)} className="w-full text-left bg-white border border-gray-100 rounded-lg p-4 flex items-center justify-between hover:shadow-md transition">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-sm font-semibold text-gray-700">{(u.fullName || u.username || u.email || '').charAt(0).toUpperCase()}</div>
-                              <div>
-                                <div className="font-semibold text-gray-900">{u.fullName || u.username || u.email}</div>
-                                <div className="text-xs text-gray-500">{u.email} · ID: {u.volunteerId || '—'}</div>
+                          <button onClick={() => setSelected(selected?.id === u.id ? null : u)} className="w-full text-left bg-white border border-gray-100 rounded-lg p-4 hover:shadow-md transition">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-sm font-semibold text-gray-700 flex-shrink-0">{(u.fullName || u.username || u.email || '').charAt(0).toUpperCase()}</div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="font-semibold text-gray-900 truncate">{u.fullName || u.username || u.email}</div>
+                                  <div className="text-xs text-gray-500 truncate">{u.email} · ID: {u.volunteerId || '—'}</div>
+                                </div>
                               </div>
-                            </div>
-                            <div className="flex items-center gap-4">
-                              <div className="ml-4">
+                              <div className="flex items-center sm:justify-end">
                                 <span className="inline-flex items-center px-3 py-1 rounded-full bg-gray-100 text-xs font-medium text-gray-800">{u.volunteerProfile?.rank ?? '—'}</span>
                               </div>
                             </div>
@@ -594,9 +593,9 @@ export default function UsersManagementPage() {
                                     <div className="text-xs text-gray-500">Initial payment: {u.initialPayment?.status ?? '—'}</div>
                                     <div className="text-xs text-gray-500">Final payment: {(u as any).finalPayment?.status ?? '—'}</div>
                                     <div className="text-xs text-gray-500">Initial approved by: {(u as any).initialPayment?.approvedBy?.fullName || (u as any).initialPayment?.approvedBy?.email || '—'}</div>
-                                    <div className="text-xs text-gray-500">Initial approved at: {(u as any).initialPayment?.verifiedAt ? new Date((u as any).initialPayment.verifiedAt).toLocaleString() : '—'}</div>
+                                    <div className="text-xs text-gray-500">Initial approved at: {formatShortDhakaDateTime((u as any).initialPayment?.verifiedAt) || '—'}</div>
                                     <div className="text-xs text-gray-500">Final approved by: {(u as any).finalPayment?.approvedBy?.fullName || (u as any).finalPayment?.approvedBy?.email || '—'}</div>
-                                    <div className="text-xs text-gray-500">Final approved at: {(u as any).finalPayment?.verifiedAt ? new Date((u as any).finalPayment.verifiedAt).toLocaleString() : '—'}</div>
+                                    <div className="text-xs text-gray-500">Final approved at: {formatShortDhakaDateTime((u as any).finalPayment?.verifiedAt) || '—'}</div>
                                     <div className="text-xs text-gray-500">Interview approved by: {(u as any).interviewApprovedBy?.fullName || (u as any).interviewApprovedBy?.email || '—'}</div>
 
                                     {/* Manage route removed; editing handled inline */}

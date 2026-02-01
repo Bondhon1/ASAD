@@ -83,6 +83,20 @@ export async function POST(
 
       await prisma.user.update({ where: { id: application.userId }, data: { status: "INTERVIEW_PASSED", interviewApprovedById: user.id } });
 
+      // Create audit log
+      await prisma.auditLog.create({
+        data: {
+          actorUserId: user.id,
+          action: 'INTERVIEW_APPROVED',
+          meta: JSON.stringify({
+            applicationId: application.id,
+            userId: application.userId,
+            userEmail: applicantUser.email,
+            slotId: id,
+          }),
+        },
+      });
+
       // Create notification for the user
       const notification = await prisma.notification.create({
         data: {

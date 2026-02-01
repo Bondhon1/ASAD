@@ -5,6 +5,7 @@ import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useCachedUserProfile } from "@/hooks/useCachedUserProfile";
+import { formatShortDhakaDateTime } from "@/lib/dateUtils";
 
 export default function ApprovalsPage() {
   const { data: session, status } = useSession();
@@ -39,21 +40,6 @@ export default function ApprovalsPage() {
   const displayName = user?.fullName || user?.username || session?.user?.name || "HR";
   const displayEmail = user?.email || session?.user?.email || "";
   const displayRole = (session as any)?.user?.role || (user?.role as "VOLUNTEER" | "HR" | "MASTER" | "ADMIN" | "DIRECTOR" | "DATABASE_DEPT" | "SECRETARIES") || "HR";
-
-  const formatDhaka = (value?: string | null) => {
-    if (!value) return "";
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return value;
-    return d.toLocaleString("en-US", {
-      timeZone: "Asia/Dhaka",
-      year: "numeric",
-      month: "short",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
-  };
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -201,13 +187,13 @@ export default function ApprovalsPage() {
                         <div className="text-xs text-gray-500">Volunteer ID: {p.user.volunteerId}</div>
                       )}
                       <div className="text-xs text-gray-500">User status: {p.user?.status ?? "N/A"}</div>
-                      <div className="text-xs text-gray-500">Submitted: {formatDhaka(p.createdAt)}</div>
+                      <div className="text-xs text-gray-500">Submitted: {formatShortDhakaDateTime(p.createdAt)}</div>
                       <div className="text-xs mt-1">Payment status: {p.status}</div>
                       <div className="mt-2 text-sm">
                         <div><strong>Transaction ID:</strong> {p.trxId}</div>
                         <div><strong>Sender:</strong> {p.senderNumber}</div>
                         <div><strong>Method:</strong> {p.paymentMethod}</div>
-                        <div><strong>Paid at:</strong> {p.paymentDate ? formatDhaka(p.paymentDate) : p.paymentTime || ""}</div>
+                        <div><strong>Paid at:</strong> {p.paymentDate ? formatShortDhakaDateTime(p.paymentDate) : p.paymentTime || ""}</div>
                         {p.proofUrl && (
                           <div className="mt-2"><a href={p.proofUrl} target="_blank" rel="noreferrer" className="text-blue-600">View proof</a></div>
                         )}

@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { useCachedUserProfile } from "@/hooks/useCachedUserProfile";
+import FlashModal from "@/components/ui/FlashModal";
+import ConfirmModal from "@/components/ui/ConfirmModal";
 
 export default function SecretariesPage() {
   const router = useRouter();
@@ -46,6 +48,23 @@ export default function SecretariesPage() {
   const [taskRestriction, setTaskRestriction] = useState<'ALL'|'SERVICE'|'SECTOR'>('ALL');
   const [taskStatus, setTaskStatus] = useState<string | null>(null);
 
+  // Flash modal state
+  const [flashModal, setFlashModal] = useState<{
+    isOpen: boolean;
+    title?: string;
+    message: string;
+    type: 'success' | 'error' | 'warning' | 'info';
+  }>({ isOpen: false, message: '', type: 'info' });
+
+  // Confirm modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type?: 'danger' | 'warning' | 'info';
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {}, type: 'info' });
+
   // Target selections (support multi-select across multiple group types)
   const [targetAll, setTargetAll] = useState(false);
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
@@ -79,10 +98,25 @@ export default function SecretariesPage() {
       const res = await fetch('/api/secretaries/tasks', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || 'Failed to create task');
-      setTaskStatus('Created: ' + (data.task?.id || JSON.stringify(data.task)));
+      
+      // Show success modal with task ID
+      setFlashModal({
+        isOpen: true,
+        title: 'Task Created Successfully!',
+        message: `Task "${taskTitle}" has been created. Task ID: ${data.task?.id || 'N/A'}`,
+        type: 'success',
+      });
+      
+      setTaskStatus(null);
       // refresh manage list if visible
       if (tab === 'manage') fetchTasks();
     } catch (err: any) {
+      setFlashModal({
+        isOpen: true,
+        title: 'Task Creation Failed',
+        message: err?.message || 'Unknown error occurred',
+        type: 'error',
+      });
       setTaskStatus('Error: ' + (err?.message || 'Unknown'));
     }
   };
@@ -686,67 +720,85 @@ export default function SecretariesPage() {
   );
 
   return (
-    <DashboardLayout userRole={displayRole} userName={displayName} userEmail={displayEmail} userId={viewer?.id || ""}>
-      {content}
+    <>
+      <DashboardLayout userRole={displayRole} userName={displayName} userEmail={displayEmail} userId={viewer?.id || ""}>
+        {content}
 
-      {submissionsModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center p-6">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setSubmissionsModalOpen(false)} />
-          <div className="relative bg-white w-full max-w-3xl rounded-xl shadow-lg p-6 overflow-auto max-h-[80vh]">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Submissions for Task</h3>
-              <div className="flex items-center gap-2">
-                <button onClick={() => setSubmissionsModalOpen(false)} className="px-3 py-1 bg-white border border-slate-200 rounded-md">Close</button>
+        {submissionsModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-start justify-center p-6">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setSubmissionsModalOpen(false)} />
+            <div className="relative bg-white w-full max-w-3xl rounded-xl shadow-lg p-6 overflow-auto max-h-[80vh]">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Submissions for Task</h3>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setSubmissionsModalOpen(false)} className="px-3 py-1 bg-white border border-slate-200 rounded-md">Close</button>
+                </div>
               </div>
-            </div>
 
-            {submissionsLoading ? (
-              <div className="text-sm text-slate-600">Loading submissions...</div>
-            ) : submissionsError ? (
-              <div className="text-sm text-red-600">{submissionsError}</div>
-            ) : submissionsList.length === 0 ? (
-              <div className="text-sm text-slate-600">No submissions yet.</div>
-            ) : (
-              <div className="space-y-3">
-                {submissionsList.map((s) => (
-                  <div key={s.id} className="border border-slate-100 rounded-xl p-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-medium">{s.user?.fullName || s.user?.email || 'Unknown'}</div>
-                        <div className="text-xs text-slate-500">{s.user?.email || ''} • Volunteer ID: {s.user?.volunteerId || '—'}</div>
+              {submissionsLoading ? (
+                <div className="text-sm text-slate-600">Loading submissions...</div>
+              ) : submissionsError ? (
+                <div className="text-sm text-red-600">{submissionsError}</div>
+              ) : submissionsList.length === 0 ? (
+                <div className="text-sm text-slate-600">No submissions yet.</div>
+              ) : (
+                <div className="space-y-3">
+                  {submissionsList.map((s) => (
+                    <div key={s.id} className="border border-slate-100 rounded-xl p-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-medium">{s.user?.fullName || s.user?.email || 'Unknown'}</div>
+                          <div className="text-xs text-slate-500">{s.user?.email || ''} • Volunteer ID: {s.user?.volunteerId || '—'}</div>
+                        </div>
+                        <div className="text-sm font-semibold">
+                          {s.status}
+                        </div>
                       </div>
-                      <div className="text-sm font-semibold">
-                        {s.status}
-                      </div>
+                      <div className="text-xs text-slate-500 mt-2">Submitted: {s.submittedAt ? new Date(s.submittedAt).toLocaleString() : '—'}</div>
+                      {s.submissionData ? (
+                        <div>{renderSubmissionData(s.submissionData)}</div>
+                      ) : null}
+                      {s.submissionFiles && s.submissionFiles.length ? (
+                        <div className="mt-2 flex gap-2 flex-wrap">
+                          {s.submissionFiles.map((f: string, idx: number) => (
+                            <a key={idx} href={f} target="_blank" rel="noreferrer" className="inline-block border border-slate-200 rounded-md overflow-hidden">
+                              <img src={f} alt={`file-${idx}`} className="w-28 h-20 object-cover" />
+                            </a>
+                          ))}
+                        </div>
+                      ) : null}
+
+                      {s.status === 'PENDING' && (
+                        <div className="mt-3 flex items-center gap-2">
+                          <button onClick={() => handleApprove(s.id)} disabled={submissionsLoading} className="px-3 py-1.5 bg-green-600 text-white rounded-md text-sm">Approve</button>
+                          <button onClick={() => handleReject(s.id)} disabled={submissionsLoading} className="px-3 py-1.5 bg-red-50 border border-red-200 text-red-600 rounded-md text-sm">Reject</button>
+                        </div>
+                      )}
                     </div>
-                    <div className="text-xs text-slate-500 mt-2">Submitted: {s.submittedAt ? new Date(s.submittedAt).toLocaleString() : '—'}</div>
-                    {s.submissionData ? (
-                      <div>{renderSubmissionData(s.submissionData)}</div>
-                    ) : null}
-                    {s.submissionFiles && s.submissionFiles.length ? (
-                      <div className="mt-2 flex gap-2 flex-wrap">
-                        {s.submissionFiles.map((f: string, idx: number) => (
-                          <a key={idx} href={f} target="_blank" rel="noreferrer" className="inline-block border border-slate-200 rounded-md overflow-hidden">
-                            <img src={f} alt={`file-${idx}`} className="w-28 h-20 object-cover" />
-                          </a>
-                        ))}
-                      </div>
-                    ) : null}
-
-                    {s.status === 'PENDING' && (
-                      <div className="mt-3 flex items-center gap-2">
-                        <button onClick={() => handleApprove(s.id)} disabled={submissionsLoading} className="px-3 py-1.5 bg-green-600 text-white rounded-md text-sm">Approve</button>
-                        <button onClick={() => handleReject(s.id)} disabled={submissionsLoading} className="px-3 py-1.5 bg-red-50 border border-red-200 text-red-600 rounded-md text-sm">Reject</button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-    </DashboardLayout>
+      </DashboardLayout>
+
+      <FlashModal
+        isOpen={flashModal.isOpen}
+        onClose={() => setFlashModal({ ...flashModal, isOpen: false })}
+        title={flashModal.title}
+        message={flashModal.message}
+        type={flashModal.type}
+      />
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+      />
+    </>
   );
 }

@@ -242,6 +242,22 @@ export async function POST(req: Request) {
       console.error('Failed to notify target users', e);
     }
 
+    // Create audit log for task creation
+    await prisma.auditLog.create({
+      data: {
+        actorUserId: requester.id,
+        action: 'TASK_CREATED',
+        meta: JSON.stringify({
+          taskId: created.id,
+          taskTitle: created.title,
+          targetUsersCount: targetUsers.length,
+          points: created.pointsPositive,
+          mandatory: created.mandatory,
+          assignedGroup: created.assignedGroup,
+        }),
+      },
+    });
+
     return NextResponse.json({ ok: true, task: created, notificationsCreated: totalNotificationsCreated });
   } catch (err: any) {
     console.error('POST /api/secretaries/tasks error', err);
