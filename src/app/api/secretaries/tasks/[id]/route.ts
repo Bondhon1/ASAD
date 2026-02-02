@@ -19,6 +19,20 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     await prisma.notification.deleteMany({ where: { link: `/tasks/${id}` } });
     const deleted = await prisma.task.delete({ where: { id } });
 
+    // Write an audit log entry for the deletion (best-effort)
+    try {
+      await prisma.auditLog.create({
+        data: {
+          actorUserId: requester.id,
+          action: 'DELETE_TASK',
+          meta: JSON.stringify({ id: deleted.id, title: deleted.title, targetUserCount: deleted.targetUserIds?.length ?? 0 }),
+          points: deleted.pointsNegative ?? undefined,
+        },
+      });
+    } catch (e: any) {
+      console.error('Failed to write AuditLog for DELETE /api/secretaries/tasks/[id]:', e?.message || e);
+    }
+
     return NextResponse.json({ ok: true, task: deleted });
   } catch (err: any) {
     console.error('DELETE /api/secretaries/tasks/[id] error', err);
