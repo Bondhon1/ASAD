@@ -100,9 +100,18 @@ export default function UsersManagementPage() {
 
     if (!authChecked) return () => { controller.abort(); };
 
+    const buildStatsUrl = () => {
+      const params: string[] = [];
+      if (statusFilter && statusFilter !== 'ANY') params.push(`status=${encodeURIComponent(statusFilter)}`);
+      if (rankFilter) params.push(`rank=${encodeURIComponent(rankFilter)}`);
+      if (finalFrom) params.push(`finalFrom=${encodeURIComponent(finalFrom)}`);
+      if (finalTo) params.push(`finalTo=${encodeURIComponent(finalTo)}`);
+      return `/api/hr/users/stats${params.length ? '?' + params.join('&') : ''}`;
+    };
+
     const fetchStats = async () => {
       try {
-        const res = await fetch(`/api/hr/users/stats`, { signal: controller.signal, cache: 'no-store' });
+        const res = await fetch(buildStatsUrl(), { signal: controller.signal, cache: 'no-store' });
         if (!res.ok) throw new Error(`Status ${res.status}`);
         const data = await res.json();
         if (!active) return;
@@ -147,12 +156,18 @@ export default function UsersManagementPage() {
     fetchOrgs();
     fetchRanks();
     return () => { active = false; controller.abort(); };
-  }, [authChecked]);
+  }, [authChecked, statusFilter, finalFrom, finalTo, rankFilter]);
 
   // Helper to refresh stats after actions
   const refreshStats = async () => {
     try {
-      const res = await fetch(`/api/hr/users/stats`, { cache: 'no-store' });
+      const params: string[] = [];
+      if (statusFilter && statusFilter !== 'ANY') params.push(`status=${encodeURIComponent(statusFilter)}`);
+      if (rankFilter) params.push(`rank=${encodeURIComponent(rankFilter)}`);
+      if (finalFrom) params.push(`finalFrom=${encodeURIComponent(finalFrom)}`);
+      if (finalTo) params.push(`finalTo=${encodeURIComponent(finalTo)}`);
+      const url = `/api/hr/users/stats${params.length ? '?' + params.join('&') : ''}`;
+      const res = await fetch(url, { cache: 'no-store' });
       if (!res.ok) return;
       const data = await res.json();
       setStats({ total: data.total, officialCount: data.officialCount, rankCounts: data.rankCounts });
@@ -311,10 +326,11 @@ export default function UsersManagementPage() {
   // Apply client-side final payment verifiedAt date-range filter when OFFICIAL is selected
   const selectedRankName = rankFilter ? (ranksList.find(r => r.id === rankFilter)?.name ?? rankFilter) : '';
   const filtered = users.filter(u => {
-    // Apply client-side rank filter (only used as fallback when API doesn't filter)
+    // Do not apply strict client-side rank-name equality when a rank filter is set.
+    // The server returns users already filtered/expanded for parent ranks, so rely on server-side filtering.
+    // Keep this block only as a fallback (currently noop).
     if (rankFilter) {
-      const urank = getRankName(u.volunteerProfile?.rank);
-      if (!urank || urank === '—' || (selectedRankName && urank.toLowerCase() !== selectedRankName.toLowerCase())) return false;
+      // noop: server provides the correct set (including child ranks for parent selection)
     }
     if (statusFilter === 'OFFICIAL' && (finalFrom || finalTo)) {
       const v = (u as any).finalPayment?.verifiedAt;
