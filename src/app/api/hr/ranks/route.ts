@@ -16,6 +16,12 @@ export async function PATCH(req: Request) {
     const { name, thresholdPoints, description, parentId } = body as { name?: string; thresholdPoints?: number; description?: string; parentId?: string | null };
     if (!name) return NextResponse.json({ error: 'Missing name' }, { status: 400 });
 
+    // Check if rank exists first - do NOT create new ranks via this endpoint
+    const existingRank = await prisma.rank.findUnique({ where: { name } });
+    if (!existingRank) {
+      return NextResponse.json({ error: `Rank "${name}" not found. Ranks are predefined and cannot be created via this endpoint.` }, { status: 404 });
+    }
+
     const updateData: any = {};
     if (typeof thresholdPoints === 'number') updateData.thresholdPoints = thresholdPoints;
     if (typeof description === 'string') updateData.description = description;
@@ -27,17 +33,9 @@ export async function PATCH(req: Request) {
       }
     }
 
-    const createData: any = {
-      name,
-      thresholdPoints: typeof thresholdPoints === 'number' ? thresholdPoints : 0,
-      description: typeof description === 'string' ? description : null,
-    };
-    if (parentId) createData.parent = { connect: { id: parentId } };
-
-    const rank = await prisma.rank.upsert({
+    const rank = await prisma.rank.update({
       where: { name },
-      update: updateData,
-      create: createData,
+      data: updateData,
     });
     return NextResponse.json({ ok: true, rank });
   } catch (err: any) {

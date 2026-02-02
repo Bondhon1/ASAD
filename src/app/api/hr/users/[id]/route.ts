@@ -148,11 +148,11 @@ export async function PATCH(req: Request, context: any) {
     // Prepare prisma update/create payload for volunteerProfile
     const prismaDataAny: any = {};
     if (hasPoints) prismaDataAny.points = points;
-    // Resolve or create Rank and store rankId to avoid nested write issues
+    // Resolve Rank by name (do NOT create new ranks - they should be predefined)
     if (hasRank) {
-      let rankRecord = await prisma.rank.findUnique({ where: { name: rank! } });
+      const rankRecord = await prisma.rank.findUnique({ where: { name: rank! } });
       if (!rankRecord) {
-        rankRecord = await prisma.rank.create({ data: { name: rank!, thresholdPoints: 0 } });
+        return NextResponse.json({ error: `Rank "${rank}" not found. Please use an existing rank.` }, { status: 400 });
       }
       prismaDataAny.rankId = rankRecord.id;
     }
