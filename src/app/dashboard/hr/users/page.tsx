@@ -7,6 +7,7 @@ import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { useCachedUserProfile } from "@/hooks/useCachedUserProfile";
 import { SERVICES, autoAssignServiceFromInstitute } from '@/lib/organizations';
 import { formatShortDhakaDateTime } from '@/lib/dateUtils';
+import { useModal } from '@/components/ui/ModalProvider';
 
 interface User {
   id: string;
@@ -91,6 +92,8 @@ export default function UsersManagementPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [ranksList, setRanksList] = useState<Array<{id:string;name:string;selectable?:boolean}>>([]);
 
+  const { confirm, alert } = useModal();
+
   useEffect(() => {
     let active = true;
     const controller = new AbortController();
@@ -170,7 +173,7 @@ export default function UsersManagementPage() {
       setSelected(prev => prev ? { ...prev, volunteerId: volunteerIdInput || null } : prev);
       setEditingVolunteerUserId(null);
     } catch (err: any) {
-      alert(err?.message || 'Error saving volunteerId');
+      await alert(err?.message || 'Error saving volunteerId');
     } finally { setEditingVolunteerSaving(false); }
   };
 
@@ -617,7 +620,7 @@ export default function UsersManagementPage() {
                                             setSelected(prev => prev ? { ...prev, role: data.user.role } : prev);
                                             setEditingRoleUserId(null);
                                           } catch (err: any) {
-                                            alert(err?.message || 'Error updating role');
+                                            await alert(err?.message || 'Error updating role');
                                           } finally { setEditingRoleSaving(false); }
                                         }} className="px-2 py-1 bg-[#1E90FF] text-white rounded">Save</button>
                                         <button onClick={() => { setEditingRoleUserId(null); setRoleInput(''); }} className="px-2 py-1 border rounded">Cancel</button>
@@ -705,7 +708,7 @@ export default function UsersManagementPage() {
                                               setShowPointsForm(false);
                                           } catch (err: any) {
                                             console.error(err);
-                                            alert(err?.message || 'Error saving points');
+                                            await alert(err?.message || 'Error saving points');
                                           } finally { setSaving(false); }
                                           }} className="w-full sm:w-auto px-2 py-1.5 text-xs md:px-3 bg-[#1E90FF] text-white rounded">Save</button>
                                           <button onClick={() => setShowPointsForm(false)} className="w-full sm:w-auto px-2 py-1.5 text-xs md:px-3 border rounded">Cancel</button>
@@ -736,7 +739,7 @@ export default function UsersManagementPage() {
                                             setShowRankForm(false);
                                           } catch (err: any) {
                                             console.error(err);
-                                            alert(err?.message || 'Error saving rank');
+                                            await alert(err?.message || 'Error saving rank');
                                           } finally { setSaving(false); }
                                         }} className="w-full sm:w-auto px-2 py-1.5 text-xs md:px-3 bg-[#1E90FF] text-white rounded">Save</button>
                                         <button onClick={() => setShowRankForm(false)} className="w-full sm:w-auto px-2 py-1.5 text-xs md:px-3 border rounded">Cancel</button>
@@ -833,7 +836,7 @@ export default function UsersManagementPage() {
                                               setSelected(prev => prev ? { ...prev, volunteerProfile: { ...(prev.volunteerProfile || {}), service: (displayRole === 'HR' || displayRole === 'MASTER' || displayRole === 'ADMIN') ? (selectedServiceLocal ? { id: selectedServiceLocal, name: svcName } : null) : prev.volunteerProfile?.service, sectors: selectedSectorsLocal, clubs: selectedClubsLocal } } : prev);
                                               setEditingOrgUserId(null);
                                             } catch (err: any) {
-                                              alert(err?.message || 'Error saving');
+                                              await alert(err?.message || 'Error saving');
                                             } finally { setEditingOrgSaving(false); }
                                           }} className="w-full sm:w-auto px-2 py-1.5 text-xs md:px-3 bg-[#1E90FF] text-white rounded">Save</button>
                                           <button onClick={() => setEditingOrgUserId(null)} className="w-full sm:w-auto px-2 py-1.5 text-xs md:px-3 border rounded">Cancel</button>
@@ -856,7 +859,8 @@ export default function UsersManagementPage() {
                                     <div className="mt-2 flex flex-col sm:flex-row gap-2">
                                       {u.status === 'BANNED' ? (
                                         <button disabled={actionLoading} onClick={async () => {
-                                          if (!confirm('Unban this user?')) return;
+                                          const ok = await confirm('Unban this user?', 'Confirm Unban', 'warning');
+                                          if (!ok) return;
                                           setActionLoading(true);
                                           try {
                                             const res = await fetch(`/api/hr/users/${u.id}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ status: 'APPLICANT' }) });
@@ -866,12 +870,13 @@ export default function UsersManagementPage() {
                                             setSelected(prev => prev ? { ...prev, status: 'APPLICANT' } : prev);
                                             await refreshStats();
                                           } catch (err: any) {
-                                            alert(err?.message || 'Error');
+                                            await alert(err?.message || 'Error');
                                           } finally { setActionLoading(false); }
                                         }} className="w-full sm:w-auto px-2 py-1.5 text-xs md:px-3 bg-green-600 text-white rounded">Unban</button>
                                       ) : (
                                         <button disabled={actionLoading} onClick={async () => {
-                                          if (!confirm('Ban this user? They will be immediately logged out.')) return;
+                                          const ok = await confirm('Ban this user? They will be immediately logged out.', 'Confirm Ban', 'warning');
+                                          if (!ok) return;
                                           setActionLoading(true);
                                           try {
                                             const res = await fetch(`/api/hr/users/${u.id}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ status: 'BANNED' }) });
@@ -881,13 +886,14 @@ export default function UsersManagementPage() {
                                             setSelected(prev => prev ? { ...prev, status: 'BANNED' } : prev);
                                             await refreshStats();
                                           } catch (err: any) {
-                                            alert(err?.message || 'Error');
+                                            await alert(err?.message || 'Error');
                                           } finally { setActionLoading(false); }
                                         }} className="w-full sm:w-auto px-2 py-1.5 text-xs md:px-3 bg-red-600 text-white rounded">Ban</button>
                                       )}
 
                                       <button disabled={actionLoading} onClick={async () => {
-                                        if (!confirm('Delete this user and all related data? This cannot be undone.')) return;
+                                        const ok = await confirm('Delete this user and all related data? This cannot be undone.', 'Confirm Delete', 'warning');
+                                        if (!ok) return;
                                         setActionLoading(true);
                                         try {
                                           const res = await fetch(`/api/hr/users/${u.id}`, { method: 'DELETE' });
@@ -897,7 +903,7 @@ export default function UsersManagementPage() {
                                           setSelected(null);
                                           await refreshStats();
                                         } catch (err: any) {
-                                          alert(err?.message || 'Error');
+                                          await alert(err?.message || 'Error');
                                         } finally { setActionLoading(false); }
                                       }} className="w-full sm:w-auto px-2 py-1.5 text-xs md:px-3 border rounded">Delete</button>
                                     </div>

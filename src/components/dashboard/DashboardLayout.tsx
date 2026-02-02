@@ -400,10 +400,10 @@ export default function DashboardLayout({
                 // If user has submitted a final payment and it's pending, show pending review message.
                 // If final payment is verified, don't show any banner. If no final payment, prompt to pay.
                 (finalPaymentStatus === "PENDING") ? (
-                  <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md flex items-center justify-between">
+                    <div className="mb-4 p-4 bg-white border border-[#0b2140] rounded-md flex items-center justify-between">
                     <div>
-                      <div className="font-semibold text-yellow-800">Payment Pending Review</div>
-                      <div className="text-sm text-yellow-700">We've received your final payment. Admin will verify it shortly.</div>
+                        <div className="font-semibold text-[#0b2140]">Payment Pending Review</div>
+                        <div className="text-sm text-[#3b5166]">We've received your final payment. Admin will verify it shortly.</div>
                     </div>
                     <div className="flex items-center gap-2">
                     </div>

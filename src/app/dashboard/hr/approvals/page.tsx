@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useCachedUserProfile } from "@/hooks/useCachedUserProfile";
 import { formatShortDhakaDateTime } from "@/lib/dateUtils";
+import { useModal } from '@/components/ui/ModalProvider';
 
 export default function ApprovalsPage() {
   const { data: session, status } = useSession();
@@ -91,6 +92,8 @@ export default function ApprovalsPage() {
     }
   };
 
+  const { confirm, alert } = useModal();
+
   const handleAction = async (id: string, type: "initial" | "final", action: "approve" | "reject") => {
     if (type === 'final' && action === 'approve') {
       // open modal to choose auto/manual assignment
@@ -102,7 +105,8 @@ export default function ApprovalsPage() {
       return;
     }
 
-    if (!confirm(`Are you sure to ${action} this ${type} payment?`)) return;
+    const ok = await confirm(`Are you sure to ${action} this ${type} payment?`, 'Confirm Action', 'warning');
+    if (!ok) return;
     try {
       const res = await fetch(`/api/hr/payments/${id}`, {
         method: "POST",
@@ -111,14 +115,14 @@ export default function ApprovalsPage() {
       });
       if (!res.ok) {
         const d = await res.json();
-        alert(d.error || "Failed");
+        await alert(d.error || "Failed");
         return;
       }
       await fetchPayments();
-      alert("Action completed");
+      await alert("Action completed");
     } catch (err) {
       console.error(err);
-      alert("Failed");
+      await alert("Failed");
     }
   };
 
@@ -126,7 +130,7 @@ export default function ApprovalsPage() {
     if (!modalPayment) return;
     // if manual selected, require volunteer id
     if (assignMode === 'manual' && !manualVolunteerId.trim()) {
-      alert('Please enter a volunteer ID');
+      await alert('Please enter a volunteer ID');
       return;
     }
 
@@ -141,15 +145,15 @@ export default function ApprovalsPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        alert(data.error || 'Failed to approve');
+        await alert(data.error || 'Failed to approve');
         return;
       }
       setModalOpen(false);
       await fetchPayments();
-      alert('Approved');
+      await alert('Approved');
     } catch (err) {
       console.error(err);
-      alert('Failed');
+      await alert('Failed');
     }
   };
 

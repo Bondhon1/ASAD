@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Space_Grotesk, Poppins, Playfair_Display, DM_Sans, Nunito } from "next/font/google";
 import "./globals.css";
 import SessionProvider from "@/components/providers/SessionProvider";
+import ModalProvider from "@/components/ui/ModalProvider";
 import { Analytics } from "@vercel/analytics/next";
 
 const display = Space_Grotesk({
@@ -200,9 +201,11 @@ export default function RootLayout({
         />
       </head>
       <body className={`${display.variable} ${body.variable} ${poppins.variable} ${playfair.variable} ${dmSans.variable} ${nunito.variable} bg-white text-ink antialiased`}>
-        <SessionProvider>
-          {children}
-        </SessionProvider>
+        <ModalProvider>
+          <SessionProvider>
+            {children}
+          </SessionProvider>
+        </ModalProvider>
         <Analytics />
       </body>
     </html>

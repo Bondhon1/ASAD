@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { useCachedUserProfile } from "@/hooks/useCachedUserProfile";
 import React from "react";
+import { useModal } from '@/components/ui/ModalProvider';
 
 function PreviewIds({ idsCsv }: { idsCsv: string }) {
   const parsed = idsCsv.split(/[,\n\r]+/).map((s: string) => s.trim()).filter(Boolean);
@@ -41,6 +42,8 @@ export default function ManualPointsPage() {
   const displayEmail = viewer?.email || (session as any)?.user?.email || '';
   const displayRole = (viewer?.role as any) || "DATABASE_DEPT";
 
+  const { confirm } = useModal();
+
   const submit = async () => {
     setStatusMsg(null);
     const parsed = idsCsv.split(/[,\n\r]+/).map((s: string) => s.trim()).filter(Boolean);
@@ -49,7 +52,7 @@ export default function ManualPointsPage() {
 
     // ask for confirmation with summary
     const sample = parsed.slice(0, 8).join(', ');
-    const ok = window.confirm(`Apply ${points} points to ${parsed.length} users?\nSample: ${sample}${parsed.length > 8 ? ', ...' : ''}\n\nContinue?`);
+    const ok = await confirm(`Apply ${points} points to ${parsed.length} users?\nSample: ${sample}${parsed.length > 8 ? ', ...' : ''}\n\nContinue?`, 'Confirm Apply Points', 'warning');
     if (!ok) return;
 
     setSubmitting(true);

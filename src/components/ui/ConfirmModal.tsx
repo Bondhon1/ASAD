@@ -28,9 +28,9 @@ export default function ConfirmModal({
       case "danger":
         return "bg-red-600 hover:bg-red-700 text-white";
       case "warning":
-        return "bg-yellow-600 hover:bg-yellow-700 text-white";
+        return "bg-[#0b2140] hover:bg-[#061627] text-white";
       default:
-        return "bg-blue-600 hover:bg-blue-700 text-white";
+        return "bg-[#0b2140] hover:bg-[#061627] text-white";
     }
   };
 
@@ -52,16 +52,16 @@ export default function ConfirmModal({
             className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <h3 className="text-lg font-semibold text-[#0b2140] mb-2">
               {title}
             </h3>
-            <p className="text-sm text-gray-600 mb-6">
+            <p className="text-sm text-[#3b5166] mb-6">
               {message}
             </p>
             <div className="flex items-center justify-end gap-3">
               <button
                 onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-[#0b2140] bg-white border border-[#0b2140] rounded-md hover:bg-[#f8fafc] transition-colors"
               >
                 {cancelText}
               </button>

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { useCachedUserProfile } from '@/hooks/useCachedUserProfile';
 import { useSession } from 'next-auth/react';
+import { useModal } from '@/components/ui/ModalProvider';
 
 export default function TasksPage() {
   const { data: session } = useSession();
@@ -227,17 +228,20 @@ export default function TasksPage() {
     } finally { setCreatedLoading(false); }
   };
 
+  const { confirm, alert } = useModal();
+
   
 
   const deleteTask = async (id: string) => {
-    if (!confirm('Delete this task?')) return;
+    const ok = await confirm('Delete this task?', 'Confirm Delete', 'warning');
+    if (!ok) return;
     try {
       const res = await fetch(`/api/secretaries/tasks/${id}`, { method: 'DELETE' });
       const d = await res.json();
       if (!res.ok) throw new Error(d?.error || 'Delete failed');
       await refresh();
     } catch (err: any) {
-      alert('Delete failed: ' + (err?.message || 'Unknown'));
+      await alert('Delete failed: ' + (err?.message || 'Unknown'));
     }
   };
 
@@ -411,7 +415,7 @@ export default function TasksPage() {
       setEditSource(null);
       await refresh();
     } catch (err: any) {
-      alert('Update failed: ' + (err?.message || 'Unknown'));
+      await alert('Update failed: ' + (err?.message || 'Unknown'));
     }
   };
 
@@ -524,7 +528,7 @@ export default function TasksPage() {
                               ? 'bg-green-100 text-green-700 border border-green-200' 
                               : userSubmissions[t.id].status === 'REJECTED'
                               ? 'bg-red-100 text-red-700 border border-red-200'
-                              : 'bg-yellow-100 text-yellow-700 border border-yellow-200'
+                              : 'bg-white text-[#0b2140] border border-[#0b2140]'
                           }`}>
                             {userSubmissions[t.id].status === 'APPROVED' ? '✓ Completed' : 
                              userSubmissions[t.id].status === 'REJECTED' ? '✗ Rejected' : 

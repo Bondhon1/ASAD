@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { useCachedUserProfile } from "@/hooks/useCachedUserProfile";
 import { formatShortDhakaDateTime } from "@/lib/dateUtils";
+import { useModal } from '@/components/ui/ModalProvider';
 
 interface AuditLog {
   id: string;
@@ -48,6 +49,8 @@ export default function AuditLogsPage() {
   const displayName = user?.fullName || user?.username || session?.user?.name || "Admin";
   const displayEmail = user?.email || session?.user?.email || "";
   const displayRole = (session as any)?.user?.role || (user?.role as "VOLUNTEER" | "HR" | "MASTER" | "ADMIN" | "DIRECTOR" | "DATABASE_DEPT" | "SECRETARIES") || "ADMIN";
+
+  const { alert } = useModal();
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -150,7 +153,7 @@ export default function AuditLogsPage() {
       }
     } catch (err: any) {
       console.error('Failed to fetch audit logs:', err);
-      alert('Failed to load audit logs: ' + (err.message || 'Unknown error'));
+      await alert('Failed to load audit logs: ' + (err.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }

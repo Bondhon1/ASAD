@@ -7,6 +7,7 @@ import { Plus, Calendar, Users, Link as LinkIcon, Trash2, CheckCircle, AlertCirc
 import { motion } from "framer-motion";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { useCachedUserProfile } from "@/hooks/useCachedUserProfile";
+import { useModal } from '@/components/ui/ModalProvider';
 
 interface InterviewSlot {
   id: string;
@@ -80,6 +81,8 @@ function InterviewSlotsContent() {
   const displayEmail = useMemo(() => user?.email || session?.user?.email || "", [session?.user?.email, user?.email]);
   const displayRole = useMemo(() => (session as any)?.user?.role || (user?.role as "VOLUNTEER" | "HR" | "MASTER" | "ADMIN" | "DIRECTOR" | "DATABASE_DEPT" | "SECRETARIES") || "HR", [session, user?.role]);
 
+  const { confirm, alert } = useModal();
+
   useEffect(() => {
     const fetchUserAndSlots = async () => {
       if (status === "unauthenticated") {
@@ -125,16 +128,16 @@ function InterviewSlotsContent() {
         });
         if (!response.ok) {
           console.error("Calendar code exchange failed:", await response.text());
-          alert("Failed to connect Google Calendar. Please try again.");
+          await alert("Failed to connect Google Calendar. Please try again.");
           return;
         }
         await fetchCalendarStatus();
         await fetchSlots();
         router.replace("/dashboard/hr/interviews");
-        alert("Google Calendar connected successfully.");
+        await alert("Google Calendar connected successfully.");
       } catch (error) {
         console.error("Error exchanging calendar code:", error);
-        alert("Failed to connect Google Calendar. Please try again.");
+        await alert("Failed to connect Google Calendar. Please try again.");
       }
     };
 
@@ -176,7 +179,7 @@ function InterviewSlotsContent() {
     e.preventDefault();
 
     if (!formData.startDate || !formData.startTime || !formData.endTime) {
-      alert("Please fill date and time.");
+      await alert("Please fill date and time.");
       return;
     }
 
@@ -192,7 +195,7 @@ function InterviewSlotsContent() {
 
       if (!response.ok) {
         const error = await response.json();
-        alert(error.error || "Failed to create slot");
+        await alert(error.error || "Failed to create slot");
         return;
       }
 
@@ -201,12 +204,13 @@ function InterviewSlotsContent() {
       setFormData({ startDate: "", startTime: "", endTime: "", capacity: 20, meetLink: "", autoCreateMeet: true });
     } catch (error) {
       console.error("Error creating slot:", error);
-      alert("Failed to create slot");
+      await alert("Failed to create slot");
     }
   };
 
   const handleDeleteSlot = async (slotId: string) => {
-    if (!confirm("Delete this interview slot?")) return;
+    const ok = await confirm("Delete this interview slot?", 'Confirm Delete', 'warning');
+    if (!ok) return;
     try {
       await fetch(`/api/hr/interview-slots/${slotId}`, { method: "DELETE" });
       fetchSlots();
@@ -247,7 +251,7 @@ function InterviewSlotsContent() {
       });
       if (!response.ok) {
         const error = await response.json();
-        alert(error.error || "Failed to update application");
+        await alert(error.error || "Failed to update application");
         return;
       }
       await handleOpenParticipants(selectedSlotId);
@@ -261,18 +265,18 @@ function InterviewSlotsContent() {
       const response = await fetch("/api/hr/connect-calendar");
       if (!response.ok) {
         console.error("Connect calendar failed:", await response.text());
-        alert("Failed to start Google Calendar connection.");
+        await alert("Failed to start Google Calendar connection.");
         return;
       }
       const data = await response.json();
       if (data?.authUrl) {
         window.location.href = data.authUrl;
       } else {
-        alert("No authorization URL returned. Please try again.");
+        await alert("No authorization URL returned. Please try again.");
       }
     } catch (error) {
       console.error("Error starting calendar connection:", error);
-      alert("Failed to start Google Calendar connection.");
+      await alert("Failed to start Google Calendar connection.");
     }
   };
 
@@ -281,13 +285,13 @@ function InterviewSlotsContent() {
       const response = await fetch("/api/hr/connect-calendar", { method: "DELETE" });
       if (!response.ok) {
         console.error("Disconnect calendar failed:", await response.text());
-        alert("Failed to disconnect calendar.");
+        await alert("Failed to disconnect calendar.");
         return;
       }
       fetchCalendarStatus();
     } catch (error) {
       console.error("Error disconnecting calendar:", error);
-      alert("Failed to disconnect calendar.");
+      await alert("Failed to disconnect calendar.");
     }
   };
 

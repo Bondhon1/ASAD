@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { CheckCircle, XCircle, Calendar, Eye, AlertTriangle } from "lucide-react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { useCachedUserProfile } from "@/hooks/useCachedUserProfile";
+import { useModal } from '@/components/ui/ModalProvider';
 
 interface Application {
   id: string;
@@ -50,6 +51,7 @@ export default function NewRequestsPage() {
   const displayName = user?.fullName || user?.username || session?.user?.name || "HR";
   const displayEmail = user?.email || session?.user?.email || "";
   const displayRole = (session as any)?.user?.role || (user?.role as "VOLUNTEER" | "HR" | "MASTER" | "ADMIN" | "DIRECTOR" | "DATABASE_DEPT" | "SECRETARIES") || "HR";
+  const { alert, prompt } = useModal();
   
   // Track if initial fetch has been done
   const [hasFetched, setHasFetched] = useState(false);
@@ -116,37 +118,8 @@ export default function NewRequestsPage() {
     }
   };
 
-  const handleApprove = async (applicationId: string) => {
-    if (!hasAvailableSlots) {
-      alert("No available interview slots. Please create slots first.");
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/hr/applications/${applicationId}/approve`, {
-        method: "POST",
-      });
-      
-      const data = await response.json();
-      
-      if (response.ok) {
-        alert(`Application approved! Assigned to interview on ${new Date(data.slot.startTime).toLocaleString()}\n\nMeet Link: ${data.slot.meetLink}`);
-        setApplications((prev) => prev.filter((app) => app.id !== applicationId));
-        if (selectedApp?.id === applicationId) {
-          setSelectedApp(null);
-        }
-        fetchApplications();
-      } else {
-        alert(data.error || "Failed to approve application");
-      }
-    } catch (error) {
-      console.error("Error approving application:", error);
-      alert("Failed to approve application");
-    }
-  };
-
   const handleReject = async (applicationId: string) => {
-    const reason = prompt("Please provide a reason for rejection:");
+    const reason = await prompt("Please provide a reason for rejection:", 'Rejection Reason');
     if (!reason) return;
 
     try {
@@ -157,7 +130,7 @@ export default function NewRequestsPage() {
       });
       
       if (response.ok) {
-        alert("Application rejected.");
+        await alert("Application rejected.");
         setApplications((prev) => prev.filter((app) => app.id !== applicationId));
         if (selectedApp?.id === applicationId) {
           setSelectedApp(null);
@@ -168,6 +141,7 @@ export default function NewRequestsPage() {
       console.error("Error rejecting application:", error);
     }
   };
+
 
   if (status === "unauthenticated") return null;
 
@@ -186,13 +160,13 @@ export default function NewRequestsPage() {
         <p className="text-gray-600 mt-2">Review and approve payment submissions</p>
         
         {!hasAvailableSlots && (
-          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+          <div className="mt-4 p-4 bg-white border border-[#0b2140] rounded-lg flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-[#0b2140] flex-shrink-0 mt-0.5" />
             <div>
-              <h3 className="font-semibold text-yellow-900">No Interview Slots Available</h3>
-              <p className="text-sm text-yellow-700 mt-1">
+              <h3 className="font-semibold text-[#0b2140]">No Interview Slots Available</h3>
+              <p className="text-sm text-[#3b5166] mt-1">
                 You need to create interview slots before approving applications. 
-                <a href="/dashboard/hr/interviews" className="underline ml-1 font-medium">
+                <a href="/dashboard/hr/interviews" className="underline ml-1 font-medium text-[#0b2140]">
                   Create slots now →
                 </a>
               </p>

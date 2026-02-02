@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useModal } from "@/components/ui/ModalProvider";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
@@ -65,6 +66,10 @@ export default function SecretariesPage() {
     type?: 'danger' | 'warning' | 'info';
   }>({ isOpen: false, title: '', message: '', onConfirm: () => {}, type: 'info' });
 
+  const { confirm, alert, prompt } = useModal();
+
+  const confirmPrompt = prompt;
+
   // Target selections (support multi-select across multiple group types)
   const [targetAll, setTargetAll] = useState(false);
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
@@ -103,7 +108,7 @@ export default function SecretariesPage() {
       setFlashModal({
         isOpen: true,
         title: 'Task Created Successfully!',
-        message: `Task "${taskTitle}" has been created. Task ID: ${data.task?.id || 'N/A'}`,
+        message: 'Task created!',
         type: 'success',
       });
       
@@ -226,18 +231,19 @@ export default function SecretariesPage() {
       fetchTasks();
       setEditingTaskId(null);
     } catch (err: any) {
-      alert(err?.message || 'Update failed');
+      await alert(err?.message || 'Update failed');
     }
   };
 
   const deleteTask = async (id: string) => {
-    if (!confirm('Delete this task?')) return;
+    const ok = await confirm('Delete this task?', 'Confirm Delete', 'warning');
+    if (!ok) return;
     try {
       const res = await fetch(`/api/secretaries/tasks/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Delete failed');
       setTasks(prev => prev.filter(t => t.id !== id));
     } catch (e) {
-      alert('Failed to delete task');
+      await alert('Failed to delete task');
     }
   };
   // auth checks and viewer setup for DashboardLayout
@@ -345,7 +351,7 @@ export default function SecretariesPage() {
       const updated = d.submission;
       setSubmissionsList(prev => prev.map(s => s.id === updated.id ? updated : s));
     } catch (e: any) {
-      alert('Approve failed: ' + (e?.message || 'Unknown'));
+      await alert('Approve failed: ' + (e?.message || 'Unknown'));
     } finally {
       setSubmissionsLoading(false);
     }
@@ -354,7 +360,7 @@ export default function SecretariesPage() {
   const handleReject = async (submissionId: string) => {
     const taskId = currentTaskId || queryTaskId;
     if (!taskId) return;
-    const reason = prompt('Reason for rejection (optional):');
+    const reason = await confirmPrompt('Reason for rejection (optional):', 'Rejection Reason');
     if (reason === null) return;
     try {
       setSubmissionsLoading(true);
@@ -368,13 +374,33 @@ export default function SecretariesPage() {
       const updated = d.submission;
       setSubmissionsList(prev => prev.map(s => s.id === updated.id ? updated : s));
     } catch (e: any) {
-      alert('Reject failed: ' + (e?.message || 'Unknown'));
+      await alert('Reject failed: ' + (e?.message || 'Unknown'));
     } finally {
       setSubmissionsLoading(false);
     }
   };
 
   if (status === 'unauthenticated') return null;
+
+  const handleFlashClose = () => {
+    setFlashModal((prev) => {
+      if (prev.type === 'success') {
+        setTaskTitle('');
+        setTaskDescription('');
+        setTaskExpire('');
+        setTaskPoint('');
+        setTaskMandatory(false);
+        setTaskPointsToDeduct('');
+        setTaskInputType('YESNO');
+        setTaskRestriction('ALL');
+        setSelectedServices([]);
+        setSelectedSectors([]);
+        setSelectedClubs([]);
+        setTargetAll(false);
+      }
+      return { ...prev, isOpen: false };
+    });
+  };
 
 
   // allow only MASTER or SECRETARIES (MASTER should still have access)
@@ -703,7 +729,7 @@ export default function SecretariesPage() {
                                   // We reuse queryTaskId variable for modal API calls by setting location (client only)
                                   try { window.history.replaceState({}, '', '/dashboard/secretaries?taskId=' + t.id); } catch(e) {}
                                   setCurrentTaskId(t.id);
-                                } catch (e:any) { alert('Failed to open submissions: ' + (e?.message || 'Unknown')); }
+                                } catch (e:any) { await alert('Failed to open submissions: ' + (e?.message || 'Unknown')); }
                                 finally { setSubmissionsLoading(false); }
                             }} className="px-3 py-1.5 bg-white border border-slate-200 rounded-md text-sm">View Submissions</button>
                         </>
@@ -786,7 +812,7 @@ export default function SecretariesPage() {
 
       <FlashModal
         isOpen={flashModal.isOpen}
-        onClose={() => setFlashModal({ ...flashModal, isOpen: false })}
+        onClose={handleFlashClose}
         title={flashModal.title}
         message={flashModal.message}
         type={flashModal.type}

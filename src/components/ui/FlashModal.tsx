@@ -59,40 +59,14 @@ export default function FlashModal({
   };
 
   const getColors = () => {
-    switch (type) {
-      case "success":
-        return {
-          bg: "bg-green-50",
-          border: "border-green-200",
-          icon: "text-green-600",
-          title: "text-green-900",
-          message: "text-green-700",
-        };
-      case "error":
-        return {
-          bg: "bg-red-50",
-          border: "border-red-200",
-          icon: "text-red-600",
-          title: "text-red-900",
-          message: "text-red-700",
-        };
-      case "warning":
-        return {
-          bg: "bg-yellow-50",
-          border: "border-yellow-200",
-          icon: "text-yellow-600",
-          title: "text-yellow-900",
-          message: "text-yellow-700",
-        };
-      default:
-        return {
-          bg: "bg-blue-50",
-          border: "border-blue-200",
-          icon: "text-blue-600",
-          title: "text-blue-900",
-          message: "text-blue-700",
-        };
-    }
+    // Use white background and navy accents for flash modal types
+    return {
+      bg: "bg-white",
+      border: "border-[#0b2140]",
+      icon: "text-[#0b2140]",
+      title: "text-[#0b2140]",
+      message: "text-[#3b5166]",
+    };
   };
 
   const colors = getColors();
@@ -129,7 +103,7 @@ export default function FlashModal({
               </div>
               <button
                 onClick={onClose}
-                className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
+                className="flex-shrink-0 text-[#0b2140] hover:text-[#061627] transition-colors"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
