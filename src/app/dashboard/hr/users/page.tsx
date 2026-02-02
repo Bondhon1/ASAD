@@ -294,14 +294,27 @@ export default function UsersManagementPage() {
   if (status === "unauthenticated") return null;
   if (authError) return null;
 
+  // Helper to safely get rank name from rank (handles both string and object)
+  const getRankName = (rank: any): string => {
+    if (!rank) return '—';
+    if (typeof rank === 'string') return rank;
+    if (typeof rank === 'object' && rank.name) return rank.name;
+    // If it's an object without a name (likely just an ID), try to find it in ranksList
+    if (typeof rank === 'object' && rank.id) {
+      const found = ranksList.find(r => r.id === rank.id);
+      return found?.name ?? rank.id;
+    }
+    return String(rank);
+  };
+
   // API returns users already filtered by status=UNOFFICIAL & isOfficial=true
   // Apply client-side final payment verifiedAt date-range filter when OFFICIAL is selected
   const selectedRankName = rankFilter ? (ranksList.find(r => r.id === rankFilter)?.name ?? rankFilter) : '';
   const filtered = users.filter(u => {
     // Apply client-side rank filter (only used as fallback when API doesn't filter)
     if (rankFilter) {
-      const urank = (u.volunteerProfile?.rank || '').toString();
-      if (!urank || (selectedRankName && urank.toLowerCase() !== selectedRankName.toLowerCase())) return false;
+      const urank = getRankName(u.volunteerProfile?.rank);
+      if (!urank || urank === '—' || (selectedRankName && urank.toLowerCase() !== selectedRankName.toLowerCase())) return false;
     }
     if (statusFilter === 'OFFICIAL' && (finalFrom || finalTo)) {
       const v = (u as any).finalPayment?.verifiedAt;
@@ -394,7 +407,7 @@ export default function UsersManagementPage() {
                   (() => {
                     const rankCounts: Record<string, number> = {};
                     filtered.forEach(u => {
-                      const r = (u.volunteerProfile?.rank || '—') as string;
+                      const r = getRankName(u.volunteerProfile?.rank);
                       rankCounts[r] = (rankCounts[r] || 0) + 1;
                     });
                     const entries = Object.entries(rankCounts).sort((a, b) => b[1] - a[1]).slice(0,4);
@@ -581,13 +594,13 @@ export default function UsersManagementPage() {
                                   <div className="flex items-center gap-2">
                                     <div className="font-semibold text-gray-900 truncate">{u.fullName || u.username || u.email}</div>
                                     {/* Mobile: rank next to name; hidden on sm+ */}
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-xs font-medium text-gray-800 sm:hidden">{u.volunteerProfile?.rank ?? '—'}</span>
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-xs font-medium text-gray-800 sm:hidden">{getRankName(u.volunteerProfile?.rank)}</span>
                                   </div>
                                   <div className="text-xs text-gray-500 truncate">{u.email} · ID: {u.volunteerId || '—'}</div>
                                 </div>
                               </div>
                               <div className="hidden sm:flex items-center sm:justify-end">
-                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-gray-100 text-xs font-medium text-gray-800">{u.volunteerProfile?.rank ?? '—'}</span>
+                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-gray-100 text-xs font-medium text-gray-800">{getRankName(u.volunteerProfile?.rank)}</span>
                               </div>
                             </div>
                           </button>
@@ -655,7 +668,7 @@ export default function UsersManagementPage() {
                                     </span>
                                   </div>
                                   <div className="text-xs text-gray-500">Points: {u.volunteerProfile?.points ?? 0}</div>
-                                  <div className="text-xs text-gray-500">Rank: {u.volunteerProfile?.rank ?? '—'}</div>
+                                  <div className="text-xs text-gray-500">Rank: {getRankName(u.volunteerProfile?.rank)}</div>
 
                                   {/* Service / Sectors / Clubs as tag-like buttons */}
                                   <div className="mt-2 flex flex-wrap gap-2">
@@ -685,7 +698,7 @@ export default function UsersManagementPage() {
                                 <div className="space-y-3">
                                   { (u.status === 'OFFICIAL' || u.volunteerProfile?.isOfficial) && (displayRole === 'HR' || displayRole === 'MASTER' || displayRole === 'ADMIN') && (
                                     <div className="flex flex-col sm:flex-row gap-2">
-                                      <button onClick={() => { setShowRankForm(s => !s); setRankInput(ranksList.find(r => r.name === (u.volunteerProfile?.rank || ''))?.id ?? ''); setSelected(u); }} className="w-full sm:w-auto px-2 py-1.5 text-xs md:px-3 bg-[#0b2545] text-white rounded">Set Rank</button>
+                                      <button onClick={() => { setShowRankForm(s => !s); const currentRankName = typeof u.volunteerProfile?.rank === 'string' ? u.volunteerProfile.rank : (u.volunteerProfile?.rank as any)?.name || ''; setRankInput(ranksList.find(r => r.name === currentRankName)?.id ?? ''); setSelected(u); }} className="w-full sm:w-auto px-2 py-1.5 text-xs md:px-3 bg-[#0b2545] text-white rounded">Set Rank</button>
                                       <button onClick={() => { setShowPointsForm(s => !s); setPointsInput(u.volunteerProfile?.points ?? 0); setSelected(u); }} className="w-full sm:w-auto px-2 py-1.5 text-xs md:px-3 bg-gray-100 text-gray-800 rounded">Set Points</button>
                                     </div>
                                   )}
@@ -730,7 +743,10 @@ export default function UsersManagementPage() {
                                           if (!selected) return;
                                           setSaving(true);
                                           try {
-                                            const res = await fetch(`/api/hr/users/${selected.id}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ rank: rankInput || undefined }) });
+                                            // Find the rank name from the selected rank ID
+                                            const selectedRank = ranksList.find(r => r.id === rankInput);
+                                            const rankNameToSend = selectedRank?.name || undefined;
+                                            const res = await fetch(`/api/hr/users/${selected.id}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ rank: rankNameToSend }) });
                                             const data = await res.json();
                                             if (!res.ok) throw new Error(data?.error || 'Failed');
                                             const rankName = data.profile.rank ? data.profile.rank.name ?? data.profile.rank : data.profile.rank;

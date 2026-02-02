@@ -144,7 +144,7 @@ async function fetchUsersData(
         volunteerId: true,
         createdAt: true,
         institute: { select: { name: true } },
-            volunteerProfile: { select: { points: true, isOfficial: true, rank: true, service: { select: { id: true, name: true } }, sectors: true, clubs: true } },
+            volunteerProfile: { select: { points: true, isOfficial: true, rank: { select: { id: true, name: true } }, service: { select: { id: true, name: true } }, sectors: true, clubs: true } },
             initialPayment: { select: { status: true, verifiedAt: true, approvedBy: { select: { id: true, fullName: true, email: true } } } },
             finalPayment: { select: { status: true, verifiedAt: true, approvedBy: { select: { id: true, fullName: true, email: true } } } },
             interviewApprovedBy: { select: { id: true, fullName: true, email: true } },
