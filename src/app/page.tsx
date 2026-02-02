@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { getSession } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -81,31 +81,7 @@ export default function NavyTheme() {
   const noticesAnim = useInView(0.1);
   const joinAnim = useInView(0.1);
 
-  // Redirect to dashboard if session exists (localStorage or server)
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem('asad_session');
-      if (raw) {
-        const p = JSON.parse(raw);
-        if (p?.expiresAt && Date.now() < p.expiresAt) {
-          router.replace('/dashboard');
-          return;
-        }
-      }
-    } catch (e) {
-      // ignore
-    }
-
-    // fallback: check NextAuth session on server
-    (async () => {
-      try {
-        const s = await getSession();
-        if (s) router.replace('/dashboard');
-      } catch (e) {
-        // ignore
-      }
-    })();
-  }, [router]);
+  const { data: session, status } = useSession();
 
   return (
     <div className="min-h-screen bg-white" style={{ fontFamily: 'var(--font-dm-sans), system-ui, sans-serif' }}>
@@ -128,7 +104,14 @@ export default function NavyTheme() {
               ].map((item) => (
                 <Link key={item.label} href={item.href} className="text-sm font-semibold text-gray-600 hover:text-[#1E3A5F] transition-colors duration-300">{item.label}</Link>
               ))}
-              <Link href="/auth" className="rounded-lg bg-[#1E3A5F] px-7 py-3 text-sm font-semibold text-white hover:bg-[#2a4d75] transition-all duration-300">Join Now</Link>
+              {status === 'authenticated' ? (
+                <div className="flex items-center gap-3">
+                  <Link href="/dashboard" className="rounded-lg bg-white px-5 py-2 text-sm font-semibold text-[#1E3A5F] shadow-xl transition-all duration-300 hover:shadow-2xl">View Dashboard</Link>
+                  <button onClick={() => signOut({ callbackUrl: '/' })} className="rounded-lg bg-[#f8fafc] px-4 py-2 text-sm font-semibold text-[#0b2140] border border-[#0b2140]">Logout</button>
+                </div>
+              ) : (
+                <Link href="/auth" className="rounded-lg bg-[#1E3A5F] px-7 py-3 text-sm font-semibold text-white hover:bg-[#2a4d75] transition-all duration-300">Join Now</Link>
+              )}
             </div>
             {/* Mobile burger button */}
             <button
@@ -153,7 +136,14 @@ export default function NavyTheme() {
             ].map((item) => (
               <Link key={item.label} href={item.href} onClick={() => setMobileMenuOpen(false)} className="text-base font-semibold text-gray-600 hover:text-[#1E3A5F] transition-colors duration-300">{item.label}</Link>
             ))}
-            <Link href="/auth" onClick={() => setMobileMenuOpen(false)} className="rounded-lg bg-[#1E3A5F] px-7 py-3 text-center text-sm font-semibold text-white transition-all duration-300">Join Now</Link>
+            {status === 'authenticated' ? (
+              <div className="flex gap-2">
+                <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-[#1E3A5F]">View Dashboard</Link>
+                <button onClick={() => { setMobileMenuOpen(false); signOut({ callbackUrl: '/' }); }} className="rounded-lg bg-[#f8fafc] px-4 py-2 text-sm font-semibold text-[#0b2140] border border-[#0b2140]">Logout</button>
+              </div>
+            ) : (
+              <Link href="/auth" onClick={() => setMobileMenuOpen(false)} className="rounded-lg bg-[#1E3A5F] px-7 py-3 text-center text-sm font-semibold text-white transition-all duration-300">Join Now</Link>
+            )}
           </div>
         </div>
       </nav>

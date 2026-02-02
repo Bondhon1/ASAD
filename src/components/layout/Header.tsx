@@ -3,9 +3,11 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
+import { useSession, signOut } from 'next-auth/react';
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { data: session, status } = useSession();
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-md transition-all duration-300">
@@ -27,7 +29,14 @@ export function Header() {
             ].map((item) => (
               <Link key={item.label} href={item.href} className="text-sm font-semibold text-gray-600 hover:text-[#1E3A5F] transition-colors duration-300">{item.label}</Link>
             ))}
-            <Link href="/auth" className="rounded-lg bg-[#1E3A5F] px-7 py-3 text-sm font-semibold text-white hover:bg-[#2a4d75] transition-all duration-300">Join Now</Link>
+            {status === 'authenticated' ? (
+              <div className="flex items-center gap-3">
+                <Link href="/dashboard" className="rounded-lg bg-white px-5 py-2 text-sm font-semibold text-[#1E3A5F] shadow-xl transition-all duration-300 hover:shadow-2xl">View Dashboard</Link>
+                <button onClick={() => signOut({ callbackUrl: '/' })} className="rounded-lg bg-[#f8fafc] px-4 py-2 text-sm font-semibold text-[#0b2140] border border-[#0b2140]">Logout</button>
+              </div>
+            ) : (
+              <Link href="/auth" className="rounded-lg bg-[#1E3A5F] px-7 py-3 text-sm font-semibold text-white hover:bg-[#2a4d75] transition-all duration-300">Join Now</Link>
+            )}
           </div>
 
           <button
@@ -52,7 +61,14 @@ export function Header() {
           ].map((item) => (
             <Link key={item.label} href={item.href} onClick={() => setMobileMenuOpen(false)} className="text-base font-semibold text-gray-600 hover:text-[#1E3A5F] transition-colors duration-300">{item.label}</Link>
           ))}
-          <Link href="/auth" onClick={() => setMobileMenuOpen(false)} className="rounded-lg bg-[#1E3A5F] px-7 py-3 text-center text-sm font-semibold text-white transition-all duration-300">Join Now</Link>
+          {status === 'authenticated' ? (
+            <div className="flex gap-2">
+              <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-[#1E3A5F]">View Dashboard</Link>
+              <button onClick={() => { setMobileMenuOpen(false); signOut({ callbackUrl: '/' }); }} className="rounded-lg bg-[#f8fafc] px-4 py-2 text-sm font-semibold text-[#0b2140] border border-[#0b2140]">Logout</button>
+            </div>
+          ) : (
+            <Link href="/auth" onClick={() => setMobileMenuOpen(false)} className="rounded-lg bg-[#1E3A5F] px-7 py-3 text-center text-sm font-semibold text-white transition-all duration-300">Join Now</Link>
+          )}
         </div>
       </div>
     </nav>
