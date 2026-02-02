@@ -142,6 +142,42 @@ export default function NewRequestsPage() {
     }
   };
 
+  const handleApprove = async (applicationId: string) => {
+    if (!hasAvailableSlots) {
+      await alert("No interview slots available. Create slots first.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/hr/applications/${applicationId}/approve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data?.error || "Approve failed");
+
+      await alert("Application approved.");
+      setApplications((prev) => prev.filter((app) => app.id !== applicationId));
+      if (selectedApp?.id === applicationId) setSelectedApp(null);
+
+      // Refresh applications and slot availability
+      fetchApplications();
+      try {
+        const slotsResponse = await fetch("/api/hr/interview-slots/available");
+        const slotsData = await slotsResponse.json();
+        setHasAvailableSlots(!!slotsData.hasAvailableSlots);
+      } catch (e) {
+        // ignore slot refresh errors
+      }
+    } catch (error: any) {
+      console.error("Error approving application:", error);
+      await alert("Approve failed: " + (error?.message || "Unknown"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   if (status === "unauthenticated") return null;
 
