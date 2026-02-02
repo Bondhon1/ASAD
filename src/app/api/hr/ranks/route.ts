@@ -55,7 +55,7 @@ export async function GET() {
       { name: 'Aspiring Volunteer' },
       { name: 'Ready to Serve (RS)' },
       { name: 'Mentor' },
-      { name: 'Dedicated Volunteer', children: ['Dedicated Volunteer*', 'Dedicated Volunteer**'] },
+      { name: 'Dedicated Volunteer', children: ['Dedicated Volunteer *', 'Dedicated Volunteer **'] },
       { name: 'Ability to Lead (AL)', children: ['Ability to Lead (AL) *', 'Ability to Lead (AL) **', 'Ability to Lead (AL) ***'] },
       { name: 'Deputy Commander (DC)', children: ['Deputy Commander (DC) *', 'Deputy Commander (DC) **'] },
       { name: 'Commander', children: ['Commander *', 'Commander **', 'Commander ***'] },

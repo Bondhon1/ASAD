@@ -162,11 +162,13 @@ export default function DatabaseDeptPage() {
           <h1 className="text-3xl font-bold text-slate-800">Database Administration</h1>
           <p className="text-slate-500">Manage user points, ranks, and thresholds.</p>
 
-          <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:gap-4">
+          <div className="mt-4 relative inline-block group">
             <Link href="/dashboard/database/manual-points" className="inline-flex items-center gap-3 px-4 py-2 bg-[#07223f] text-white rounded-lg shadow-sm hover:opacity-95">
               Manual Point Upgrade
             </Link>
-            <p className="text-sm text-slate-500 mt-3 sm:mt-0">Quickly add or deduct points for multiple volunteers via CSV of IDs.</p>
+            <div className="absolute left-0 top-full mt-2 w-64 px-4 py-2 bg-slate-800 text-white text-sm rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
+              Quickly add or deduct points for multiple volunteers via CSV of IDs.
+            </div>
           </div>
         </div>
 
