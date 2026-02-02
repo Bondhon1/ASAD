@@ -148,7 +148,10 @@ function InterviewSlotsContent() {
     try {
       const response = await fetch("/api/hr/interview-slots");
       const data = await response.json();
-      setSlots(data.slots || []);
+      // sort slots by startTime descending (newest first)
+      const slotsData = (data.slots || []).slice();
+      slotsData.sort((a: InterviewSlot, b: InterviewSlot) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+      setSlots(slotsData);
     } catch (error) {
       console.error("Error fetching slots:", error);
     }
@@ -368,9 +371,11 @@ function InterviewSlotsContent() {
                       <Calendar className="w-5 h-5 text-[#1E3A5F]" />
                       <h3 className="font-semibold text-gray-900">{new Date(slot.startTime).toLocaleDateString()}</h3>
                     </div>
+                    {/* Delete disabled for safety
                     <button onClick={() => handleDeleteSlot(slot.id)} className="text-red-600 hover:text-red-700" title="Delete slot">
                       <Trash2 className="w-4 h-4" />
                     </button>
+                    */}
                   </div>
                   <div className="space-y-2 text-sm text-gray-700">
                     <div className="flex items-center gap-2">
