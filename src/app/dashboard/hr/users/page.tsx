@@ -505,19 +505,21 @@ export default function UsersManagementPage() {
                       </select>
                     </div>
 
-                    <div className="space-y-1.5">
-                      <label className="block text-sm font-medium text-gray-700">Rank</label>
-                      <select
-                        value={rankFilter}
-                        onChange={(e) => { setRankFilter(e.target.value); setPage(1); }}
-                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm bg-white"
-                      >
-                        <option value="">All Ranks</option>
-                        {ranksList.map(r => (
-                          <option key={r.id} value={r.id}>{r.name}</option>
-                        ))}
-                      </select>
-                    </div>
+                    {statusFilter !== 'UNOFFICIAL' && (
+                      <div className="space-y-1.5">
+                        <label className="block text-sm font-medium text-gray-700">Rank</label>
+                        <select
+                          value={rankFilter}
+                          onChange={(e) => { setRankFilter(e.target.value); setPage(1); }}
+                          className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm bg-white"
+                        >
+                          <option value="">All Ranks</option>
+                          {ranksList.map(r => (
+                            <option key={r.id} value={r.id}>{r.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                   </div>
 
                   {/* Date Range Filter (when OFFICIAL selected) */}
@@ -1024,19 +1026,21 @@ export default function UsersManagementPage() {
                       </select>
                     </div>
 
-                    <div className="space-y-1.5">
-                      <label className="block text-sm font-medium text-gray-700">Rank</label>
-                      <select
-                        value={rankFilter}
-                        onChange={(e) => { setRankFilter(e.target.value); setPage(1); }}
-                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm bg-white"
-                      >
-                        <option value="">All Ranks</option>
-                        {ranksList.map(r => (
-                          <option key={r.id} value={r.id}>{r.name}</option>
-                        ))}
-                      </select>
-                    </div>
+                    {statusFilter !== 'UNOFFICIAL' && (
+                      <div className="space-y-1.5">
+                        <label className="block text-sm font-medium text-gray-700">Rank</label>
+                        <select
+                          value={rankFilter}
+                          onChange={(e) => { setRankFilter(e.target.value); setPage(1); }}
+                          className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm bg-white"
+                        >
+                          <option value="">All Ranks</option>
+                          {ranksList.map(r => (
+                            <option key={r.id} value={r.id}>{r.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                   </div>
 
                   {/* Date Range Filter (when OFFICIAL selected) */}

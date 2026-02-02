@@ -86,7 +86,8 @@ async function fetchUsersData(
 
   // Filter by rank (accepts rank id or rank name). If a parent rank is provided,
   // expand it to its immediate child ranks so users of child ranks are returned.
-  if (rankParam) {
+  // Do NOT apply rank filtering when status=UNOFFICIAL (unofficial users won't have ranks).
+  if (rankParam && statusParam !== 'UNOFFICIAL') {
     const volFilter: any = { ...(where.volunteerProfile || {}) };
     try {
       const rankById = await prisma.rank.findUnique({ where: { id: rankParam }, include: { subRanks: true } });

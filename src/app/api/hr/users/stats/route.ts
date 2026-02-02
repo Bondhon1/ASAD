@@ -53,7 +53,7 @@ export async function GET(req: Request) {
       // treat it as a parent: target its child ranks (show children in stats). Otherwise target the rank(s) directly.
       let targetRankIds: string[] | null = null; // null => include all ranks
       let targetRankRecords: Array<{ id: string; name: string }> = [];
-      if (rankParam) {
+      if (rankParam && statusParam !== 'UNOFFICIAL') {
         // try treat rankParam as id first
         const rankById = await prisma.rank.findUnique({ where: { id: rankParam }, include: { subRanks: true } });
         if (rankById) {
