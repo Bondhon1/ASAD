@@ -661,6 +661,37 @@ export default function TasksPage() {
             </div>
           )}
 
+          {/* My Submissions */}
+          {((user as any)?.taskSubmissions || []).filter((s: any) => (s?.submissionData || '') !== '__DEADLINE_MISSED_DEDUCTION__').length > 0 && (
+            <div className="mt-12">
+              <div className="flex items-center justify-between mb-6 px-1">
+                <h3 className="text-2xl font-bold text-slate-800">My Submissions</h3>
+                <span className="bg-indigo-100 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">{((user as any)?.taskSubmissions || []).filter((s: any) => (s?.submissionData || '') !== '__DEADLINE_MISSED_DEDUCTION__').length} Submitted</span>
+              </div>
+              <div className="grid grid-cols-1 gap-4">
+                {((user as any)?.taskSubmissions || []).filter((s: any) => (s?.submissionData || '') !== '__DEADLINE_MISSED_DEDUCTION__').map((s: any) => (
+                  <div key={s.id} className="bg-white border border-slate-100 rounded-2xl p-6 hover:border-indigo-200 transition-colors shadow-sm flex items-center justify-between">
+                    <div>
+                      <div className="text-lg font-bold text-slate-800">{s.task?.title || 'Task'}</div>
+                      <div className="text-sm text-slate-500 truncate max-w-xl">{s.task?.description}</div>
+                      <div className="text-xs text-slate-400 mt-2">Submitted: {formatDhakaDate(s.submittedAt)}</div>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <div className={`px-4 py-2 rounded-xl font-semibold ${
+                        s.status === 'APPROVED' ? 'bg-green-100 text-green-700 border border-green-200' :
+                        s.status === 'REJECTED' ? 'bg-red-100 text-red-700 border border-red-200' :
+                        'bg-white text-[#0b2140] border border-[#0b2140]'
+                      }`}>
+                        {s.status === 'APPROVED' ? '✓ Completed' : s.status === 'REJECTED' ? '✗ Rejected' : '⏳ Pending Review'}
+                      </div>
+                      <button onClick={() => openViewSubmission(s)} className="px-4 py-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition">View Submission</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* My Created Tasks (admin only) */}
               {(canCreate) && (
                 <div className="mt-16">

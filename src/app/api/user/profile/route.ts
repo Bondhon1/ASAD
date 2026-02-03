@@ -43,6 +43,8 @@ export async function GET(request: NextRequest) {
           orderBy: { startDate: 'desc' },
         },
         taskSubmissions: {
+          // Exclude auto-created deduction records (created by /api/tasks/process-expired)
+          where: { NOT: { submissionData: '__DEADLINE_MISSED_DEDUCTION__' } },
           include: { task: true },
           orderBy: { submittedAt: 'desc' },
           take: 20,
