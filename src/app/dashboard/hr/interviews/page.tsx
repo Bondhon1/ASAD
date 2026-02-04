@@ -134,10 +134,10 @@ function InterviewSlotsContent() {
         await fetchCalendarStatus();
         await fetchSlots();
         router.replace("/dashboard/hr/interviews");
-        toast("Google Calendar connected successfully", "success");
+        toast("Google Calendar connected successfully", { type: "success" });
       } catch (error) {
         console.error("Error exchanging calendar code:", error);
-        toast("Failed to connect Google Calendar. Please try again.", "error");
+        toast("Failed to connect Google Calendar. Please try again.", { type: "error" });
       }
     };
 
@@ -187,7 +187,7 @@ function InterviewSlotsContent() {
     e.preventDefault();
 
     if (!formData.startDate || !formData.startTime || !formData.endTime) {
-      toast("Please fill in all date and time fields", "error");
+      toast("Please fill in all date and time fields", { type: "error" });
       return;
     }
 
@@ -230,17 +230,17 @@ function InterviewSlotsContent() {
         }
         
         // Handle any other errors - use toast for general errors
-        toast(error.error || "Failed to create slot", "error");
+        toast(error.error || "Failed to create slot", { type: "error" });
         return;
       }
 
       await fetchSlots();
       setShowCreateModal(false);
       setFormData({ startDate: "", startTime: "", endTime: "", capacity: 20, meetLink: "", autoCreateMeet: true });
-      toast("Interview slot created successfully", "success");
+      toast("Interview slot created successfully", { type: "success" });
     } catch (error) {
       console.error("Error creating slot:", error);
-      toast("Failed to create slot. Please try again.", "error");
+      toast("Failed to create slot. Please try again.", { type: "error" });
     }
   };
 
@@ -301,18 +301,18 @@ function InterviewSlotsContent() {
       const response = await fetch("/api/hr/connect-calendar");
       if (!response.ok) {
         console.error("Connect calendar failed:", await response.text());
-        toast("Failed to start Google Calendar connection", "error");
+        toast("Failed to start Google Calendar connection", { type: "error" });
         return;
       }
       const data = await response.json();
       if (data?.authUrl) {
         window.location.href = data.authUrl;
       } else {
-        toast("No authorization URL returned. Please try again.", "error");
+        toast("No authorization URL returned. Please try again.", { type: "error" });
       }
     } catch (error) {
       console.error("Error starting calendar connection:", error);
-      toast("Failed to start Google Calendar connection", "error");
+      toast("Failed to start Google Calendar connection", { type: "error" });
     }
   };
 
@@ -321,14 +321,14 @@ function InterviewSlotsContent() {
       const response = await fetch("/api/hr/connect-calendar", { method: "DELETE" });
       if (!response.ok) {
         console.error("Disconnect calendar failed:", await response.text());
-        toast("Failed to disconnect calendar", "error");
+        toast("Failed to disconnect calendar", { type: "error" });
         return;
       }
       fetchCalendarStatus();
-      toast("Google Calendar disconnected successfully", "success");
+      toast("Google Calendar disconnected successfully", { type: "success" });
     } catch (error) {
       console.error("Error disconnecting calendar:", error);
-      toast("Failed to disconnect calendar", "error");
+      toast("Failed to disconnect calendar", { type: "error" });
     }
   };
 
