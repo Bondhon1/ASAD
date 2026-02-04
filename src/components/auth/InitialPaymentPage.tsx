@@ -400,94 +400,91 @@ export default function InitialPaymentPage() {
                       ref={instituteInputRef}
                       type="text"
                       value={instituteName}
-                      readOnly
-                      onClick={() => setShowSuggestions(true)}
-                      onFocus={() => setShowSuggestions(true)}
-                      onBlur={() => {
-                        setTimeout(() => setShowSuggestions(false), 150);
+                      onChange={(e) => {
+                        setInstituteName(e.target.value);
+                        setInstituteSearchQuery(e.target.value);
+                        setShowSuggestions(true);
+                        
+                        if (e.target.value.length >= 2) {
+                          fetch(`/api/institutes/suggestions?q=${encodeURIComponent(e.target.value)}`)
+                            .then(res => res.json())
+                            .then(data => setSuggestions(data.suggestions || []))
+                            .catch(() => setSuggestions([]));
+                        } else {
+                          setSuggestions([]);
+                        }
                       }}
-                      placeholder="Click to select your school/institute"
-                      className="w-full pr-10 px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/50 focus:border-[#1E3A5F] transition-all cursor-pointer"
+                      onFocus={() => {
+                        setShowSuggestions(true);
+                        if (instituteName.length >= 2) {
+                          fetch(`/api/institutes/suggestions?q=${encodeURIComponent(instituteName)}`)
+                            .then(res => res.json())
+                            .then(data => setSuggestions(data.suggestions || []))
+                            .catch(() => setSuggestions([]));
+                        }
+                      }}
+                      placeholder="Type to search your school/institute"
+                      className="w-full pr-10 px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/50 focus:border-[#1E3A5F] transition-all"
                       required
                     />
 
                     {instituteName && (
                       <button
                         type="button"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setInstituteName("");
+                          setInstituteSearchQuery("");
                           setSuggestions([]);
                           setShowSuggestions(false);
+                          instituteInputRef.current?.focus();
                         }}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 p-2"
                         aria-label="Clear institute"
                       >
                         ✕
                       </button>
                     )}
 
-                    {showSuggestions && (
-                      <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg">
-                        <div className="p-2 border-b border-gray-200">
-                          <input
-                            type="text"
-                            value={instituteSearchQuery}
-                            onChange={async (e) => {
-                              const v = e.target.value;
-                              setInstituteSearchQuery(v);
-                              if (!v) {
-                                setSuggestions([]);
-                                return;
-                              }
-                              try {
-                                const res = await fetch(`/api/institutes/suggestions?q=${encodeURIComponent(v)}`);
-                                const data = await res.json();
-                                setSuggestions(data.suggestions || []);
-                              } catch (err) {
-                                setSuggestions([]);
-                              }
-                            }}
-                            placeholder="Type to search..."
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/50"
-                            autoFocus
-                          />
-                        </div>
-                        <div className="max-h-48 overflow-y-auto">
-                        {suggestions.length > 0 ? (
-                          suggestions.slice(0, 10).map((s) => (
-                          <button
-                            type="button"
-                            key={s.value}
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              setInstituteName(s.value);
-                              setShowSuggestions(false);
-                              setInstituteSearchQuery("");
-                            }}
-                            className="w-full text-left px-4 py-2 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
-                          >
-                            <div className="font-medium text-sm text-gray-900">{s.value}</div>
-                            <div className="text-xs text-gray-500 mt-1">
-                              {s.eiin ? `EIIN: ${s.eiin}` : ''}{s.eiin && s.institutionType ? ' • ' : ''}{s.institutionType ? s.institutionType : ''}
+                    {showSuggestions && (suggestions.length > 0 || instituteSearchQuery.length >= 2) && (
+                      <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60 overflow-hidden flex flex-col">
+                        <div className="overflow-y-auto">
+                          {suggestions.length > 0 ? (
+                            suggestions.slice(0, 20).map((s) => (
+                              <button
+                                type="button"
+                                key={s.value}
+                                onPointerDown={(e) => {
+                                  e.preventDefault();
+                                  setInstituteName(s.value);
+                                  setInstituteSearchQuery(s.value);
+                                  setShowSuggestions(false);
+                                }}
+                                className="w-full text-left px-4 py-3 hover:bg-gray-50 active:bg-gray-100 border-b border-gray-100 last:border-b-0"
+                              >
+                                <div className="font-medium text-sm text-gray-900">{s.value}</div>
+                                <div className="text-xs text-gray-500 mt-1">
+                                  {s.eiin ? `EIIN: ${s.eiin}` : ''}{s.eiin && s.institutionType ? ' • ' : ''}{s.institutionType ? s.institutionType : ''}
+                                </div>
+                              </button>
+                            ))
+                          ) : (
+                            <div className="px-4 py-3 text-sm text-gray-500 text-center">
+                              {instituteSearchQuery.length >= 2 ? 'No results found. Try a different search or add manually.' : 'Type at least 2 characters to search'}
                             </div>
-                          </button>
-                          ))
-                        ) : (
-                          <div className="px-4 py-3 text-sm text-gray-500 text-center">
-                            {instituteSearchQuery ? 'No results found' : 'Type to search for your institute'}
-                          </div>
-                        )}
+                          )}
                         </div>
+                        
                         <button
                           type="button"
-                          onMouseDown={(e) => {
+                          onPointerDown={(e) => {
                             e.preventDefault();
                             setShowOtherInstitute(true);
                             setInstituteName("");
-                            setShowSuggestions(false);
                             setInstituteSearchQuery("");
+                            setShowSuggestions(false);
                           }}
-                          className="w-full text-left px-4 py-3 hover:bg-blue-50 bg-blue-50 border-t-2 border-blue-200 text-blue-700 font-medium"
+                          className="w-full text-left px-4 py-3 hover:bg-blue-50 active:bg-blue-100 bg-blue-50 border-t-2 border-blue-200 text-blue-700 font-medium"
                         >
                           ➕ My institute is not listed - Enter manually
                         </button>
@@ -519,7 +516,7 @@ export default function InitialPaymentPage() {
                 
                 <p className="text-xs text-muted mt-1">
                   {!showOtherInstitute 
-                    ? "Search and select from the list. If not found, click the button to enter manually."
+                    ? "Type at least 2 characters to search. If not found, you can enter manually."
                     : "Enter your institute name manually since it's not in our database."
                   }
                 </p>
