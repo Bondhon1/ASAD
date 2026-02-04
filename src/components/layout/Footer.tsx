@@ -33,12 +33,12 @@ export function Footer() {
             <div className="mt-6 space-y-3 text-white/60">
               <p>Facebook: Amar Somoy Amar Desh</p>
               <p>Email: amarsomoyamardesh.it@gmail.com</p>
-              <div className="mt-4 flex gap-3">
+              <div className="mt-4 flex flex-wrap gap-2">
                 {socials.map((s) => (
                   <Link
                     key={s.label}
                     href={s.href}
-                    className="rounded-full border border-white/20 px-4 py-2 text-xs uppercase tracking-[0.2em] text-white/80 hover:border-white hover:text-white"
+                    className="rounded-full border border-white/20 px-3 py-1.5 text-[11px] sm:px-4 sm:py-2 sm:text-xs uppercase tracking-[0.15em] text-white/80 hover:border-white hover:text-white"
                   >
                     {s.label}
                   </Link>
