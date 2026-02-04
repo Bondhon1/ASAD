@@ -462,10 +462,17 @@ model InitialPayment {
   verifiedAt            DateTime?
   approvedById          String?
   approvedBy            User?            @relation("InitialPaymentApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  caReference           CAReference?     @relation(fields: [caReferenceId], references: [id], onDelete: SetNull)
+  caReferenceId         String?
+  // Referrer can be a Campus Ambassador (via caReferenceId) or an official Volunteer
+  referrerType          String?          // 'CA' | 'VOLUNTEER'
+  referrerUserId        String?
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
   
   @@index([status])
+  @@index([caReferenceId])
+  @@index([referrerUserId])
 }
 
 model FinalPayment {
@@ -779,4 +786,21 @@ model AuditLog {
   
   @@index([actorUserId])
   @@index([createdAt])
+}
+
+// ============================================================================
+// CAMPUS AMBASSADOR REFERENCES
+// ============================================================================
+
+model CAReference {
+  id                    String           @id @default(cuid())
+  groupName             String
+  caCode                String           @unique
+  teamLeader            String
+  initialPayments       InitialPayment[]
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  
+  @@index([caCode])
+  @@index([teamLeader])
 }

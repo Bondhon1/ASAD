@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { CheckCircle, XCircle, Calendar, Eye, AlertTriangle } from "lucide-react";
+import { CheckCircle, XCircle, Calendar, Eye, AlertTriangle, BarChart3 } from "lucide-react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { useCachedUserProfile } from "@/hooks/useCachedUserProfile";
 import { useModal } from '@/components/ui/ModalProvider';
@@ -25,6 +25,21 @@ interface Application {
   appliedAt: string;
 }
 
+interface CAStats {
+  id: string;
+  groupName: string;
+  caCode: string;
+  teamLeader: string;
+  usageCount: number;
+  users: Array<{
+    id: string;
+    fullName: string | null;
+    email: string;
+    volunteerId: string | null;
+    createdAt: string;
+  }>;
+}
+
 export default function NewRequestsPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
@@ -34,6 +49,18 @@ export default function NewRequestsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
   const [hasAvailableSlots, setHasAvailableSlots] = useState(true);
+  const [showCAStats, setShowCAStats] = useState(false);
+  const [caStats, setCAStats] = useState<CAStats[]>([]);
+  const [caStatsLoading, setCAStatsLoading] = useState(false);
+  const [caPage, setCAPage] = useState(1);
+  const [caPageSize, setCAPageSize] = useState(20);
+  const [caTotal, setCATotal] = useState(0);
+  const [volunteerStats, setVolunteerStats] = useState<Array<{ id: string; fullName: string; email: string; volunteerId: string | null; usageCount: number }>>([]);
+  const [volunteerTotal, setVolunteerTotal] = useState(0);
+  const [volunteerPage, setVolunteerPage] = useState(1);
+  const [volunteerPageSize, setVolunteerPageSize] = useState(20);
+  const [caSearchFilter, setCASearchFilter] = useState("");
+  const [caDateFilter, setCADateFilter] = useState({ startDate: "", endDate: "" });
 
   const isLoading = loading || userCacheLoading || status === "loading";
   const skeletonTable = (
@@ -179,6 +206,44 @@ export default function NewRequestsPage() {
   };
 
 
+  const fetchCAStats = async () => {
+    setCAStatsLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (caSearchFilter) params.set("search", caSearchFilter);
+      if (caDateFilter.startDate) params.set("startDate", caDateFilter.startDate);
+      if (caDateFilter.endDate) params.set("endDate", caDateFilter.endDate);
+      params.set("page", String(caPage));
+      params.set("pageSize", String(caPageSize));
+      params.set("volunteerPage", String(volunteerPage));
+      params.set("volunteerPageSize", String(volunteerPageSize));
+
+      const response = await fetch(`/api/ca-references/stats?${params.toString()}`);
+      const data = await response.json();
+      setCAStats(data.stats || []);
+      setCATotal(data.total || 0);
+      setVolunteerStats(data.volunteerStats || []);
+      setVolunteerTotal(data.volunteerTotal || 0);
+    } catch (error) {
+      console.error("Error fetching CA stats:", error);
+    } finally {
+      setCAStatsLoading(false);
+    }
+  };
+
+  const handleShowCAStats = async () => {
+    setShowCAStats(true);
+    setCAPage(1);
+    fetchCAStats();
+  };
+
+  useEffect(() => {
+    if (!showCAStats) return;
+    fetchCAStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [caPage, caPageSize, volunteerPage, volunteerPageSize]);
+
+
   if (status === "unauthenticated") return null;
 
   return (
@@ -194,6 +259,16 @@ export default function NewRequestsPage() {
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900">New Volunteer Requests</h1>
         <p className="text-gray-600 mt-2">Review and approve payment submissions</p>
+        
+        <div className="flex items-center gap-4 mt-4">
+          <button
+            onClick={handleShowCAStats}
+            className="px-4 py-2 bg-[#0b2140] text-white rounded-lg hover:bg-[#1a3456] transition-colors flex items-center gap-2"
+          >
+            <BarChart3 size={18} />
+            View CA Statistics
+          </button>
+        </div>
         
         {!hasAvailableSlots && (
           <div className="mt-4 p-4 bg-white border border-[#0b2140] rounded-lg flex items-start gap-3">
@@ -353,6 +428,228 @@ export default function NewRequestsPage() {
                 className="px-4 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700"
               >
                 Approve Application
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CA Statistics Modal */}
+      {showCAStats && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-lg max-w-6xl w-full p-6 my-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-gray-900">Campus Ambassador Statistics</h3>
+              <button
+                onClick={() => setShowCAStats(false)}
+                className="text-gray-400 hover:text-gray-600 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Filters */}
+            <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
+                <input
+                  type="text"
+                  value={caSearchFilter}
+                  onChange={(e) => setCASearchFilter(e.target.value)}
+                  placeholder="Search by CA Code, Group, or Leader..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0b2140]"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                <input
+                  type="date"
+                  value={caDateFilter.startDate}
+                  onChange={(e) => setCADateFilter(prev => ({ ...prev, startDate: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0b2140]"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                <input
+                  type="date"
+                  value={caDateFilter.endDate}
+                  onChange={(e) => setCADateFilter(prev => ({ ...prev, endDate: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0b2140]"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 mb-6">
+              <button
+                onClick={() => { setCAPage(1); fetchCAStats(); }}
+                className="px-4 py-2 bg-[#0b2140] text-white rounded-lg hover:bg-[#1a3456] transition-colors"
+              >
+                Apply Filters
+              </button>
+              <button
+                onClick={() => {
+                  setCASearchFilter("");
+                  setCADateFilter({ startDate: "", endDate: "" });
+                  setCAPage(1);
+                  fetchCAStats();
+                }}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                Clear Filters
+              </button>
+            </div>
+
+            {caStatsLoading ? (
+              <div className="text-center py-12">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#0b2140]"></div>
+                <p className="text-gray-600 mt-4">Loading statistics...</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                  <div className="text-sm text-gray-600 mb-4">
+                    Showing {Math.min(caTotal, caPageSize)} of {caTotal} CA references • Total usage (on page): {caStats.reduce((sum, stat) => sum + stat.usageCount, 0)}
+                  </div>
+
+                {caStats.length === 0 ? (
+                  <div className="text-center py-12 text-gray-500">
+                    No CA references found
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full border border-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">CA Code</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Group Name</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Team Leader</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Usage Count</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Users</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {caStats.map((stat) => (
+                          <tr key={stat.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 text-sm font-medium text-gray-900">{stat.caCode}</td>
+                            <td className="px-4 py-3 text-sm text-gray-700">{stat.groupName}</td>
+                            <td className="px-4 py-3 text-sm text-gray-700">{stat.teamLeader}</td>
+                            <td className="px-4 py-3">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                stat.usageCount > 0 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {stat.usageCount}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-700">
+                              {stat.usageCount > 0 ? (
+                                <details className="cursor-pointer">
+                                  <summary className="text-[#0b2140] hover:underline">
+                                    View {stat.usageCount} user{stat.usageCount !== 1 ? 's' : ''}
+                                  </summary>
+                                  <div className="mt-2 pl-4 space-y-2">
+                                    {stat.users.map((user) => (
+                                      <div key={user.id} className="text-xs py-1 border-l-2 border-gray-300 pl-2">
+                                        <div className="font-medium">{user.fullName || 'N/A'}</div>
+                                        <div className="text-gray-500">{user.email}</div>
+                                        {user.volunteerId && (
+                                          <div className="text-gray-500">ID: {user.volunteerId}</div>
+                                        )}
+                                        <div className="text-gray-400 text-xs">
+                                          {new Date(user.createdAt).toLocaleDateString()}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </details>
+                              ) : (
+                                <span className="text-gray-400">No users</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  )}
+                  {/* Volunteer Referrers */}
+                  <div className="mt-6">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-2">Volunteer Referrers</h4>
+                    {volunteerStats.length === 0 ? (
+                      <div className="text-sm text-gray-500">No volunteer referrers found for the selected filters.</div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full border border-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Volunteer ID</th>
+                              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Name</th>
+                              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Email</th>
+                              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Usage Count</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-200">
+                            {volunteerStats.map((v) => (
+                              <tr key={v.id} className="hover:bg-gray-50">
+                                <td className="px-4 py-3 text-sm font-medium text-gray-900">{v.volunteerId || 'N/A'}</td>
+                                <td className="px-4 py-3 text-sm text-gray-700">{v.fullName}</td>
+                                <td className="px-4 py-3 text-sm text-gray-700">{v.email}</td>
+                                <td className="px-4 py-3"><span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">{v.usageCount}</span></td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                    {/* Volunteer pagination */}
+                    {volunteerTotal > volunteerPageSize && (
+                      <div className="mt-4 flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => setVolunteerPage((p) => Math.max(1, p - 1))}
+                          disabled={volunteerPage === 1}
+                          className="px-3 py-1 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+                        >
+                          Prev
+                        </button>
+                        <div className="text-sm text-gray-600">Page {volunteerPage} of {Math.ceil(volunteerTotal / volunteerPageSize)}</div>
+                        <button
+                          onClick={() => setVolunteerPage((p) => (p * volunteerPageSize < volunteerTotal ? p + 1 : p))}
+                          disabled={volunteerPage * volunteerPageSize >= volunteerTotal}
+                          className="px-3 py-1 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                {/* Pagination Controls */}
+                {caTotal > caPageSize && (
+                  <div className="mt-4 flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => setCAPage((p) => Math.max(1, p - 1))}
+                      disabled={caPage === 1}
+                      className="px-3 py-1 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+                    >
+                      Prev
+                    </button>
+                    <div className="text-sm text-gray-600">Page {caPage} of {Math.ceil(caTotal / caPageSize)}</div>
+                    <button
+                      onClick={() => setCAPage((p) => (p * caPageSize < caTotal ? p + 1 : p))}
+                      disabled={caPage * caPageSize >= caTotal}
+                      className="px-3 py-1 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setShowCAStats(false)}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                Close
               </button>
             </div>
           </div>

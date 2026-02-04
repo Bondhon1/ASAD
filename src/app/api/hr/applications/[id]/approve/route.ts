@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { sendInterviewInvitation } from "@/lib/email";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { getServiceIdForInstitute } from "@/lib/serviceAssignment";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,13 @@ export async function POST(
     // Find the application
     const application = await prisma.application.findUnique({
       where: { id: applicationId },
-      include: { user: true },
+      include: { 
+        user: {
+          include: {
+            institute: true
+          }
+        }
+      },
     });
 
     if (!application) {
@@ -38,6 +45,10 @@ export async function POST(
         { status: 404 }
       );
     }
+
+    // Determine if auto-service assignment is needed
+    const instituteName = application.user.institute?.name;
+    const autoServiceId = instituteName ? getServiceIdForInstitute(instituteName) : null;
 
     // Find the first available slot (upcoming, with remaining capacity)
     const now = new Date();
@@ -79,8 +90,23 @@ export async function POST(
       // Update user status to reflect scheduling
       prisma.user.update({
         where: { id: application.userId },
-        data: { status: "INTERVIEW_SCHEDULED" },
+        data: { 
+          status: "INTERVIEW_SCHEDULED"
+        },
       }),
+      // Auto-assign service if applicable
+      ...(autoServiceId ? [
+        prisma.volunteerProfile.upsert({
+          where: { userId: application.userId },
+          create: {
+            userId: application.userId,
+            serviceId: autoServiceId,
+          },
+          update: {
+            serviceId: autoServiceId,
+          },
+        }),
+      ] : []),
       // Increment slot's filled count
       prisma.interviewSlot.update({
         where: { id: availableSlot.id },

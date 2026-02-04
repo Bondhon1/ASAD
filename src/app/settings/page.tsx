@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { divisions, getDistricts, getUpazilas } from '@/lib/bdGeo';
+import { getServiceIdForInstitute } from '@/lib/serviceAssignment';
+import { useModal } from '@/components/ui/ModalProvider';
 
 type ExperienceInput = {
   id?: string;
@@ -35,6 +37,7 @@ export default function SettingsPage() {
   const [birthdate, setBirthdate] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const { toast } = useModal();
   const [accountExpanded, setAccountExpanded] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -44,6 +47,7 @@ export default function SettingsPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [suggestions, setSuggestions] = useState<Array<{ label: string; value: string; eiin?: number | string; institutionType?: string }>>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showOtherInstitute, setShowOtherInstitute] = useState(false);
   const hideTimeoutRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const isLoading = loading || status === "loading";
@@ -131,6 +135,10 @@ export default function SettingsPage() {
       // ensure we send the actual current input value (DOM) in case a recent suggestion
       // selection hasn't fully propagated to React state yet
       const instituteToSend = inputRef.current?.value ?? institute;
+      
+      // Check if institute change requires auto-service assignment
+      const serviceId = getServiceIdForInstitute(instituteToSend);
+      
       const res = await fetch('/api/user/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -145,11 +153,12 @@ export default function SettingsPage() {
             guardianContact,
             birthdate,
           experiences,
+          serviceId, // Include serviceId if institute matches special institutes
         }),
       });
       const json = await res.json();
       if (res.ok) {
-        setMessage('Profile updated');
+        toast('Profile updated', { type: 'success' });
         // if backend returned updated user, sync local fields from it
         if (json.user) {
           setUser(json.user);
@@ -179,10 +188,10 @@ export default function SettingsPage() {
           setUser((prev: any) => ({ ...(prev || {}), fullName, username, institute: { name: instituteToSend }, profilePicUrl }));
         }
       } else {
-        setMessage(json.error || 'Failed to update');
+        toast(json.error || 'Failed to update', { type: 'error' });
       }
     } catch (e) {
-      setMessage('Network error');
+      toast('Network error', { type: 'error' });
     } finally {
       setSaving(false);
     }
@@ -383,43 +392,137 @@ export default function SettingsPage() {
                     </div>
                     <div>
                       <label className="text-xs text-gray-600">Institute</label>
-                      <div className="relative">
-                        <input ref={inputRef} value={institute} onChange={async (e) => {
-                          const v = e.target.value;
-                          setInstitute(v);
-                          if (!v) { setSuggestions([]); setShowSuggestions(false); return; }
-                          try {
-                            const res = await fetch(`/api/institutes/suggestions?q=${encodeURIComponent(v)}`);
-                            const data = await res.json();
-                            setSuggestions(data.suggestions || []);
-                            setShowSuggestions(true);
-                          } catch (err) {
-                            setSuggestions([]);
-                            setShowSuggestions(false);
-                          }
-                        }} onFocus={async (e) => {
-                          // clear pending hide timeout when focusing
-                          if (hideTimeoutRef.current) { window.clearTimeout(hideTimeoutRef.current); hideTimeoutRef.current = null; }
-                          const v = e.currentTarget.value || '';
-                          try {
-                            const res = await fetch(`/api/institutes/suggestions?q=${encodeURIComponent(v)}`);
-                            const data = await res.json();
-                            setSuggestions(data.suggestions || []);
-                            setShowSuggestions(true);
-                          } catch (err) { setSuggestions([]); }
-                        }} onBlur={() => { hideTimeoutRef.current = window.setTimeout(()=>{ setShowSuggestions(false); hideTimeoutRef.current = null; }, 150); }} className="w-full mt-1 p-2 border border-gray-100 rounded-md" />
+                      
+                      {!showOtherInstitute ? (
+                        <div className="relative">
+                          <input 
+                            ref={inputRef} 
+                            value={institute} 
+                            onChange={async (e) => {
+                              const v = e.target.value;
+                              setInstitute(v);
+                              if (!v) { 
+                                setSuggestions([]); 
+                                setShowSuggestions(false); 
+                                return; 
+                              }
+                              try {
+                                const res = await fetch(`/api/institutes/suggestions?q=${encodeURIComponent(v)}`);
+                                const data = await res.json();
+                                setSuggestions(data.suggestions || []);
+                                setShowSuggestions(true);
+                              } catch (err) {
+                                setSuggestions([]);
+                                setShowSuggestions(false);
+                              }
+                            }} 
+                            onFocus={async (e) => {
+                              // clear pending hide timeout when focusing
+                              if (hideTimeoutRef.current) { 
+                                window.clearTimeout(hideTimeoutRef.current); 
+                                hideTimeoutRef.current = null; 
+                              }
+                              const v = e.currentTarget.value || '';
+                              try {
+                                const res = await fetch(`/api/institutes/suggestions?q=${encodeURIComponent(v)}`);
+                                const data = await res.json();
+                                setSuggestions(data.suggestions || []);
+                                setShowSuggestions(true);
+                              } catch (err) { 
+                                setSuggestions([]); 
+                              }
+                            }} 
+                            onBlur={() => { 
+                              hideTimeoutRef.current = window.setTimeout(() => { 
+                                setShowSuggestions(false); 
+                                hideTimeoutRef.current = null; 
+                              }, 150); 
+                            }} 
+                            placeholder="Search for your school/institute"
+                            className="w-full mt-1 p-2 border border-gray-100 rounded-md" 
+                          />
 
-                        {showSuggestions && suggestions.length > 0 && (
-                          <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-gray-100 rounded-md shadow-sm max-h-52 overflow-auto">
-                            {suggestions.slice(0,5).map(s => (
-                              <div key={s.value} onMouseDown={(e) => { e.preventDefault(); if (hideTimeoutRef.current) { window.clearTimeout(hideTimeoutRef.current); hideTimeoutRef.current = null; } setInstitute(s.value); setShowSuggestions(false); setUser((prev: any) => prev ? ({ ...prev, institute: { name: s.value } }) : prev); inputRef.current?.focus(); }} className="p-2 text-sm hover:bg-gray-50 cursor-pointer">
-                                <div className="font-medium text-gray-800">{s.value}</div>
-                                <div className="text-xs text-gray-500">{s.eiin ? `EIIN: ${s.eiin}` : ''} {s.institutionType ? ` · ${s.institutionType}` : ''}</div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                          {showSuggestions && suggestions.length > 0 && (
+                            <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-gray-100 rounded-md shadow-sm max-h-52 overflow-auto">
+                              {suggestions.slice(0,10).map(s => (
+                                <div 
+                                  key={s.value} 
+                                  onMouseDown={(e) => { 
+                                    e.preventDefault(); 
+                                    if (hideTimeoutRef.current) { 
+                                      window.clearTimeout(hideTimeoutRef.current); 
+                                      hideTimeoutRef.current = null; 
+                                    } 
+                                    setInstitute(s.value); 
+                                    setShowSuggestions(false); 
+                                    setUser((prev: any) => prev ? ({ ...prev, institute: { name: s.value } }) : prev); 
+                                    inputRef.current?.focus(); 
+                                  }} 
+                                  className="p-2 text-sm hover:bg-gray-50 cursor-pointer"
+                                >
+                                  <div className="font-medium text-gray-800">{s.value}</div>
+                                  <div className="text-xs text-gray-500">{s.eiin ? `EIIN: ${s.eiin}` : ''} {s.institutionType ? ` · ${s.institutionType}` : ''}</div>
+                                </div>
+                              ))}
+                              <button
+                                type="button"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  setShowOtherInstitute(true);
+                                  setInstitute("");
+                                  setShowSuggestions(false);
+                                }}
+                                className="w-full text-left px-2 py-3 hover:bg-blue-50 bg-blue-50 border-t-2 border-blue-200 text-blue-700 font-medium text-sm"
+                              >
+                                ➕ My institute is not listed - Enter manually
+                              </button>
+                            </div>
+                          )}
+
+                          {showSuggestions && suggestions.length === 0 && institute && (
+                            <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-gray-100 rounded-md shadow-sm">
+                              <button
+                                type="button"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  setShowOtherInstitute(true);
+                                  setShowSuggestions(false);
+                                }}
+                                className="w-full text-left px-2 py-3 hover:bg-blue-50 text-blue-700 font-medium text-sm"
+                              >
+                                ➕ No results found - Enter manually
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            value={institute}
+                            onChange={(e) => setInstitute(e.target.value)}
+                            placeholder="Enter your institute name manually"
+                            className="w-full mt-1 p-2 border border-gray-100 rounded-md"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowOtherInstitute(false);
+                              setInstitute("");
+                            }}
+                            className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
+                          >
+                            ← Back to search
+                          </button>
+                        </div>
+                      )}
+                      
+                      <p className="text-xs text-muted mt-1">
+                        {!showOtherInstitute 
+                          ? "Search and select from the list. If not found, click the button to enter manually."
+                          : "Enter your institute name manually since it's not in our database."
+                        }
+                      </p>
                     </div>
                     
                     <div>
@@ -534,11 +637,9 @@ export default function SettingsPage() {
             </div>
           )}
         </div>
-      </div>
-      )}
 
-      <div className="max-w-4xl mx-auto px-6 py-4">
-        <div className="bg-white border border-gray-200 rounded-md">
+        {/* Account Section */}
+        <div className="bg-white border border-gray-200 rounded-md mt-4">
           <button className="w-full text-left px-4 py-3 flex items-center justify-between" onClick={() => setAccountExpanded(v => !v)} aria-expanded={accountExpanded}>
             <div>
               <div className="text-sm font-medium text-gray-900">Account</div>
@@ -596,6 +697,7 @@ export default function SettingsPage() {
           )}
         </div>
       </div>
+      )}
 
     </DashboardLayout>
   );

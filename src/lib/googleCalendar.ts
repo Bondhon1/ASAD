@@ -172,5 +172,10 @@ export async function deleteCalendarEvent(
  */
 export function generateSimpleMeetLink(): string {
   const randomId = Math.random().toString(36).substring(2, 12);
-  return `https://meet.google.com/${randomId}`;
+  // Format as Google Meet ID segments: xxx-xxxx-xxx (3-4-3)
+  const part1 = randomId.slice(0, 3);
+  const part2 = randomId.slice(3, 7);
+  const part3 = randomId.slice(7, 10);
+  const formatted = [part1, part2, part3].filter(Boolean).join("-");
+  return `https://meet.google.com/${formatted}`;
 }

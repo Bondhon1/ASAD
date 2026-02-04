@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { paymentMethod, senderNumber, trxId, paymentDate, paymentTime, email, fullName, phone, instituteName, educationLevel, reference } =
+    const { paymentMethod, senderNumber, trxId, paymentDate, paymentTime, email, fullName, phone, instituteName, educationLevel, reference, caReferenceId, referrerType, referrerUserId } =
       validation.data;
 
     // Find user by email (email should be provided in the request)
@@ -121,17 +121,20 @@ export async function POST(request: NextRequest) {
       // update it instead of creating a new one to avoid unique constraint errors.
       payment = await prisma.initialPayment.update({
         where: { userId: user.id },
-        data: {
-          amount: 30,
-          paymentMethod,
-          senderNumber,
-          trxId,
-          reference,
-          paymentDate: paymentDateTime,
-          paymentTime,
-          status: "PENDING",
-          updatedAt: new Date(),
-        },
+          data: {
+            amount: 30,
+            paymentMethod,
+            senderNumber,
+            trxId,
+            reference,
+            caReferenceId: referrerType === "CA" ? (caReferenceId || null) : null,
+            referrerType: referrerType || null,
+            referrerUserId: referrerType === "VOLUNTEER" ? (referrerUserId || null) : null,
+            paymentDate: paymentDateTime,
+            paymentTime,
+            status: "PENDING",
+            updatedAt: new Date(),
+          },
       });
     } else {
       payment = await prisma.initialPayment.create({
@@ -142,6 +145,9 @@ export async function POST(request: NextRequest) {
           senderNumber,
           trxId,
           reference,
+          caReferenceId: referrerType === "CA" ? (caReferenceId || null) : null,
+          referrerType: referrerType || null,
+          referrerUserId: referrerType === "VOLUNTEER" ? (referrerUserId || null) : null,
           paymentDate: paymentDateTime,
           paymentTime,
           status: "PENDING",

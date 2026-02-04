@@ -108,9 +108,15 @@ export default function DashboardPage() {
     // Wait for user data to load before making payment redirect decision
     if (userLoading) return;
 
+    // If the user was just redirected here after submitting payment, skip the auto-redirect check
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("paymentSubmitted")) return;
+    }
+
     // Prioritize actual payment status from database over JWT needsPayment flag
     const paymentStatus = user?.initialPayment?.status;
-    
+
     // If user has a payment record that is not rejected, stay on dashboard
     if (paymentStatus && paymentStatus !== "REJECTED") return;
 

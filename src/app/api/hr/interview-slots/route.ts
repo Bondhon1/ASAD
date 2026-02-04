@@ -61,7 +61,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { startTime, endTime, capacity, autoCreateMeet } = await request.json();
+    const { startTime, endTime, capacity, autoCreateMeet, meetLink: manualMeetLink } = await request.json();
 
     if (!startTime || !endTime || !capacity) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -106,14 +106,50 @@ export async function POST(request: Request) {
 
         meetLink = calendarEvent.meetLink;
         calendarEventId = calendarEvent.eventId || "";
-      } catch (calendarError) {
+      } catch (calendarError: any) {
         console.error("Calendar API error:", calendarError);
-        // Graceful fallback to generated Meet link so slot creation still works
-        meetLink = generateSimpleMeetLink();
+        
+        // Check if the error is due to invalid/expired refresh token
+        const errorMessage = calendarError?.message || "";
+        if (errorMessage.includes("invalid_grant") || errorMessage.includes("invalid_token")) {
+          // Clear the expired token from the database
+          await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              googleRefreshToken: null,
+              calendarConnectedAt: null,
+              calendarEmail: null,
+            },
+          });
+          
+          return NextResponse.json(
+            { 
+              error: "Your Google Calendar refresh token has expired. Please disconnect and reconnect your calendar.",
+              code: "CALENDAR_TOKEN_EXPIRED"
+            },
+            { status: 401 }
+          );
+        }
+        
+        // For any other calendar error, don't create the slot
+        return NextResponse.json(
+          { 
+            error: `Failed to create calendar event: ${errorMessage}. Please check your Google Calendar connection.`,
+            code: "CALENDAR_ERROR"
+          },
+          { status: 500 }
+        );
       }
     } else {
-      // Use simple meet link generation
-      meetLink = generateSimpleMeetLink();
+      // Manual Meet link mode - user must provide their own link
+      meetLink = manualMeetLink || "";
+      
+      if (!meetLink) {
+        return NextResponse.json(
+          { error: "Please provide a Meet link or enable auto-create" },
+          { status: 400 }
+        );
+      }
     }
 
     const slot = await prisma.interviewSlot.create({

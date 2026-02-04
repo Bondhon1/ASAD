@@ -81,7 +81,7 @@ function InterviewSlotsContent() {
   const displayEmail = useMemo(() => user?.email || session?.user?.email || "", [session?.user?.email, user?.email]);
   const displayRole = useMemo(() => (session as any)?.user?.role || (user?.role as "VOLUNTEER" | "HR" | "MASTER" | "ADMIN" | "DIRECTOR" | "DATABASE_DEPT" | "SECRETARIES") || "HR", [session, user?.role]);
 
-  const { confirm, alert } = useModal();
+  const { confirm, alert, toast } = useModal();
 
   useEffect(() => {
     const fetchUserAndSlots = async () => {
@@ -134,10 +134,10 @@ function InterviewSlotsContent() {
         await fetchCalendarStatus();
         await fetchSlots();
         router.replace("/dashboard/hr/interviews");
-        await alert("Google Calendar connected successfully.");
+        toast("Google Calendar connected successfully", "success");
       } catch (error) {
         console.error("Error exchanging calendar code:", error);
-        await alert("Failed to connect Google Calendar. Please try again.");
+        toast("Failed to connect Google Calendar. Please try again.", "error");
       }
     };
 
@@ -174,20 +174,28 @@ function InterviewSlotsContent() {
   };
 
   const generateMeetLink = () => {
-    const token = Math.random().toString(36).substring(2, 9);
-    setFormData((prev) => ({ ...prev, meetLink: `https://meet.google.com/${token}` }));
+    // Create a 10-character token and format as xxx-xxxx-xxx
+    const token = Math.random().toString(36).substring(2, 12);
+    const p1 = token.slice(0, 3);
+    const p2 = token.slice(3, 7);
+    const p3 = token.slice(7, 10);
+    const formatted = [p1, p2, p3].filter(Boolean).join("-");
+    setFormData((prev) => ({ ...prev, meetLink: `https://meet.google.com/${formatted}` }));
   };
 
   const handleCreateSlot = async (e: FormEvent) => {
     e.preventDefault();
 
     if (!formData.startDate || !formData.startTime || !formData.endTime) {
-      await alert("Please fill date and time.");
+      toast("Please fill in all date and time fields", "error");
       return;
     }
 
-    const startTime = new Date(`${formData.startDate}T${formData.startTime}:00`).toISOString();
-    const endTime = new Date(`${formData.startDate}T${formData.endTime}:00`).toISOString();
+    // Parse as Bangladesh time (Asia/Dhaka, UTC+6)
+    const startDateTime = new Date(`${formData.startDate}T${formData.startTime}:00+06:00`);
+    const endDateTime = new Date(`${formData.startDate}T${formData.endTime}:00+06:00`);
+    const startTime = startDateTime.toISOString();
+    const endTime = endDateTime.toISOString();
 
     try {
       const response = await fetch("/api/hr/interview-slots", {
@@ -198,16 +206,41 @@ function InterviewSlotsContent() {
 
       if (!response.ok) {
         const error = await response.json();
-        await alert(error.error || "Failed to create slot");
+        
+        // Handle expired calendar token
+        if (error.code === "CALENDAR_TOKEN_EXPIRED") {
+          // Clear calendar status immediately in UI
+          setCalendarStatus({ connected: false, email: null, connectedAt: null });
+          
+          const reconnect = await confirm(
+            error.error || "Your Google Calendar refresh token has expired. Please disconnect and reconnect your calendar.",
+            "Calendar Connection Expired",
+            "warning"
+          );
+          if (reconnect) {
+            await handleConnectCalendar();
+          }
+          return;
+        }
+        
+        // Handle other calendar errors
+        if (error.code === "CALENDAR_ERROR") {
+          await alert(error.error || "Failed to create calendar event. Please check your Google Calendar connection.");
+          return;
+        }
+        
+        // Handle any other errors - use toast for general errors
+        toast(error.error || "Failed to create slot", "error");
         return;
       }
 
       await fetchSlots();
       setShowCreateModal(false);
       setFormData({ startDate: "", startTime: "", endTime: "", capacity: 20, meetLink: "", autoCreateMeet: true });
+      toast("Interview slot created successfully", "success");
     } catch (error) {
       console.error("Error creating slot:", error);
-      await alert("Failed to create slot");
+      toast("Failed to create slot. Please try again.", "error");
     }
   };
 
@@ -268,18 +301,18 @@ function InterviewSlotsContent() {
       const response = await fetch("/api/hr/connect-calendar");
       if (!response.ok) {
         console.error("Connect calendar failed:", await response.text());
-        await alert("Failed to start Google Calendar connection.");
+        toast("Failed to start Google Calendar connection", "error");
         return;
       }
       const data = await response.json();
       if (data?.authUrl) {
         window.location.href = data.authUrl;
       } else {
-        await alert("No authorization URL returned. Please try again.");
+        toast("No authorization URL returned. Please try again.", "error");
       }
     } catch (error) {
       console.error("Error starting calendar connection:", error);
-      await alert("Failed to start Google Calendar connection.");
+      toast("Failed to start Google Calendar connection", "error");
     }
   };
 
@@ -288,13 +321,14 @@ function InterviewSlotsContent() {
       const response = await fetch("/api/hr/connect-calendar", { method: "DELETE" });
       if (!response.ok) {
         console.error("Disconnect calendar failed:", await response.text());
-        await alert("Failed to disconnect calendar.");
+        toast("Failed to disconnect calendar", "error");
         return;
       }
       fetchCalendarStatus();
+      toast("Google Calendar disconnected successfully", "success");
     } catch (error) {
       console.error("Error disconnecting calendar:", error);
-      await alert("Failed to disconnect calendar.");
+      toast("Failed to disconnect calendar", "error");
     }
   };
 

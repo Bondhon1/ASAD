@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
@@ -67,6 +68,11 @@ export default function InitialPaymentPage() {
   const [paymentDate, setPaymentDate] = useState("");
   const [paymentTime, setPaymentTime] = useState("");
   const [reference, setReference] = useState("");
+  const [caReferenceId, setCAReferenceId] = useState("");
+  const [referrerType, setReferrerType] = useState<"CA" | "VOLUNTEER" | "">("");
+  const [caSearchQuery, setCASearchQuery] = useState("");
+  const [caReferences, setCAReferences] = useState<Array<{ id: string; type: "CA" | "VOLUNTEER"; code: string; name: string; leader?: string; email?: string }>>([]);
+  const [showCADropdown, setShowCADropdown] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -78,13 +84,17 @@ export default function InitialPaymentPage() {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [instituteName, setInstituteName] = useState("");
+  const [instituteSearchQuery, setInstituteSearchQuery] = useState("");
+  const [showOtherInstitute, setShowOtherInstitute] = useState(false);
   const [educationLevel, setEducationLevel] = useState("");
   const [suggestions, setSuggestions] = useState<Array<{ label: string; value: string; eiin?: number | string; institutionType?: string }>>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const instituteInputRef = useRef<HTMLInputElement | null>(null);
+  const caInputRef = useRef<HTMLInputElement | null>(null);
 
   // Get user email from URL params or localStorage and check if previous payment was rejected
   const { data: session, status, update: updateSession } = useSession();
+  const router = useRouter();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -159,6 +169,9 @@ export default function InitialPaymentPage() {
           reference,
           paymentDate,
           paymentTime,
+          referrerType: referrerType || null,
+          referrerUserId: referrerType === "VOLUNTEER" ? (caReferenceId || null) : null,
+          caReferenceId: referrerType === "CA" ? (caReferenceId || null) : null,
         }),
       });
 
@@ -171,9 +184,11 @@ export default function InitialPaymentPage() {
       setSuccess(true);
       // Update session to refresh JWT needsPayment flag before redirect
       await updateSession();
+      // Navigate to dashboard with a flag to prevent the dashboard auto-redirect
+      // from immediately sending the user back to the payment form while profile updates propagate.
       setTimeout(() => {
-        window.location.href = "/dashboard";
-      }, 2000);
+        router.push('/dashboard?paymentSubmitted=1');
+      }, 800);
     } catch (err: any) {
       setError(err.message || "Payment submission failed. Please verify your details and try again.");
     } finally {
@@ -240,6 +255,7 @@ export default function InitialPaymentPage() {
   }
 
   return (
+    <>
     <div className="min-h-screen bg-white" style={{ fontFamily: 'var(--font-dm-sans), system-ui, sans-serif' }}>
       {/* Themed Navbar */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-md transition-all duration-300">
@@ -255,7 +271,14 @@ export default function InitialPaymentPage() {
               {['Home', 'About', 'Sectors', 'Activities'].map((item) => (
                 <Link key={item} href="/" className="text-sm font-semibold text-gray-600 hover:text-[#1E3A5F] transition-colors duration-300">{item}</Link>
               ))}
-              <Link href="/auth" className="rounded-lg bg-[#1E3A5F] px-7 py-3 text-sm font-semibold text-white hover:bg-[#2a4d75] transition-all duration-300">Join Now</Link>
+              {session && (
+                <Link href="/dashboard" className="text-sm font-semibold text-gray-600 hover:text-[#1E3A5F] transition-colors duration-300">Dashboard</Link>
+              )}
+              {session ? (
+                <button onClick={() => { window.location.href = '/api/auth/signout'; }} className="rounded-lg bg-red-600 px-7 py-3 text-sm font-semibold text-white hover:bg-red-700 transition-all duration-300">Logout</button>
+              ) : (
+                <Link href="/auth" className="rounded-lg bg-[#1E3A5F] px-7 py-3 text-sm font-semibold text-white hover:bg-[#2a4d75] transition-all duration-300">Join Now</Link>
+              )}
             </div>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -273,7 +296,14 @@ export default function InitialPaymentPage() {
             {['Home', 'About', 'Sectors', 'Activities'].map((item) => (
               <Link key={item} href="/" onClick={() => setMobileMenuOpen(false)} className="text-base font-semibold text-gray-600 hover:text-[#1E3A5F] transition-colors duration-300">{item}</Link>
             ))}
-            <Link href="/auth" onClick={() => setMobileMenuOpen(false)} className="rounded-lg bg-[#1E3A5F] px-7 py-3 text-center text-sm font-semibold text-white transition-all duration-300">Join Now</Link>
+            {session && (
+              <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="text-base font-semibold text-gray-600 hover:text-[#1E3A5F] transition-colors duration-300">Dashboard</Link>
+            )}
+            {session ? (
+              <button onClick={() => { window.location.href = '/api/auth/signout'; }} className="rounded-lg bg-red-600 px-7 py-3 text-center text-sm font-semibold text-white">Logout</button>
+            ) : (
+              <Link href="/auth" onClick={() => setMobileMenuOpen(false)} className="rounded-lg bg-[#1E3A5F] px-7 py-3 text-center text-sm font-semibold text-white transition-all duration-300">Join Now</Link>
+            )}
           </div>
         </div>
       </nav>
@@ -363,91 +393,136 @@ export default function InitialPaymentPage() {
                 <label className="block text-sm font-semibold text-ink mb-2">
                   School/Institute <span className="text-red-500">*</span>
                 </label>
-                <div className="relative">
-                  <input
-                    ref={instituteInputRef}
-                    type="text"
-                    value={instituteName}
-                    onChange={async (e) => {
-                      const v = e.target.value;
-                      setInstituteName(v);
-                      if (!v) {
-                        setSuggestions([]);
-                        return;
-                      }
-                      try {
-                        const res = await fetch(`/api/institutes/suggestions?q=${encodeURIComponent(v)}`);
-                        const data = await res.json();
-                        setSuggestions(data.suggestions || []);
-                        setShowSuggestions(true);
-                      } catch (err) {
-                        setSuggestions([]);
-                      }
-                    }}
-                    onFocus={async (e) => {
-                      const v = e.currentTarget.value || '';
-                      try {
-                        const res = await fetch(`/api/institutes/suggestions?q=${encodeURIComponent(v)}`);
-                        const data = await res.json();
-                        setSuggestions(data.suggestions || []);
-                        setShowSuggestions(true);
-                      } catch (err) {
-                        setSuggestions([]);
-                      }
-                    }}
-                    onBlur={() => {
-                      setTimeout(() => setShowSuggestions(false), 150);
-                      const v = instituteName.trim();
-                      if (v && !suggestions.find((s) => s.value.toLowerCase() === v.toLowerCase())) {
-                        const first = v.split(/\s+/)[0] || v;
-                        setSuggestions((prev) => [{ label: first, value: v, eiin: undefined, institutionType: undefined }, ...prev].slice(0, 100));
-                      }
-                    }}
-                    placeholder="Enter your school/institute name"
-                    className="w-full pr-10 px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/50 focus:border-[#1E3A5F] transition-all"
-                    required
-                  />
+                
+                {!showOtherInstitute ? (
+                  <div className="relative">
+                    <input
+                      ref={instituteInputRef}
+                      type="text"
+                      value={instituteName}
+                      readOnly
+                      onClick={() => setShowSuggestions(true)}
+                      onFocus={() => setShowSuggestions(true)}
+                      onBlur={() => {
+                        setTimeout(() => setShowSuggestions(false), 150);
+                      }}
+                      placeholder="Click to select your school/institute"
+                      className="w-full pr-10 px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/50 focus:border-[#1E3A5F] transition-all cursor-pointer"
+                      required
+                    />
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setInstituteName("");
-                      setSuggestions([]);
-                      setShowSuggestions(false);
-                      instituteInputRef.current?.focus();
-                    }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
-                    aria-label="Clear institute"
-                  >
-                    ✕
-                  </button>
+                    {instituteName && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setInstituteName("");
+                          setSuggestions([]);
+                          setShowSuggestions(false);
+                        }}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
+                        aria-label="Clear institute"
+                      >
+                        ✕
+                      </button>
+                    )}
 
-                  {showSuggestions && suggestions.length > 0 && (
-                    <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg max-h-56 overflow-y-auto shadow-lg">
-                      {suggestions.slice(0,5).map((s) => (
+                    {showSuggestions && (
+                      <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg">
+                        <div className="p-2 border-b border-gray-200">
+                          <input
+                            type="text"
+                            value={instituteSearchQuery}
+                            onChange={async (e) => {
+                              const v = e.target.value;
+                              setInstituteSearchQuery(v);
+                              if (!v) {
+                                setSuggestions([]);
+                                return;
+                              }
+                              try {
+                                const res = await fetch(`/api/institutes/suggestions?q=${encodeURIComponent(v)}`);
+                                const data = await res.json();
+                                setSuggestions(data.suggestions || []);
+                              } catch (err) {
+                                setSuggestions([]);
+                              }
+                            }}
+                            placeholder="Type to search..."
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/50"
+                            autoFocus
+                          />
+                        </div>
+                        <div className="max-h-48 overflow-y-auto">
+                        {suggestions.length > 0 ? (
+                          suggestions.slice(0, 10).map((s) => (
+                          <button
+                            type="button"
+                            key={s.value}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              setInstituteName(s.value);
+                              setShowSuggestions(false);
+                              setInstituteSearchQuery("");
+                            }}
+                            className="w-full text-left px-4 py-2 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+                          >
+                            <div className="font-medium text-sm text-gray-900">{s.value}</div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {s.eiin ? `EIIN: ${s.eiin}` : ''}{s.eiin && s.institutionType ? ' • ' : ''}{s.institutionType ? s.institutionType : ''}
+                            </div>
+                          </button>
+                          ))
+                        ) : (
+                          <div className="px-4 py-3 text-sm text-gray-500 text-center">
+                            {instituteSearchQuery ? 'No results found' : 'Type to search for your institute'}
+                          </div>
+                        )}
+                        </div>
                         <button
                           type="button"
-                          key={s.value}
                           onMouseDown={(e) => {
                             e.preventDefault();
-                            setInstituteName(s.value);
+                            setShowOtherInstitute(true);
+                            setInstituteName("");
                             setShowSuggestions(false);
+                            setInstituteSearchQuery("");
                           }}
-                          className="w-full text-left px-4 py-2 hover:bg-gray-50"
+                          className="w-full text-left px-4 py-3 hover:bg-blue-50 bg-blue-50 border-t-2 border-blue-200 text-blue-700 font-medium"
                         >
-                          <div className="font-medium text-sm text-gray-900">{s.value}</div>
-                          <div className="text-xs text-gray-500 mt-1">
-                            {s.eiin ? `EIIN: ${s.eiin}` : ''}{s.eiin && s.institutionType ? ' • ' : ''}{s.institutionType ? s.institutionType : ''}
-                          </div>
+                          ➕ My institute is not listed - Enter manually
                         </button>
-                      ))}
-                      {suggestions.length > 5 && (
-                        <div className="px-3 py-2 text-xs text-gray-500">Showing 5 of {suggestions.length} results</div>
-                      )}
-                      <div className="px-3 py-2 text-xs text-gray-500">Click a suggestion to fill. If none match, keep typing to submit free text.</div>
-                    </div>
-                  )}
-                </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      value={instituteName}
+                      onChange={(e) => setInstituteName(e.target.value)}
+                      placeholder="Enter your institute name manually"
+                      className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/50 focus:border-[#1E3A5F] transition-all"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowOtherInstitute(false);
+                        setInstituteName("");
+                      }}
+                      className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
+                    >
+                      ← Back to search
+                    </button>
+                  </div>
+                )}
+                
+                <p className="text-xs text-muted mt-1">
+                  {!showOtherInstitute 
+                    ? "Search and select from the list. If not found, click the button to enter manually."
+                    : "Enter your institute name manually since it's not in our database."
+                  }
+                </p>
               </motion.div>
 
               <motion.div variants={itemVariants} className="mb-6">
@@ -575,6 +650,97 @@ export default function InitialPaymentPage() {
               <p className="text-xs text-muted mt-1">Optional reference or note from the payment provider</p>
             </motion.div>
 
+            <motion.div variants={itemVariants} className="mb-6 relative">
+              <label className="block text-sm font-semibold text-ink mb-2">
+                Referrer (Campus Ambassador or Volunteer) - Optional
+              </label>
+              <input
+                ref={caInputRef}
+                type="text"
+                value={caSearchQuery}
+                onChange={async (e) => {
+                  const query = e.target.value;
+                  setCASearchQuery(query);
+                  setShowCADropdown(true);
+                  
+                  if (query.length >= 2) {
+                    try {
+                      const res = await fetch(`/api/ca-references/search?q=${encodeURIComponent(query)}`);
+                      const data = await res.json();
+                      setCAReferences(data.references || []);
+                    } catch (error) {
+                      console.error('Error searching references:', error);
+                      setCAReferences([]);
+                    }
+                  } else {
+                    setCAReferences([]);
+                  }
+                }}
+                onFocus={() => setShowCADropdown(true)}
+                onBlur={() => setTimeout(() => setShowCADropdown(false), 200)}
+                placeholder="Search by CA Code (e.g., LE001), Volunteer ID, or name"
+                className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/50 focus:border-[#1E3A5F] transition-all"
+              />
+              <p className="text-xs text-muted mt-1">
+                If you were referred by a Campus Ambassador or official Volunteer, search by CA Code (e.g., LE001), Volunteer ID, or their name. Leave blank if not applicable.
+              </p>
+              
+              {showCADropdown && caReferences.length > 0 && (
+                <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg max-h-48 overflow-y-auto shadow-lg">
+                  {caReferences.map((ref) => (
+                    <button
+                      type="button"
+                      key={ref.id}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          setReferrerType(ref.type);
+                          if (ref.type === "CA") {
+                            setCAReferenceId(ref.id);
+                          } else {
+                            // volunteer selected: store the volunteer user id in caReferenceId state for compatibility
+                            // but we will send referrerUserId separately on submit
+                            setCAReferenceId(ref.id);
+                          }
+                          setCASearchQuery(`${ref.code} - ${ref.name}`);
+                          setShowCADropdown(false);
+                        }}
+                      className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs px-2 py-0.5 rounded ${
+                          ref.type === "CA" ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"
+                        }`}>
+                          {ref.type}
+                        </span>
+                        <div className="font-semibold text-sm text-gray-900">
+                          {ref.code} - {ref.name}
+                        </div>
+                      </div>
+                      <div className="text-xs text-gray-600 mt-1">
+                        {ref.type === "CA" ? `Team Leader: ${ref.leader}` : ref.email}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+              
+              {caReferenceId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCAReferenceId('');
+                    setReferrerType('');
+                    setCASearchQuery('');
+                    setCAReferences([]);
+                  }}
+                  className="absolute right-3 top-10 text-gray-400 hover:text-gray-700"
+                  aria-label="Clear referrer"
+                >
+                  ✕
+                </button>
+              )}
+            </motion.div>
+
             <motion.div variants={itemVariants} className="grid grid-cols-2 gap-4 mb-6">
               <div>
                 <label className="block text-sm font-semibold text-ink mb-2">
@@ -677,8 +843,9 @@ export default function InitialPaymentPage() {
         </motion.div>
       </div>
     </div>
-
-      <Footer />
     </div>
+
+    <Footer />
+    </>
   );
 }

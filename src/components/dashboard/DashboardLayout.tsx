@@ -45,6 +45,7 @@ interface DashboardLayoutProps {
   showStatusBanners?: boolean;
   initialUserStatus?: string | null;
   initialFinalPaymentStatus?: string | null;
+  initialInitialPaymentStatus?: string | null;
   topbarName?: string;
   topbarLabel?: string;
 }
@@ -58,6 +59,7 @@ export default function DashboardLayout({
   showStatusBanners = true,
   initialUserStatus,
   initialFinalPaymentStatus,
+  initialInitialPaymentStatus,
   topbarName,
   topbarLabel,
 }: DashboardLayoutProps) {
@@ -65,6 +67,7 @@ export default function DashboardLayout({
   const router = useRouter();
   const [userStatus, setUserStatus] = useState<string | null>(initialUserStatus ?? null);
   const [finalPaymentStatus, setFinalPaymentStatus] = useState<string | null>(initialFinalPaymentStatus ?? null);
+  const [initialPaymentStatus, setInitialPaymentStatus] = useState<string | null>(initialInitialPaymentStatus ?? null);
   const [scheduledInterview, setScheduledInterview] = useState<any | null>(null);
 
   const formatStatusLabel = (status: string | null) => {
@@ -106,8 +109,8 @@ export default function DashboardLayout({
 
   useEffect(() => {
     if (!userEmail) return;
-    // Only fetch when parent did not provide any initial values (both undefined)
-    const shouldFetch = initialUserStatus === undefined && initialFinalPaymentStatus === undefined;
+    // Only fetch when parent did not provide an initial initialPayment status
+    const shouldFetch = initialInitialPaymentStatus === undefined;
 
     if (!shouldFetch) return;
     (async () => {
@@ -116,11 +119,18 @@ export default function DashboardLayout({
         const data = await res.json();
         setUserStatus(data?.user?.status || null);
         setFinalPaymentStatus(data?.user?.finalPayment?.status || null);
+        setInitialPaymentStatus(data?.user?.initialPayment?.status || null);
       } catch (e) {
         // ignore
       }
     })();
-  }, [userEmail, initialFinalPaymentStatus, initialUserStatus]);
+  }, [userEmail, initialInitialPaymentStatus]);
+
+  useEffect(() => {
+    if (initialInitialPaymentStatus !== undefined) {
+      setInitialPaymentStatus(initialInitialPaymentStatus);
+    }
+  }, [initialInitialPaymentStatus]);
 
   // Fetch scheduled interview (if any) for display on user dashboard
   useEffect(() => {
@@ -416,6 +426,16 @@ export default function DashboardLayout({
                   <div className="flex items-center gap-2">
                     <a href="/payments/initial" className="px-3 py-2 bg-[#1E3A5F] text-white rounded-md">Pay 30 BDT</a>
                   </div>
+                </div>
+              )}
+
+              {(initialPaymentStatus && initialPaymentStatus === "PENDING") && !scheduledInterview && userStatus !== "INTERVIEW_SCHEDULED" && userStatus !== "INTERVIEW_PASSED" && (
+                <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-yellow-800">Initial Payment Pending</div>
+                    <div className="text-sm text-yellow-700 mt-1">We've received your initial payment (30 BDT). It is pending verification by HR — you'll be notified when your application is reviewed or an interview is scheduled.</div>
+                  </div>
+                  
                 </div>
               )}
 

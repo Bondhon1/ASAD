@@ -23,6 +23,7 @@
     "axios": "^1.13.2",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
+    "csv-parse": "^6.1.0",
     "framer-motion": "^12.23.25",
     "googleapis": "^168.0.0",
     "ical-generator": "^10.0.0",
@@ -58,8 +59,7 @@
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
-  }
-  ,
+  },
   "overrides": {
     "fast-xml-parser": "^5.3.4"
   }
