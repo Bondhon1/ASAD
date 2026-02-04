@@ -44,6 +44,7 @@ export default function UsersManagementPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [total, setTotal] = useState(0);
+  const [overallTotal, setOverallTotal] = useState<number | null>(null);
   const [statusFilter, setStatusFilter] = useState<'ANY' | 'UNOFFICIAL' | 'OFFICIAL'>('OFFICIAL');
   const [stats, setStats] = useState<{ total?: number; officialCount?: number; rankCounts?: Array<{ rank: string; count: number }> }>({});
   // final payment date range filter (YYYY-MM-DD)
@@ -122,6 +123,19 @@ export default function UsersManagementPage() {
       }
     };
 
+    const fetchOverallStats = async () => {
+      try {
+        const res = await fetch('/api/hr/users/stats', { signal: controller.signal, cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!active) return;
+        setOverallTotal(typeof data.total === 'number' ? data.total : null);
+      } catch (err: any) {
+        if (err.name === 'AbortError') return;
+        // ignore overall total errors
+      }
+    };
+
     // fetch sectors/clubs concurrently
     const fetchOrgs = async () => {
       try {
@@ -153,6 +167,8 @@ export default function UsersManagementPage() {
     };
 
     fetchStats();
+    // also fetch overall (unfiltered) total so the dashboard shows global total users
+    fetchOverallStats();
     fetchOrgs();
     fetchRanks();
     return () => { active = false; controller.abort(); };
@@ -384,7 +400,7 @@ export default function UsersManagementPage() {
                   </svg>
                 </div>
               </div>
-              <div className="text-2xl sm:text-3xl font-bold text-[#0b2545]">{stats.total ?? total}</div>
+              <div className="text-2xl sm:text-3xl font-bold text-[#0b2545]">{overallTotal ?? total ?? stats.total}</div>
             </div>
             
             <div className="min-w-[140px] sm:min-w-0 bg-gradient-to-br from-green-50 to-white border border-green-100 rounded-xl p-2 sm:p-5 shadow-sm hover:shadow-md transition-shadow">
