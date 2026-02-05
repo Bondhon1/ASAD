@@ -238,6 +238,7 @@ export default function DashboardLayout({
     const databaseItems = [
       { label: "Dashboard", href: "/dashboard" },
       { label: "Manage Points / Ranks", href: "/dashboard/database" },
+      { label: "Audit Logs", href: "/dashboard/admin/audit-logs" },
       { label: "Community", href: "/dashboard/community" },
       { label: "Settings", href: "/dashboard/settings" },
     ];

@@ -63,7 +63,7 @@ export default function AuditLogsPage() {
       return;
     }
 
-    if (user && !['MASTER', 'ADMIN'].includes(user.role)) {
+    if (user && !['MASTER', 'ADMIN', 'DATABASE_DEPT'].includes(user.role)) {
       router.push("/dashboard");
       return;
     }
@@ -71,7 +71,7 @@ export default function AuditLogsPage() {
 
   useEffect(() => {
     if (!user || userLoading) return;
-    if (!['MASTER', 'ADMIN'].includes(user.role)) return;
+    if (!['MASTER', 'ADMIN', 'DATABASE_DEPT'].includes(user.role)) return;
 
     fetchLogs();
   }, [user, userLoading, page, pageSize, actionFilter, startDate, endDate]);
@@ -200,7 +200,7 @@ export default function AuditLogsPage() {
     return skeletonPage;
   }
 
-  if (!['MASTER', 'ADMIN'].includes(user.role)) {
+  if (!['MASTER', 'ADMIN', 'DATABASE_DEPT'].includes(user.role)) {
     return null;
   }
 

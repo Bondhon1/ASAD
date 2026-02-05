@@ -15,7 +15,7 @@ export async function GET(req: Request) {
       select: { id: true, role: true },
     });
 
-    if (!user || !['MASTER', 'ADMIN'].includes(user.role)) {
+    if (!user || !['MASTER', 'ADMIN', 'DATABASE_DEPT'].includes(user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
