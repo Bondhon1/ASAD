@@ -174,7 +174,10 @@ export default function DashboardPage() {
     return () => { mounted = false; };
   }, [userEmail]);
 
-  if (status === "unauthenticated") {
+  // If the session is unauthenticated, allow rendering when we have a stored
+  // `userEmail` (email-verify -> payment flow). Otherwise return null to avoid
+  // showing dashboard to unauthenticated visitors.
+  if (status === "unauthenticated" && !userEmail) {
     return null;
   }
 

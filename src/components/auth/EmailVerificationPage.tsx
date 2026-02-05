@@ -59,17 +59,25 @@ export default function EmailVerificationPage() {
       const verificationKey = `emailVerification:${token}`;
       const storedEmail = localStorage.getItem("userEmail");
 
-      if (sessionStorage.getItem(verificationKey)) {
-        if (storedEmail) {
-          setEmail(storedEmail);
-          setVerified(true);
-          setVerifying(false);
-          scheduleRedirect(storedEmail);
-          return;
-        }
+      const existingState = sessionStorage.getItem(verificationKey);
+      if (existingState === "true" && storedEmail) {
+        setEmail(storedEmail);
+        setVerified(true);
+        setVerifying(false);
+        scheduleRedirect(storedEmail);
+        return;
+      }
+
+      // If another instance is currently verifying, skip sending a duplicate request.
+      if (existingState === "in-progress") {
+        setVerifying(false);
+        return;
       }
 
       try {
+        // Mark verification in-progress to avoid duplicate requests
+        sessionStorage.setItem(verificationKey, "in-progress");
+
         // API call to verify email
         const response = await fetch("/api/auth/verify-email", {
           method: "POST",
@@ -86,7 +94,7 @@ export default function EmailVerificationPage() {
         setEmail(data.email);
         setVerified(true);
         sessionStorage.setItem(verificationKey, "true");
-        
+
         // Store email in localStorage for payment page
         localStorage.setItem("userEmail", data.email);
         
@@ -95,6 +103,11 @@ export default function EmailVerificationPage() {
           scheduleRedirect(data.email);
         }
       } catch (err) {
+        // Remove in-progress marker so user can retry
+        try {
+          sessionStorage.removeItem(verificationKey);
+        } catch (e) {}
+
         setError(
           "Email verification failed. The link may have expired."
         );

@@ -108,6 +108,16 @@ export default function InitialPaymentPage() {
       return;
     }
 
+    // Prevent duplicate mount actions (dev double-mount / StrictMode / HMR).
+    const mountKey = `paymentsInitial:${emailFromUrl || emailFromStorage || 'no-email'}`;
+    const alreadyMounted = sessionStorage.getItem(mountKey);
+    if (alreadyMounted) {
+      if (emailFromStorage) setUserEmail(emailFromStorage);
+      return;
+    }
+    // mark as mounted for short period
+    try { sessionStorage.setItem(mountKey, 'visited'); } catch (e) {}
+
     const emailToUse = emailFromUrl || emailFromStorage;
     if (emailToUse) {
       setUserEmail(emailToUse);
