@@ -31,7 +31,7 @@ const paymentMethods: PaymentMethodInfo[] = [
     id: "nagad",
     name: "Nagad",
     icon: "📱",
-    dummyNumber: "01989254157",
+    dummyNumber: "01983600518",
     description: "Mobile banking service",
   },
 ];

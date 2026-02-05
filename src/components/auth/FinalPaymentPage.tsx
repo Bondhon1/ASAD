@@ -7,7 +7,7 @@ interface Props { userEmail?: string }
 
 const paymentMethods = [
   { id: "bkash", name: "bKash", dummy: "01989254157" },
-  { id: "nagad", name: "Nagad", dummy: "01989254157" },
+  { id: "nagad", name: "Nagad", dummy: "01983600518" },
   // Visa and Mastercard removed
 ];
 
