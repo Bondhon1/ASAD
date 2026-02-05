@@ -79,7 +79,11 @@ export default function DashboardPage() {
   const [campaignsLoading, setCampaignsLoading] = useState(true);
 
   useEffect(() => {
-    if (status === "unauthenticated") {
+    if (status !== "unauthenticated") return;
+    // If the userEmail was stored (email-verification -> payment flow), allow access
+    // and let the subsequent logic handle redirect to payment if needed.
+    const storedEmail = typeof window !== "undefined" ? localStorage.getItem("userEmail") : null;
+    if (!storedEmail) {
       router.push("/auth");
     }
   }, [router, status]);

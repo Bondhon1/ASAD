@@ -182,8 +182,10 @@ export default function InitialPaymentPage() {
       }
 
       setSuccess(true);
-      // Update session to refresh JWT needsPayment flag before redirect
-      await updateSession();
+      // Update session to refresh JWT needsPayment flag before redirect (only if authenticated)
+      if (status === 'authenticated' && typeof updateSession === 'function') {
+        await updateSession();
+      }
       // Navigate to dashboard with a flag to prevent the dashboard auto-redirect
       // from immediately sending the user back to the payment form while profile updates propagate.
       setTimeout(() => {
