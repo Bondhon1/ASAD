@@ -17,7 +17,7 @@ interface Application {
     phone: string;
     institute: { name: string } | null;
     joiningSemester: string;
-    initialPayment?: { reference?: string | null } | null;
+    initialPayment?: any | null;
   };
   trxId: string;
   paymentMethod: string;
@@ -329,9 +329,7 @@ export default function NewRequestsPage() {
                           <div>
                             <p className="font-medium">{app.paymentMethod.toUpperCase()}</p>
                             <p className="text-xs text-gray-500">TRX: {app.trxId}</p>
-                            {app.user.initialPayment?.reference && (
-                              <p className="text-xs text-gray-500">Ref: {app.user.initialPayment.reference}</p>
-                            )}
+                            {/* Reference removed from initial payment */}
                           </div>
                         </td>
                         <td className="px-4 py-4 text-sm">

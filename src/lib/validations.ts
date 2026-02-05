@@ -44,7 +44,6 @@ export const InitialPaymentSchema = z.object({
     .min(1, "Sender number is required")
     .regex(/^\d+$/, "Sender number must contain only digits"),
   trxId: z.string().min(1, "Transaction ID is required"),
-  reference: z.string().max(200).optional(),
   caReferenceId: z.string().nullable().optional(),
   referrerType: z.enum(["CA", "VOLUNTEER"]).nullable().optional(),
   referrerUserId: z.string().nullable().optional(),

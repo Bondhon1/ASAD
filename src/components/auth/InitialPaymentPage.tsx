@@ -67,7 +67,6 @@ export default function InitialPaymentPage() {
   const [trxId, setTrxId] = useState("");
   const [paymentDate, setPaymentDate] = useState("");
   const [paymentTime, setPaymentTime] = useState("");
-  const [reference, setReference] = useState("");
   const [caReferenceId, setCAReferenceId] = useState("");
   const [referrerType, setReferrerType] = useState<"CA" | "VOLUNTEER" | "">("");
   const [caSearchQuery, setCASearchQuery] = useState("");
@@ -176,7 +175,6 @@ export default function InitialPaymentPage() {
           paymentMethod: selectedMethod,
           senderNumber,
           trxId,
-          reference,
           paymentDate,
           paymentTime,
           referrerType: referrerType || null,
@@ -595,7 +593,7 @@ export default function InitialPaymentPage() {
               className="mb-8 p-4 bg-blue-50 border border-blue-200 rounded-lg"
             >
               <p className="text-sm text-blue-700 mb-2">
-                Send payment to this {currentMethod.name} number:
+                'Send money' to this {currentMethod.name} number:
               </p>
               <div className="flex items-center justify-between">
                 <code className="text-lg font-mono font-semibold text-blue-900">
@@ -645,19 +643,7 @@ export default function InitialPaymentPage() {
               </p>
             </motion.div>
 
-            <motion.div variants={itemVariants} className="mb-6">
-              <label className="block text-sm font-semibold text-ink mb-2">
-                Reference (optional)
-              </label>
-              <input
-                type="text"
-                value={reference}
-                onChange={(e) => setReference(e.target.value)}
-                placeholder="Any bank/reference note (optional)"
-                className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/50 focus:border-[#1E3A5F] transition-all"
-              />
-              <p className="text-xs text-muted mt-1">Optional reference or note from the payment provider</p>
-            </motion.div>
+            {/* Reference field removed */}
 
             <motion.div variants={itemVariants} className="mb-6 relative">
               <label className="block text-sm font-semibold text-ink mb-2">

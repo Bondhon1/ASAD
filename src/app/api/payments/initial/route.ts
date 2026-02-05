@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { paymentMethod, senderNumber, trxId, paymentDate, paymentTime, email, fullName, phone, instituteName, educationLevel, reference, caReferenceId, referrerType, referrerUserId } =
+    const { paymentMethod, senderNumber, trxId, paymentDate, paymentTime, email, fullName, phone, instituteName, educationLevel, caReferenceId, referrerType, referrerUserId } =
       validation.data;
 
     // Find user by email (email should be provided in the request)
@@ -126,7 +126,6 @@ export async function POST(request: NextRequest) {
             paymentMethod,
             senderNumber,
             trxId,
-            reference,
             caReferenceId: referrerType === "CA" ? (caReferenceId || null) : null,
             referrerType: referrerType || null,
             referrerUserId: referrerType === "VOLUNTEER" ? (referrerUserId || null) : null,
@@ -144,7 +143,6 @@ export async function POST(request: NextRequest) {
           paymentMethod,
           senderNumber,
           trxId,
-          reference,
           caReferenceId: referrerType === "CA" ? (caReferenceId || null) : null,
           referrerType: referrerType || null,
           referrerUserId: referrerType === "VOLUNTEER" ? (referrerUserId || null) : null,
