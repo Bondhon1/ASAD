@@ -77,7 +77,7 @@ export async function sendVerificationEmail({
               }
               .button { 
                 background: linear-gradient(135deg, #1e3a8a 0%, #312e81 100%); 
-                color: white; 
+                color: #ffffff !important; 
                 padding: 16px 40px; 
                 text-decoration: none; 
                 border-radius: 8px; 
@@ -123,7 +123,7 @@ export async function sendVerificationEmail({
                 margin: 8px 0; 
               }
               .footer a { 
-                color: white; 
+                color: #ffffff !important; 
                 text-decoration: none; 
                 font-weight: 600; 
               }
@@ -141,7 +141,7 @@ export async function sendVerificationEmail({
                 <p>To get started, please verify your email address by clicking the button below:</p>
                 
                 <div class="button-container">
-                  <a href="${verificationLink}" class="button" style="color: white;">✓ Verify Email Address</a>
+                  <a href="${verificationLink}" class="button" style="color: #ffffff !important; text-decoration: none;">✓ Verify Email Address</a>
                 </div>
                 
                 <div class="info-box">
@@ -194,7 +194,7 @@ export async function sendInitialPaymentEmail({
               .container { max-width: 600px; margin: 0 auto; padding: 20px; }
               .header { background-color: #c8102e; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
               .content { background-color: #f5f5f5; padding: 30px; text-align: center; }
-              .button { background-color: #c8102e; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 20px 0; }
+              .button { background-color: #c8102e; color: #ffffff !important; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 20px 0; }
               .footer { background-color: #1a1a1a; color: #fff; padding: 15px; text-align: center; border-radius: 0 0 8px 8px; font-size: 12px; }
               .highlight { color: #c8102e; font-weight: bold; }
             </style>
@@ -212,7 +212,7 @@ export async function sendInitialPaymentEmail({
                   <li>bKash</li>
                   <li>Nagad</li>
                 </ul>
-                <a href="${paymentLink}" class="button" style="color: white;">Continue to Payment</a>
+                <a href="${paymentLink}" class="button" style="color: #ffffff !important; text-decoration: none;">Continue to Payment</a>
                 <p style="color: #999; font-size: 12px;">This registration step must be completed within 7 days.</p>
               </div>
               <div class="footer">
@@ -249,7 +249,7 @@ export async function sendPasswordResetEmail({ email, fullName, resetLink }: Pas
             <style>
               body { font-family: Arial, sans-serif; color: #111827; }
               .container { max-width: 600px; margin: 40px auto; background: #fff; padding: 24px; border-radius: 12px; }
-              .btn { display:inline-block; padding: 12px 24px; background:#1E3A5F; color:#fff; border-radius:8px; text-decoration:none; }
+              .btn { display:inline-block; padding: 12px 24px; background:#1E3A5F; color:#ffffff !important; border-radius:8px; text-decoration:none; }
               .muted { color: #6b7280; font-size: 14px; }
             </style>
           </head>
@@ -258,7 +258,7 @@ export async function sendPasswordResetEmail({ email, fullName, resetLink }: Pas
               <h2>Reset your password</h2>
               <p>Hello <strong>${fullName}</strong>,</p>
               <p>We received a request to reset your password. Click the button below to set a new password. This link will expire in 1 hour.</p>
-              <p style="text-align:center; margin:24px 0;"><a class="btn" href="${resetLink}">Reset password</a></p>
+              <p style="text-align:center; margin:24px 0;"><a class="btn" href="${resetLink}" style="color: #ffffff !important; text-decoration: none;">Reset password</a></p>
               <p class="muted">If you didn't request a password reset, you can safely ignore this email.</p>
               <p class="muted">If the button doesn't work, copy and paste this link into your browser:</p>
               <div class="muted">${resetLink}</div>
@@ -323,7 +323,7 @@ export async function sendInterviewInvitation(invitation: InterviewInvitation) {
     .info-box { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; border-left: 4px solid #1E3A5F; }
     .info-row { margin: 10px 0; }
     .label { font-weight: bold; color: #1E3A5F; }
-    .meet-button { display: inline-block; padding: 12px 30px; background: #1E3A5F; color: white; text-decoration: none; border-radius: 6px; margin: 20px 0; }
+    .meet-button { display: inline-block; padding: 12px 30px; background: #1E3A5F; color: #ffffff !important; text-decoration: none; border-radius: 6px; margin: 20px 0; }
     .footer { text-align: center; color: #666; margin-top: 30px; font-size: 14px; }
   </style>
 </head>
@@ -355,7 +355,7 @@ export async function sendInterviewInvitation(invitation: InterviewInvitation) {
       </div>
 
       <center>
-        <a href="${invitation.meetLink}" class="meet-button" style="color: white;">Join Google Meet</a>
+        <a href="${invitation.meetLink}" class="meet-button" style="color: #ffffff !important; text-decoration: none;">Join Google Meet</a>
       </center>
 
       <div style="background: #fff3cd; padding: 15px; border-radius: 6px; margin: 20px 0;">
@@ -467,7 +467,7 @@ export async function sendInterviewResultEmail({
     .button-container { text-align: center; margin: 32px 0; }
     .button { 
       background: linear-gradient(135deg, #059669 0%, #047857 100%); 
-      color: white; 
+      color: #ffffff !important; 
       padding: 16px 40px; 
       text-decoration: none; 
       border-radius: 8px; 
@@ -514,7 +514,7 @@ export async function sendInterviewResultEmail({
       </div>
       
       <div class="button-container">
-        <a href="${paymentLink || `${process.env.NEXTAUTH_URL}/payments/final`}" class="button" style="color: white;">💳 Complete Payment Now</a>
+        <a href="${paymentLink || `${process.env.NEXTAUTH_URL}/payments/final`}" class="button" style="color: #ffffff !important; text-decoration: none;">💳 Complete Payment Now</a>
       </div>
       
       <p style="color: #6b7280; font-size: 14px;">⏰ Please complete this payment within 7 days to secure your spot.</p>
@@ -698,7 +698,7 @@ export async function sendFinalPaymentStatusEmail({
     .button-container { text-align: center; margin: 32px 0; }
     .button { 
       background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%); 
-      color: white; 
+      color: #ffffff !important; 
       padding: 16px 40px; 
       text-decoration: none; 
       border-radius: 8px; 
@@ -744,7 +744,7 @@ export async function sendFinalPaymentStatusEmail({
       </div>
       
       <div class="button-container">
-        <a href="${process.env.NEXTAUTH_URL}/dashboard" class="button" style="color: white;">🚀 Go to Dashboard</a>
+        <a href="${process.env.NEXTAUTH_URL}/dashboard" class="button" style="color: #ffffff !important; text-decoration: none;">🚀 Go to Dashboard</a>
       </div>
       
       <p>We're excited to have you on board. Together, we'll make a difference!</p>
@@ -804,7 +804,7 @@ export async function sendFinalPaymentStatusEmail({
     .button-container { text-align: center; margin: 32px 0; }
     .button { 
       background: linear-gradient(135deg, #1e3a8a 0%, #312e81 100%); 
-      color: white; 
+      color: #ffffff !important; 
       padding: 16px 40px; 
       text-decoration: none; 
       border-radius: 8px; 
@@ -847,7 +847,7 @@ export async function sendFinalPaymentStatusEmail({
       </div>
       
       <div class="button-container">
-        <a href="${process.env.NEXTAUTH_URL}/payments/final" class="button" style="color: white;">💳 Re-submit Payment</a>
+        <a href="${process.env.NEXTAUTH_URL}/payments/final" class="button" style="color: #ffffff !important; text-decoration: none;">💳 Re-submit Payment</a>
       </div>
       
       <p>If you believe this is an error, please contact us at <a href="mailto:hello@asadofficial.org">hello@asadofficial.org</a> with your payment proof.</p>
