@@ -141,7 +141,7 @@ export async function sendVerificationEmail({
                 <p>To get started, please verify your email address by clicking the button below:</p>
                 
                 <div class="button-container">
-                  <a href="${verificationLink}" class="button">✓ Verify Email Address</a>
+                  <a href="${verificationLink}" class="button" style="color: white;">✓ Verify Email Address</a>
                 </div>
                 
                 <div class="info-box">
@@ -212,7 +212,7 @@ export async function sendInitialPaymentEmail({
                   <li>bKash</li>
                   <li>Nagad</li>
                 </ul>
-                <a href="${paymentLink}" class="button">Continue to Payment</a>
+                <a href="${paymentLink}" class="button" style="color: white;">Continue to Payment</a>
                 <p style="color: #999; font-size: 12px;">This registration step must be completed within 7 days.</p>
               </div>
               <div class="footer">
@@ -355,7 +355,7 @@ export async function sendInterviewInvitation(invitation: InterviewInvitation) {
       </div>
 
       <center>
-        <a href="${invitation.meetLink}" class="meet-button">Join Google Meet</a>
+        <a href="${invitation.meetLink}" class="meet-button" style="color: white;">Join Google Meet</a>
       </center>
 
       <div style="background: #fff3cd; padding: 15px; border-radius: 6px; margin: 20px 0;">
@@ -514,7 +514,7 @@ export async function sendInterviewResultEmail({
       </div>
       
       <div class="button-container">
-        <a href="${paymentLink || `${process.env.NEXTAUTH_URL}/payments/final`}" class="button">💳 Complete Payment Now</a>
+        <a href="${paymentLink || `${process.env.NEXTAUTH_URL}/payments/final`}" class="button" style="color: white;">💳 Complete Payment Now</a>
       </div>
       
       <p style="color: #6b7280; font-size: 14px;">⏰ Please complete this payment within 7 days to secure your spot.</p>
@@ -744,7 +744,7 @@ export async function sendFinalPaymentStatusEmail({
       </div>
       
       <div class="button-container">
-        <a href="${process.env.NEXTAUTH_URL}/dashboard" class="button">🚀 Go to Dashboard</a>
+        <a href="${process.env.NEXTAUTH_URL}/dashboard" class="button" style="color: white;">🚀 Go to Dashboard</a>
       </div>
       
       <p>We're excited to have you on board. Together, we'll make a difference!</p>
@@ -847,7 +847,7 @@ export async function sendFinalPaymentStatusEmail({
       </div>
       
       <div class="button-container">
-        <a href="${process.env.NEXTAUTH_URL}/payments/final" class="button">💳 Re-submit Payment</a>
+        <a href="${process.env.NEXTAUTH_URL}/payments/final" class="button" style="color: white;">💳 Re-submit Payment</a>
       </div>
       
       <p>If you believe this is an error, please contact us at <a href="mailto:hello@asadofficial.org">hello@asadofficial.org</a> with your payment proof.</p>
