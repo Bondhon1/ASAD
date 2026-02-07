@@ -77,19 +77,6 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Check if phone number is already used by another user
-    if (phone) {
-      const existingPhoneUser = await prisma.user.findUnique({
-        where: { phone },
-      });
-
-      if (existingPhoneUser && existingPhoneUser.id !== user.id) {
-        return NextResponse.json(
-          { error: "Phone number already registered with another account" },
-          { status: 409 }
-        );
-      }
-    }
 
     // Update user with basic info and status
     const joiningSemesterValue = educationLevel === "university"
