@@ -24,10 +24,11 @@ export function Header() {
             {[
               { label: 'Home', href: '/' },
               { label: 'About', href: '/about' },
-              { label: 'Sectors', href: '/#sectors' },
+              { label: 'Sectors', href: '/sectors' },
               { label: 'Activities', href: '/#activities' },
+              { label: 'Contact Us', href: 'https://www.facebook.com/share/1J4n1fVsW8/?mibextid=wwXIfr' },
             ].map((item) => (
-              <Link key={item.label} href={item.href} className="text-sm font-semibold text-gray-600 hover:text-[#1E3A5F] transition-colors duration-300">{item.label}</Link>
+              <Link key={item.label} href={item.href} className="text-sm font-semibold text-gray-600 hover:text-[#1E3A5F] transition-colors duration-300" {...(item.href.startsWith('http') ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>{item.label}</Link>
             ))}
             {status === 'authenticated' ? (
               <div className="flex items-center gap-3">
@@ -56,10 +57,11 @@ export function Header() {
           {[
             { label: 'Home', href: '/' },
             { label: 'About', href: '/about' },
-            { label: 'Sectors', href: '/#sectors' },
+            { label: 'Sectors', href: '/sectors' },
             { label: 'Activities', href: '/#activities' },
+            { label: 'Contact Us', href: 'https://www.facebook.com/share/1J4n1fVsW8/?mibextid=wwXIfr' },
           ].map((item) => (
-            <Link key={item.label} href={item.href} onClick={() => setMobileMenuOpen(false)} className="text-base font-semibold text-gray-600 hover:text-[#1E3A5F] transition-colors duration-300">{item.label}</Link>
+            <Link key={item.label} href={item.href} onClick={() => setMobileMenuOpen(false)} className="text-base font-semibold text-gray-600 hover:text-[#1E3A5F] transition-colors duration-300" {...(item.href.startsWith('http') ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>{item.label}</Link>
           ))}
           {status === 'authenticated' ? (
             <div className="flex gap-2">

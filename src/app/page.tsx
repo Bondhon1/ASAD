@@ -49,7 +49,7 @@ function useInView(threshold = 0.1) {
 export default function NavyTheme() {
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [activeSector, setActiveSector] = useState<{name: string; icon: string; summary: string; color: string; textDark?: boolean} | null>(null);
+  const [activeSector, setActiveSector] = useState<{name: string; image: string; summary: string; color: string} | null>(null);
   const [currentEvent, setCurrentEvent] = useState(0);
   const [isEventHovered, setIsEventHovered] = useState(false);
 
@@ -99,10 +99,11 @@ export default function NavyTheme() {
               {[
                 { label: 'Home', href: '#home' },
                 { label: 'About', href: '/about' },
-                { label: 'Sectors', href: '#sectors' },
+                { label: 'Sectors', href: '/sectors' },
                 { label: 'Activities', href: '#activities' },
+                { label: 'Contact Us', href: 'https://www.facebook.com/share/1J4n1fVsW8/?mibextid=wwXIfr' },
               ].map((item) => (
-                <Link key={item.label} href={item.href} className="text-sm font-semibold text-gray-600 hover:text-[#1E3A5F] transition-colors duration-300">{item.label}</Link>
+                <Link key={item.label} href={item.href} className="text-sm font-semibold text-gray-600 hover:text-[#1E3A5F] transition-colors duration-300" {...(item.href.startsWith('http') ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>{item.label}</Link>
               ))}
               {status === 'authenticated' ? (
                 <div className="flex items-center gap-3">
@@ -131,10 +132,11 @@ export default function NavyTheme() {
             {[
               { label: 'Home', href: '#home' },
               { label: 'About', href: '/about' },
-              { label: 'Sectors', href: '#sectors' },
+              { label: 'Sectors', href: '/sectors' },
               { label: 'Activities', href: '#activities' },
+              { label: 'Contact Us', href: 'https://www.facebook.com/share/1J4n1fVsW8/?mibextid=wwXIfr' },
             ].map((item) => (
-              <Link key={item.label} href={item.href} onClick={() => setMobileMenuOpen(false)} className="text-base font-semibold text-gray-600 hover:text-[#1E3A5F] transition-colors duration-300">{item.label}</Link>
+              <Link key={item.label} href={item.href} onClick={() => setMobileMenuOpen(false)} className="text-base font-semibold text-gray-600 hover:text-[#1E3A5F] transition-colors duration-300" {...(item.href.startsWith('http') ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>{item.label}</Link>
             ))}
             {status === 'authenticated' ? (
               <div className="flex gap-2">
@@ -287,7 +289,7 @@ export default function NavyTheme() {
       {/* Sectors - Expandable Cards */}
       <section id="sectors" ref={sectorsAnim.ref} className="bg-gray-50 px-6 py-24 overflow-hidden">
         <div className="mx-auto max-w-7xl">
-          <div className={`text-center transition-all duration-700 ${sectorsAnim.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+          <div className={`text-center transition-all duration-1000 ${sectorsAnim.isInView ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-12 scale-95'}`}>
             <span className="inline-flex items-center gap-3 text-xs font-bold uppercase tracking-[0.2em] text-[#4A90D9]">
               <span className="h-px w-8 bg-[#4A90D9]" />
               Impact Areas
@@ -300,34 +302,47 @@ export default function NavyTheme() {
           {/* Desktop: 7 cards in a row */}
           <div className="mt-16 hidden lg:flex justify-center items-center gap-3 px-4">
             {[
-              { name: 'Education', icon: '📚', summary: 'Workshops, rural outreach, free classes, and study resources for under-resourced learners.', color: 'rgb(22, 52, 182)' },
-              { name: 'Cultural', icon: '🎭', summary: 'Talent showcases, monthly live shows, Artistic Carnival, and creative mentorship.', color: 'rgb(255, 97, 0)' },
-              { name: 'Photography', icon: '📷', summary: 'Weekly tutorials, exhibitions, event coverage, and Photo of the Week challenges.', color: 'rgb(0, 57, 112)' },
-              { name: 'Charity', icon: '🤝', summary: 'Fundraisers, relief responses, and festival programs delivering healthcare, food, and clothing.', color: 'rgb(150, 45, 0)' },
-              { name: 'Medical', icon: '⚕️', summary: 'Health camps, seminars, consultations, and essential medical supply distribution.', color: 'rgb(13, 207, 242)' },
-              { name: 'Blood Bank', icon: '🩸', summary: 'Donor network, awareness drives, fulfillment reports, and Life Drop collaborations.', color: 'rgb(242, 43, 12)' },
-              { name: 'Environment', icon: '🌱', summary: 'Tree planting, waste reduction, cleanliness campaigns, and eco workshops.', color: 'rgb(228, 255, 248)', textDark: true },
+              { name: 'Cultural', image: '/sectors/cultural.png', summary: 'Talent showcases, monthly live shows, Artistic Carnival, and creative mentorship.', color: '#ffb380' },
+              { name: 'Photography', image: '/sectors/photography.png', summary: 'Weekly tutorials, exhibitions, event coverage, and Photo of the Week challenges.', color: '#6ba3d9' },
+              { name: 'Blood Bank', image: '/sectors/blood.png', summary: 'Donor network, awareness drives, fulfillment reports, and Life Drop collaborations.', color: '#ff7b7b' },
+              { name: 'Environment', image: '/sectors/nature.png', summary: 'Tree planting, waste reduction, cleanliness campaigns, and eco workshops.', color: '#5bc97c' },
+              { name: 'Education', image: '/sectors/education.png', summary: 'Workshops, rural outreach, free classes, and study resources for under-resourced learners.', color: '#b57edc' },
+              { name: 'Charity', image: '/sectors/charity.png', summary: 'Fundraisers, relief responses, and festival programs delivering healthcare, food, and clothing.', color: '#ff6b6b' },
+              { name: 'Medical', image: '/sectors/medical.png', summary: 'Health camps, seminars, consultations, and essential medical supply distribution.', color: '#4db8c9' },
             ].map((sector, i) => (
               <div 
                 key={i}
-                className={`group relative flex-shrink-0 w-28 h-28 rounded-2xl shadow-lg cursor-pointer transition-all duration-500 ease-out hover:w-96 hover:shadow-2xl hover:z-10 overflow-hidden ${sectorsAnim.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
-                style={{ transitionDelay: `${i * 80}ms`, backgroundColor: sector.color }}
+                className={`group relative flex-shrink-0 w-28 h-28 rounded-2xl shadow-lg cursor-pointer transition-all duration-700 ease-out hover:w-96 hover:shadow-2xl hover:z-10 overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100 ${sectorsAnim.isInView ? 'opacity-100 translate-y-0 rotate-0' : 'opacity-0 translate-y-16 -rotate-6'}`}
+                style={{ 
+                  transitionDelay: `${i * 100}ms`,
+                  border: '3px solid',
+                  borderColor: sector.color,
+                  animation: `borderPulse-${i} 4s cubic-bezier(0.4, 0, 0.2, 1) infinite`,
+                  '--border-color': sector.color
+                } as React.CSSProperties}
               >
-                {/* Square icon state */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center p-4 transition-all duration-200 group-hover:opacity-0">
-                  <span className="text-4xl mb-2 drop-shadow-lg">{sector.icon}</span>
-                  <span className={`text-xs font-bold text-center leading-tight drop-shadow-md ${sector.textDark ? 'text-[#1E3A5F]' : 'text-white'}`}>{sector.name}</span>
+                <style>{`
+                  @keyframes borderPulse-${i} {
+                    0%, 100% { border-width: 3px; box-shadow: 0 0 0 rgba(${parseInt(sector.color.slice(1,3), 16)}, ${parseInt(sector.color.slice(3,5), 16)}, ${parseInt(sector.color.slice(5,7), 16)}, 0); }
+                    50% { border-width: 3.5px; box-shadow: 0 0 12px rgba(${parseInt(sector.color.slice(1,3), 16)}, ${parseInt(sector.color.slice(3,5), 16)}, ${parseInt(sector.color.slice(5,7), 16)}, 0.3); }
+                  }
+                `}</style>
+                {/* Square image state */}
+                <div className="absolute inset-0 p-2 transition-all duration-300 group-hover:opacity-0 group-hover:scale-110">
+                  <div className="relative w-full h-full rounded-xl overflow-hidden">
+                    <Image src={sector.image} alt={sector.name} fill className="object-contain p-2" />
+                  </div>
                 </div>
                 
                 {/* Expanded state */}
-                <div className="absolute inset-0 flex items-center px-6 py-4 opacity-0 group-hover:opacity-100 transition-all duration-300 delay-[400ms]">
+                <div className="absolute inset-0 flex items-center px-6 py-4 opacity-0 group-hover:opacity-100 transition-all duration-500 delay-200">
                   <div className="flex items-start gap-4 w-full">
-                    <div className="flex-shrink-0 w-16 h-16 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                      <span className="text-3xl">{sector.icon}</span>
+                    <div className="relative flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden" style={{ border: `2px solid ${sector.color}` }}>
+                      <Image src={sector.image} alt={sector.name} fill className="object-contain p-2" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className={`text-xl font-bold ${sector.textDark ? 'text-[#1E3A5F]' : 'text-white'}`}>{sector.name}</h3>
-                      <p className={`mt-2 text-sm leading-relaxed ${sector.textDark ? 'text-gray-700' : 'text-white/90'}`}>{sector.summary}</p>
+                      <h3 className="text-xl font-bold" style={{ color: sector.color }}>{sector.name}</h3>
+                      <p className="mt-2 text-sm leading-relaxed text-gray-700">{sector.summary}</p>
                     </div>
                   </div>
                 </div>
@@ -338,24 +353,49 @@ export default function NavyTheme() {
           {/* Mobile: Grid layout with modal on tap */}
           <div className="mt-16 flex flex-wrap justify-center gap-4 lg:hidden">
             {[
-              { name: 'Education', icon: '📚', summary: 'Workshops, rural outreach, free classes, and study resources for under-resourced learners.', color: 'rgb(22, 52, 182)' },
-              { name: 'Cultural', icon: '🎭', summary: 'Talent showcases, monthly live shows, Artistic Carnival, and creative mentorship.', color: 'rgb(255, 97, 0)' },
-              { name: 'Photography', icon: '📷', summary: 'Weekly tutorials, exhibitions, event coverage, and Photo of the Week challenges.', color: 'rgb(0, 57, 112)' },
-              { name: 'Charity', icon: '🤝', summary: 'Fundraisers, relief responses, and festival programs delivering healthcare, food, and clothing.', color: 'rgb(150, 45, 0)' },
-              { name: 'Medical', icon: '⚕️', summary: 'Health camps, seminars, consultations, and essential medical supply distribution.', color: 'rgb(13, 207, 242)' },
-              { name: 'Blood Bank', icon: '🩸', summary: 'Donor network, awareness drives, fulfillment reports, and Life Drop collaborations.', color: 'rgb(242, 43, 12)' },
-              { name: 'Environment', icon: '🌱', summary: 'Tree planting, waste reduction, cleanliness campaigns, and eco workshops.', color: 'rgb(228, 255, 248)', textDark: true },
+              { name: 'Cultural', image: '/sectors/cultural.png', summary: 'Talent showcases, monthly live shows, Artistic Carnival, and creative mentorship.', color: '#ffb380' },
+              { name: 'Photography', image: '/sectors/photography.png', summary: 'Weekly tutorials, exhibitions, event coverage, and Photo of the Week challenges.', color: '#6ba3d9' },
+              { name: 'Blood Bank', image: '/sectors/blood.png', summary: 'Donor network, awareness drives, fulfillment reports, and Life Drop collaborations.', color: '#ff7b7b' },
+              { name: 'Environment', image: '/sectors/nature.png', summary: 'Tree planting, waste reduction, cleanliness campaigns, and eco workshops.', color: '#5bc97c' },
+              { name: 'Education', image: '/sectors/education.png', summary: 'Workshops, rural outreach, free classes, and study resources for under-resourced learners.', color: '#b57edc' },
+              { name: 'Charity', image: '/sectors/charity.png', summary: 'Fundraisers, relief responses, and festival programs delivering healthcare, food, and clothing.', color: '#ff6b6b' },
+              { name: 'Medical', image: '/sectors/medical.png', summary: 'Health camps, seminars, consultations, and essential medical supply distribution.', color: '#4db8c9' },
             ].map((sector, i) => (
               <button 
                 key={i}
                 onClick={() => setActiveSector(sector)}
-                className={`w-24 h-24 sm:w-28 sm:h-28 rounded-2xl shadow-lg flex flex-col items-center justify-center p-3 transition-all duration-300 active:scale-95 ${sectorsAnim.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
-                style={{ transitionDelay: `${i * 80}ms`, backgroundColor: sector.color }}
+                className={`relative w-24 h-24 sm:w-28 sm:h-28 rounded-2xl shadow-lg p-3 transition-all duration-500 active:scale-95 overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100 ${sectorsAnim.isInView ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-12 scale-90'}`}
+                style={{ 
+                  transitionDelay: `${i * 100}ms`,
+                  border: '3px solid',
+                  borderColor: sector.color,
+                  animation: `borderPulseMobile-${i} 4s cubic-bezier(0.4, 0, 0.2, 1) infinite`,
+                } as React.CSSProperties}
               >
-                <span className="text-3xl mb-2 drop-shadow-lg">{sector.icon}</span>
-                <span className={`text-xs font-bold text-center leading-tight drop-shadow-md ${sector.textDark ? 'text-[#1E3A5F]' : 'text-white'}`}>{sector.name}</span>
+                <style>{`
+                  @keyframes borderPulseMobile-${i} {
+                    0%, 100% { border-width: 3px; box-shadow: 0 0 0 rgba(${parseInt(sector.color.slice(1,3), 16)}, ${parseInt(sector.color.slice(3,5), 16)}, ${parseInt(sector.color.slice(5,7), 16)}, 0); }
+                    50% { border-width: 3.5px; box-shadow: 0 0 12px rgba(${parseInt(sector.color.slice(1,3), 16)}, ${parseInt(sector.color.slice(3,5), 16)}, ${parseInt(sector.color.slice(5,7), 16)}, 0.3); }
+                  }
+                `}</style>
+                <div className="relative w-full h-full">
+                  <Image src={sector.image} alt={sector.name} fill className="object-contain" />
+                </div>
               </button>
             ))}
+          </div>
+
+          {/* View Details Button */}
+          <div className={`mt-12 text-center transition-all duration-700 delay-700 ${sectorsAnim.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+            <Link 
+              href="/sectors" 
+              className="inline-flex items-center gap-2 px-8 py-4 bg-[#1E3A5F] text-white font-semibold rounded-xl shadow-lg hover:bg-[#2a4d75] hover:shadow-xl transition-all duration-300 hover:scale-105"
+            >
+              <span>View All Sectors</span>
+              <svg className="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+              </svg>
+            </Link>
           </div>
         </div>
 
@@ -366,22 +406,37 @@ export default function NavyTheme() {
             onClick={() => setActiveSector(null)}
           >
             <div 
-              className="relative w-full max-w-sm rounded-3xl p-8 shadow-2xl animate-in fade-in zoom-in duration-200"
-              style={{ backgroundColor: activeSector.color }}
+              className="relative w-full max-w-sm rounded-3xl p-8 shadow-2xl animate-in fade-in zoom-in duration-200 bg-gradient-to-br from-gray-50 to-gray-100"
+              style={{ border: `4px solid ${activeSector.color}` }}
               onClick={(e) => e.stopPropagation()}
             >
               <button 
                 onClick={() => setActiveSector(null)}
-                className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-colors ${activeSector.textDark ? 'bg-gray-200 text-gray-800' : 'bg-white/20 text-white'}`}
+                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center transition-colors hover:bg-gray-300"
+                style={{ color: activeSector.color }}
               >
                 ✕
               </button>
               <div className="flex flex-col items-center text-center">
-                <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-6">
-                  <span className="text-5xl">{activeSector.icon}</span>
+                <div className="relative w-32 h-32 rounded-2xl mb-6 overflow-hidden" style={{ border: `3px solid ${activeSector.color}` }}>
+                  <Image src={activeSector.image} alt={activeSector.name} fill className="object-contain p-4" />
                 </div>
-                <h3 className={`text-2xl font-bold ${activeSector.textDark ? 'text-[#1E3A5F]' : 'text-white'}`}>{activeSector.name}</h3>
-                <p className={`mt-4 text-base leading-relaxed ${activeSector.textDark ? 'text-gray-700' : 'text-white/90'}`}>{activeSector.summary}</p>
+                <h3 className="text-2xl font-bold" style={{ color: activeSector.color }}>{activeSector.name}</h3>
+                <p className="mt-4 text-base leading-relaxed text-gray-700">{activeSector.summary}</p>
+                <Link 
+                  href="/sectors" 
+                  className="mt-6 inline-flex items-center gap-2 px-6 py-3 font-semibold rounded-lg transition-all duration-300 hover:shadow-lg"
+                  style={{ 
+                    border: `2px solid ${activeSector.color}`,
+                    color: activeSector.color,
+                    backgroundColor: 'transparent'
+                  }}
+                >
+                  <span>Learn More</span>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </Link>
               </div>
             </div>
           </div>
