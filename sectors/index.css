@@ -1,0 +1,101 @@
+:root {
+  --bg: #ecedef;
+  --card: #ffffff;
+  --text: #111111;
+  --accent: #ff751f;
+  --shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+  --radius: 20px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Poppins", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 18px;
+  position: relative;
+  overflow: hidden;
+}
+
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.4;
+}
+
+body::before {
+  top: -160px;
+  right: -180px;
+  width: 460px;
+  height: 460px;
+  background: radial-gradient(circle at center, rgba(255, 117, 31, 0.2), rgba(255, 117, 31, 0));
+}
+
+body::after {
+  bottom: -170px;
+  left: -190px;
+  width: 520px;
+  height: 520px;
+  background: radial-gradient(circle at center, rgba(17, 17, 17, 0.12), rgba(17, 17, 17, 0));
+}
+
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 42px 36px;
+  text-align: center;
+  max-width: 520px;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+.card h1 {
+  margin: 0 0 12px;
+  font-size: 32px;
+}
+
+.card p {
+  margin: 0 0 24px;
+  line-height: 1.6;
+  font-size: 16px;
+}
+
+.card a {
+  display: inline-block;
+  text-decoration: none;
+  color: #ffffff;
+  background: var(--accent);
+  padding: 12px 22px;
+  border-radius: 999px;
+  font-weight: 600;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 12px 20px rgba(255, 117, 31, 0.25);
+}
+
+.card a:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 26px rgba(255, 117, 31, 0.3);
+}
+
+@media (max-width: 520px) {
+  .card {
+    padding: 34px 26px;
+  }
+
+  .card h1 {
+    font-size: 26px;
+  }
+}
