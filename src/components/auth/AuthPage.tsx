@@ -77,6 +77,9 @@ function AuthPageContent() {
   const [forgotMessage, setForgotMessage] = useState('');
   const [turnstileToken, setTurnstileToken] = useState<string>('');
   const [turnstileKey, setTurnstileKey] = useState(0);
+  const [resendingEmail, setResendingEmail] = useState(false);
+  const [resendMessage, setResendMessage] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   useEffect(() => {
     // Check for OAuth errors in URL
@@ -90,9 +93,21 @@ function AuthPageContent() {
     }
   }, [searchParams]);
 
+  // Countdown timer for resend button
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => {
+        setResendCooldown(prev => prev - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
+
   const handleModeChange = (newMode: AuthMode) => {
     setError("");
     setSuccess("");
+    setResendCooldown(0);
+    setResendMessage("");
     setMode(newMode);
     setTurnstileToken('');
     setTurnstileKey(prev => prev + 1); // Reset Turnstile widget
@@ -122,6 +137,9 @@ function AuthPageContent() {
       if (!res || res.error) {
         setError(res?.error || "Login failed. Please try again.");
         setLoading(false);
+        // Reset Turnstile on error
+        setTurnstileToken('');
+        setTurnstileKey(prev => prev + 1);
         return;
       }
 
@@ -183,12 +201,21 @@ function AuthPageContent() {
 
       if (!response.ok) {
         setError(data.error || "Signup failed");
+        // Reset Turnstile on error
+        setTurnstileToken('');
+        setTurnstileKey(prev => prev + 1);
+        setLoading(false);
         return;
       }
+
+      // Store email in localStorage for verification resend functionality
+      localStorage.setItem("userEmail", email);
 
       setSuccess(
         "Signup successful! Please check your email for verification link."
       );
+      // Start 2-minute cooldown for resend button
+      setResendCooldown(120); // 2 minutes = 120 seconds
       // Reset form on success
       setEmail('');
       setPassword('');
@@ -206,8 +233,62 @@ function AuthPageContent() {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  const handleResendVerification = async () => {
+    const emailToResend = localStorage.getItem("userEmail");
+    if (!emailToResend) {
+      setResendMessage("Email address not found. Please sign up again.");
+      return;
+    }
+
+    setResendingEmail(true);
+    setResendMessage("");
+
+    try {
+      const response = await fetch("/api/auth/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: emailToResend }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setResendMessage(data.error || "Failed to resend email");
+      } else {
+        setResendMessage(`✓ Verification email sent! (${data.remainingAttempts} attempts remaining)`);
+        setResendCooldown(120); // Reset 2-minute cooldown after successful resend
+        setTimeout(() => setResendMessage(""), 5000);
+      }
+    } catch (err) {
+      setResendMessage("Network error. Please try again.");
+    } finally {
+      setResendingEmail(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white" style={{ fontFamily: 'var(--font-dm-sans), system-ui, sans-serif' }}>
+      <style jsx>{`
+        .force-visible-resend-button {
+          background-color: #16a34a !important;
+          color: #ffffff !important;
+          font-weight: 600 !important;
+          font-size: 12px !important;
+          opacity: 1 !important;
+          display: inline-block !important;
+          visibility: visible !important;
+          padding: 6px 12px !important;
+          border-radius: 4px !important;
+        }
+        .force-visible-resend-button:disabled {
+          background-color: #9ca3af !important;
+          opacity: 0.5 !important;
+          cursor: not-allowed !important;
+        }
+        .force-visible-resend-button:hover:not(:disabled) {
+          background-color: #15803d !important;
+        }
+      `}</style>
       <Header />
 
     <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 flex items-center justify-center p-4 md:p-8 overflow-hidden relative" style={{ paddingTop: '8rem' }}>
@@ -386,9 +467,31 @@ function AuthPageContent() {
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
-                      className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm"
+                      className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm space-y-2"
                     >
-                      {success}
+                      <p>{success}</p>
+                      {mode === "signup" && (
+                        <div className="pt-2 border-t border-green-200">
+                          <p className="text-xs text-green-600 mb-2">Didn't receive the email?</p>
+                          <button
+                            type="button"
+                            onClick={handleResendVerification}
+                            disabled={resendingEmail || resendCooldown > 0}
+                            className="force-visible-resend-button text-xs px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                          >
+                            {resendingEmail ? "Sending..." : 
+                             resendCooldown > 0 ? `Wait ${Math.floor(resendCooldown / 60)}:${(resendCooldown % 60).toString().padStart(2, '0')}` : 
+                             "Resend Verification Email"}
+                          </button>
+                          {resendMessage && (
+                            <p className={`text-xs mt-2 ${
+                              resendMessage.startsWith("✓") ? "text-green-700" : "text-red-600"
+                            }`}>
+                              {resendMessage}
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>

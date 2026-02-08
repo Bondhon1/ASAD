@@ -6,7 +6,15 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch (e) {
+      return NextResponse.json(
+        { error: "Invalid request body" },
+        { status: 400 }
+      );
+    }
 
     // Validate input
     const validation = EmailVerificationSchema.safeParse(body);
@@ -25,9 +33,33 @@ export async function POST(request: NextRequest) {
     });
 
     if (!user) {
+      // Check if there's a user with this email but no token (already verified)
+      // For better UX, we check if token might have been used before
+      const possiblyVerifiedUser = await prisma.user.findFirst({
+        where: {
+          emailVerificationToken: null,
+          emailVerified: true,
+        },
+      });
+
+      if (possiblyVerifiedUser) {
+        return NextResponse.json(
+          { error: "Email is already verified" },
+          { status: 400 }
+        );
+      }
+
       return NextResponse.json(
-        { error: "Invalid verification token" },
+        { error: "Invalid or expired verification token" },
         { status: 404 }
+      );
+    }
+
+    // Check if email is already verified (edge case)
+    if (user.emailVerified) {
+      return NextResponse.json(
+        { error: "Email is already verified" },
+        { status: 400 }
       );
     }
 

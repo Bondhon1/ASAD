@@ -18,6 +18,10 @@ export const EmailVerificationSchema = z.object({
   token: z.string().min(1, "Verification token is required"),
 });
 
+export const ResendVerificationEmailSchema = z.object({
+  email: z.string().email("Invalid email address"),
+});
+
 export const InitialPaymentSchema = z.object({
   email: z.string().email("Invalid email address"),
   fullName: z.string().min(2, "Full name is required"),
@@ -68,4 +72,5 @@ export const FinalPaymentSchema = z.object({
 export type SignUpInput = z.infer<typeof SignUpSchema>;
 export type LogInInput = z.infer<typeof LogInSchema>;
 export type EmailVerificationInput = z.infer<typeof EmailVerificationSchema>;
+export type ResendVerificationEmailInput = z.infer<typeof ResendVerificationEmailSchema>;
 export type InitialPaymentInput = z.infer<typeof InitialPaymentSchema>;

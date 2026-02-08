@@ -32,6 +32,8 @@ model User {
   emailVerified         Boolean                @default(false)
   emailVerificationToken String?               @unique
   emailVerificationExpiry DateTime?
+  emailVerificationResendCount Int?            @default(0)
+  emailVerificationLastResent  DateTime?
 
   // Address (Bangladesh)
   division              String?

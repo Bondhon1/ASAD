@@ -34,6 +34,12 @@ export default function EmailVerificationPage() {
   const [verified, setVerified] = useState(false);
   const [error, setError] = useState("");
   const [email, setEmail] = useState("");
+  const [resending, setResending] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState(false);
+  const [resendError, setResendError] = useState("");
+  const [remainingAttempts, setRemainingAttempts] = useState<number | null>(null);
+  const [cooldownTime, setCooldownTime] = useState<number | null>(null);
+  const [alreadyVerified, setAlreadyVerified] = useState(false);
 
   const scheduleRedirect = (targetEmail: string) => {
     setTimeout(() => {
@@ -41,8 +47,60 @@ export default function EmailVerificationPage() {
     }, 3000);
   };
 
+  const handleResendVerification = async () => {
+    if (!email && typeof window !== 'undefined') {
+      const storedEmail = localStorage.getItem("userEmail");
+      if (storedEmail) {
+        setEmail(storedEmail);
+      }
+    }
+
+    const emailToUse = email || (typeof window !== 'undefined' ? localStorage.getItem("userEmail") : null);
+    
+    if (!emailToUse) {
+      setResendError("Email address not found. Please sign up again.");
+      return;
+    }
+
+    setResending(true);
+    setResendError("");
+    setResendSuccess(false);
+
+    try {
+      const response = await fetch("/api/auth/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: emailToUse }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (data.cooldown && data.remainingTime) {
+          setCooldownTime(data.remainingTime);
+          setResendError(data.error);
+        } else if (data.maxLimitReached) {
+          setResendError(data.error);
+          setRemainingAttempts(0);
+        } else {
+          setResendError(data.error || "Failed to resend verification email");
+        }
+      } else {
+        setResendSuccess(true);
+        setRemainingAttempts(data.remainingAttempts);
+        setTimeout(() => setResendSuccess(false), 5000);
+      }
+    } catch (err) {
+      console.error("Resend error:", err);
+      setResendError("Network error. Please try again.");
+    } finally {
+      setResending(false);
+    }
+  };
+
   useEffect(() => {
     let cancelled = false;
+    let redirectTimer: NodeJS.Timeout | null = null;
 
     // Verify email token from URL
     const verifyEmail = async () => {
@@ -61,16 +119,24 @@ export default function EmailVerificationPage() {
 
       const existingState = sessionStorage.getItem(verificationKey);
       if (existingState === "true" && storedEmail) {
-        setEmail(storedEmail);
-        setVerified(true);
-        setVerifying(false);
-        scheduleRedirect(storedEmail);
+        if (!cancelled) {
+          setEmail(storedEmail);
+          setVerified(true);
+          setVerifying(false);
+          redirectTimer = setTimeout(() => {
+            if (!cancelled) {
+              window.location.href = `/payments/initial?email=${encodeURIComponent(storedEmail)}`;
+            }
+          }, 3000);
+        }
         return;
       }
 
       // If another instance is currently verifying, skip sending a duplicate request.
       if (existingState === "in-progress") {
-        setVerifying(false);
+        if (!cancelled) {
+          setVerifying(false);
+        }
         return;
       }
 
@@ -85,12 +151,29 @@ export default function EmailVerificationPage() {
           body: JSON.stringify({ token }),
         });
 
+        const data = await response.json();
+        
         if (!response.ok) {
-          throw new Error("Verification failed");
+          if (cancelled) return;
+          
+          // Remove in-progress marker so user can retry
+          try {
+            sessionStorage.removeItem(verificationKey);
+          } catch (e) {}
+
+          // Check if it's an "already verified" error
+          if (data.error && data.error.toLowerCase().includes("already verified")) {
+            setAlreadyVerified(true);
+            setError("Email is already verified");
+          } else {
+            setError(data.error || "Email verification failed. The link may have expired.");
+          }
+          setVerifying(false);
+          return;
         }
 
-        const data = await response.json();
         if (cancelled) return;
+        
         setEmail(data.email);
         setVerified(true);
         sessionStorage.setItem(verificationKey, "true");
@@ -99,18 +182,21 @@ export default function EmailVerificationPage() {
         localStorage.setItem("userEmail", data.email);
         
         // Redirect to initial payment page after 3 seconds
-        if (!cancelled) {
-          scheduleRedirect(data.email);
-        }
-      } catch (err) {
+        redirectTimer = setTimeout(() => {
+          if (!cancelled) {
+            window.location.href = `/payments/initial?email=${encodeURIComponent(data.email)}`;
+          }
+        }, 3000);
+      } catch (err: any) {
+        if (cancelled) return;
+        
         // Remove in-progress marker so user can retry
         try {
           sessionStorage.removeItem(verificationKey);
         } catch (e) {}
 
-        setError(
-          "Email verification failed. The link may have expired."
-        );
+        // Network or other errors
+        setError("Email verification failed. The link may have expired.");
       } finally {
         if (!cancelled) {
           setVerifying(false);
@@ -122,11 +208,43 @@ export default function EmailVerificationPage() {
 
     return () => {
       cancelled = true;
+      if (redirectTimer) {
+        clearTimeout(redirectTimer);
+      }
     };
   }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 flex items-center justify-center p-4 relative overflow-hidden">
+      <style jsx>{`
+        .force-visible-button {
+          background-color: #e5e7eb !important;
+          color: #000000 !important;
+          border: 3px solid #6b7280 !important;
+          font-weight: 700 !important;
+          font-size: 16px !important;
+          opacity: 1 !important;
+          display: block !important;
+          text-decoration: none !important;
+          visibility: visible !important;
+        }
+        .force-visible-resend-button {
+          background-color: #dc2626 !important;
+          color: #ffffff !important;
+          border: none !important;
+          font-weight: 600 !important;
+          font-size: 16px !important;
+          opacity: 1 !important;
+          display: block !important;
+          visibility: visible !important;
+        }
+        .force-visible-resend-button:disabled {
+          background-color: #9ca3af !important;
+          color: #ffffff !important;
+          cursor: not-allowed !important;
+          opacity: 1 !important;
+        }
+      `}</style>
       {/* Decorative elements */}
       <motion.div
         className="absolute top-0 left-0 w-80 h-80 bg-primary/5 rounded-full blur-3xl"
@@ -216,13 +334,23 @@ export default function EmailVerificationPage() {
             >
               <Link
                 href="/payments/initial"
-                className="block w-full px-4 py-3 bg-primary text-white rounded-lg font-semibold hover:bg-primary/90 transition-all"
+                className="block w-full px-4 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-all shadow-sm"
+                style={{ backgroundColor: '#2563eb', color: '#ffffff' }}
               >
                 Proceed to Payment
               </Link>
               <Link
                 href="/auth"
-                className="block w-full px-4 py-3 border border-border text-ink rounded-lg font-semibold hover:bg-surface transition-all"
+                className="block w-full px-4 py-3 rounded-lg font-semibold text-center shadow-lg"
+                style={{ 
+                  backgroundColor: '#e5e7eb',
+                  color: '#000000',
+                  border: '3px solid #6b7280',
+                  fontWeight: '700',
+                  fontSize: '16px',
+                  opacity: '1',
+                  display: 'block'
+                }}
               >
                 Back to Sign In
               </Link>
@@ -263,22 +391,66 @@ export default function EmailVerificationPage() {
               {error}
             </motion.p>
 
+            {resendSuccess && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg"
+              >
+                <p className="text-sm text-green-800">
+                  ✓ Verification email sent! Please check your inbox.
+                  {remainingAttempts !== null && remainingAttempts > 0 && (
+                    <span className="block mt-1 text-xs">
+                      {remainingAttempts} resend attempt(s) remaining.
+                    </span>
+                  )}
+                </p>
+              </motion.div>
+            )}
+
+            {resendError && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg"
+              >
+                <p className="text-sm text-red-800">{resendError}</p>
+                {cooldownTime && (
+                  <p className="text-xs text-red-600 mt-1">
+                    Please wait {cooldownTime} minute(s) before trying again.
+                  </p>
+                )}
+              </motion.div>
+            )}
+
             <motion.div
               variants={itemVariants}
               className="space-y-3"
             >
-              <Link
-                href="/auth"
-                className="block w-full px-4 py-3 bg-primary text-white rounded-lg font-semibold hover:bg-primary/90 transition-all"
-              >
-                Try Again
-              </Link>
-              <p className="text-sm text-muted">
+              {!alreadyVerified && remainingAttempts !== 0 && !cooldownTime && (
+                <motion.button
+                  variants={itemVariants}
+                  onClick={handleResendVerification}
+                  disabled={resending}
+                  className="force-visible-resend-button block w-full px-4 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                >
+                  {resending ? "Sending..." : "Resend Verification Email"}
+                </motion.button>
+              )}
+              <motion.div variants={itemVariants}>
+                <Link
+                  href="/auth"
+                  className="force-visible-button block w-full px-4 py-3 rounded-lg font-semibold text-center shadow-lg"
+                >
+                  {alreadyVerified ? "Go to Sign In" : remainingAttempts === 0 ? "Contact Support" : "Back to Sign In"}
+                </Link>
+              </motion.div>
+              <motion.p variants={itemVariants} className="text-sm text-gray-600" style={{ color: '#4b5563' }}>
                 Need help?{" "}
-                <Link href="/contact" className="text-primary hover:text-primary/80">
+                <Link href="/contact" className="text-blue-600 hover:text-blue-800 underline font-semibold" style={{ color: '#2563eb' }}>
                   Contact support
                 </Link>
-              </p>
+              </motion.p>
             </motion.div>
           </motion.div>
         )}
