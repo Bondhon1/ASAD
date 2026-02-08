@@ -10,8 +10,16 @@ cd d:\projects\ASAD\web
 npm install
 
 # Set up environment variables
-# Edit .env.local with your DATABASE_URL, SMTP settings, etc.
-# Use .env.example as template
+# Create .env.local file with required variables
+# See docs/TURNSTILE_SETUP.md for Cloudflare Turnstile configuration
+
+# Required environment variables:
+# - DATABASE_URL (PostgreSQL connection string)
+# - NEXTAUTH_SECRET (random string for NextAuth)
+# - GOOGLE_CLIENT_ID & GOOGLE_CLIENT_SECRET (for OAuth)
+# - NEXT_PUBLIC_TURNSTILE_SITE_KEY (Cloudflare Turnstile public key)
+# - TURNSTILE_SECRET_KEY (Cloudflare Turnstile private key)
+# - SMTP settings for email
 ```
 
 ## Database

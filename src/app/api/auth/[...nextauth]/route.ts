@@ -3,6 +3,7 @@ import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import { comparePassword } from "@/lib/auth";
+import { verifyTurnstileToken } from "@/lib/turnstile";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -16,10 +17,21 @@ export const authOptions: NextAuthOptions = {
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
+        turnstileToken: { label: "Turnstile Token", type: "text" },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
           throw new Error("Invalid credentials");
+        }
+
+        // Verify Turnstile token
+        if (!credentials.turnstileToken) {
+          throw new Error("Security verification required");
+        }
+
+        const isValidToken = await verifyTurnstileToken(credentials.turnstileToken);
+        if (!isValidToken) {
+          throw new Error("Security verification failed");
         }
 
         const user = await prisma.user.findUnique({

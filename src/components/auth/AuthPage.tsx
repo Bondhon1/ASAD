@@ -10,6 +10,7 @@ import { Footer } from '@/components/layout/Footer';
 import { signIn, useSession, getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
+import { Turnstile } from '@marsidev/react-turnstile';
 
 type AuthMode = "login" | "signup";
 
@@ -74,6 +75,8 @@ function AuthPageContent() {
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotMessage, setForgotMessage] = useState('');
+  const [turnstileToken, setTurnstileToken] = useState<string>('');
+  const [turnstileKey, setTurnstileKey] = useState(0);
 
   useEffect(() => {
     // Check for OAuth errors in URL
@@ -91,6 +94,8 @@ function AuthPageContent() {
     setError("");
     setSuccess("");
     setMode(newMode);
+    setTurnstileToken('');
+    setTurnstileKey(prev => prev + 1); // Reset Turnstile widget
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -98,11 +103,19 @@ function AuthPageContent() {
     setError("");
     setLoading(true);
 
+    // Verify Turnstile token
+    if (!turnstileToken) {
+      setError("Please complete the security verification");
+      setLoading(false);
+      return;
+    }
+
     try {
       // Attempt sign in without automatic redirect so we can persist a local session flag
       const res: any = await signIn("credentials", {
         email,
         password,
+        turnstileToken,
         redirect: false,
       });
 
@@ -137,6 +150,9 @@ function AuthPageContent() {
     } catch (err) {
       setError("Login failed. Please try again.");
       setLoading(false);
+      // Reset Turnstile on error
+      setTurnstileToken('');
+      setTurnstileKey(prev => prev + 1);
     }
   };
 
@@ -145,6 +161,13 @@ function AuthPageContent() {
     setError("");
     setLoading(true);
 
+    // Verify Turnstile token
+    if (!turnstileToken) {
+      setError("Please complete the security verification");
+      setLoading(false);
+      return;
+    }
+
     try {
       const response = await fetch("/api/auth/signup", {
         method: "POST",
@@ -152,6 +175,7 @@ function AuthPageContent() {
         body: JSON.stringify({
           email,
           password,
+          turnstileToken,
         }),
       });
 
@@ -165,8 +189,16 @@ function AuthPageContent() {
       setSuccess(
         "Signup successful! Please check your email for verification link."
       );
+      // Reset form on success
+      setEmail('');
+      setPassword('');
+      setTurnstileToken('');
+      setTurnstileKey(prev => prev + 1);
     } catch (err) {
       setError("Signup failed. Please try again.");
+      // Reset Turnstile on error
+      setTurnstileToken('');
+      setTurnstileKey(prev => prev + 1);
     } finally {
       setLoading(false);
     }
@@ -453,6 +485,20 @@ function AuthPageContent() {
                         </div>
                       )}
 
+                      <motion.div variants={itemVariants} className="mt-4">
+                        <Turnstile
+                          key={turnstileKey}
+                          siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'}
+                          onSuccess={(token) => setTurnstileToken(token)}
+                          onError={() => setTurnstileToken('')}
+                          onExpire={() => setTurnstileToken('')}
+                          options={{
+                            theme: 'light',
+                            size: 'normal',
+                          }}
+                        />
+                      </motion.div>
+
                       <motion.button
                         variants={itemVariants}
                         type="submit"
@@ -535,6 +581,20 @@ function AuthPageContent() {
                         <p className="text-xs text-muted mt-1">
                           At least 8 characters, 1 uppercase, 1 number
                         </p>
+                      </motion.div>
+
+                      <motion.div variants={itemVariants} className="mt-4">
+                        <Turnstile
+                          key={turnstileKey}
+                          siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'}
+                          onSuccess={(token) => setTurnstileToken(token)}
+                          onError={() => setTurnstileToken('')}
+                          onExpire={() => setTurnstileToken('')}
+                          options={{
+                            theme: 'light',
+                            size: 'normal',
+                          }}
+                        />
                       </motion.div>
 
                       <motion.button

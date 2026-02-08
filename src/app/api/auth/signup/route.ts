@@ -3,12 +3,32 @@ import { hashPassword, generateEmailVerificationToken } from "@/lib/auth";
 import { sendVerificationEmail } from "@/lib/email";
 import { SignUpSchema } from "@/lib/validations";
 import { prisma } from "@/lib/prisma";
+import { verifyTurnstileToken, getClientIp } from "@/lib/turnstile";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+
+    // Verify Turnstile token first
+    const { turnstileToken } = body;
+    if (!turnstileToken) {
+      return NextResponse.json(
+        { error: "Security verification required" },
+        { status: 400 }
+      );
+    }
+
+    const clientIp = getClientIp(request);
+    const isValidToken = await verifyTurnstileToken(turnstileToken, clientIp);
+    
+    if (!isValidToken) {
+      return NextResponse.json(
+        { error: "Security verification failed. Please try again." },
+        { status: 400 }
+      );
+    }
 
     // Validate input
     const validation = SignUpSchema.safeParse(body);
