@@ -463,8 +463,8 @@ function InterviewSlotsContent() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Capacity (20-30 recommended)</label>
-                <input type="number" required min="1" max="50" value={formData.capacity} onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value, 10) || 0 })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]" />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Capacity (Max: 100)</label>
+                <input type="number" required min="1" max="100" value={formData.capacity} onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value, 10) || 0 })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]" />
               </div>
 
               <div className={`border rounded-lg p-4 ${calendarStatus.connected ? "bg-blue-50 border-blue-200" : "bg-gray-50 border-gray-200"}`}>

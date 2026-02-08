@@ -74,8 +74,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "End time must be after start time" }, { status: 400 });
     }
 
-    if (capacity < 1 || capacity > 50) {
-      return NextResponse.json({ error: "Capacity must be between 1 and 50" }, { status: 400 });
+    if (capacity < 1 || capacity > 100) {
+      return NextResponse.json({ error: "Capacity must be between 1 and 100" }, { status: 400 });
     }
 
     let meetLink = "";
