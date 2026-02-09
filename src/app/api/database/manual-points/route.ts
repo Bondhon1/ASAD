@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { applyPointsChange } from '@/lib/rankUtils';
+import { publishNotification } from '@/lib/ably';
 
 export async function POST(req: Request) {
   try {
@@ -38,6 +39,35 @@ export async function POST(req: Request) {
           results.push({ ident, ok: false, error: r.error || 'applyPointsChange failed' });
         } else {
           results.push({ ident, ok: true, newPoints: r.newPoints, rankChanged: r.rankChanged, newRankName: r.newRankName });
+
+          // Create a notification for the user informing about manual points adjustment
+          try {
+            const notif = await prisma.notification.create({
+              data: {
+                userId: user.id,
+                type: 'SYSTEM_ANNOUNCEMENT',
+                title: `${points > 0 ? 'Points Added' : 'Points Adjusted'}`,
+                message: `"${taskName}" applied: ${points > 0 ? '+' : ''}${points} points.`,
+                link: '/dashboard',
+              },
+            });
+
+            // Publish real-time notification (if Ably configured)
+            try {
+              await publishNotification(user.id, {
+                id: notif.id,
+                type: notif.type,
+                title: notif.title,
+                message: notif.message || null,
+                link: notif.link || null,
+                createdAt: notif.createdAt,
+              });
+            } catch (pubErr) {
+              console.error('Failed to publish notification for user', user.id, pubErr);
+            }
+          } catch (notifErr) {
+            console.error('Failed to create notification for user', user.id, notifErr);
+          }
         }
       } catch (e: any) {
         results.push({ ident, ok: false, error: e?.message || 'Error' });
