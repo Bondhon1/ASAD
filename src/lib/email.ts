@@ -370,7 +370,7 @@ export async function sendInterviewInvitation(invitation: InterviewInvitation) {
 
       <p>A calendar invitation (.ics file) is attached to this email. You can add it to your calendar app.</p>
 
-      <p>If you have any questions, please contact us at <a href="mailto:hello@asadofficial.org">hello@asadofficial.org</a></p>
+      <p>If you have any questions, please contact us at <a href="mailto:amarsomoyamardesh.it@gmail.com">amarsomoyamardesh.it@gmail.com</a></p>
 
       <p>Best of luck with your interview!</p>
 
@@ -383,7 +383,7 @@ export async function sendInterviewInvitation(invitation: InterviewInvitation) {
 
       <div class="footer">
         <p>© ${new Date().getFullYear()} Amar Somoy Amar Desh. All rights reserved.</p>
-        <p>📍 Dhaka, Bangladesh | 📧 hello@asadofficial.org</p>
+        <p>📍 Dhaka, Bangladesh | 📧 amarsomoyamardesh.it@gmail.com</p>
       </div>
     </div>
   </div>
@@ -604,7 +604,7 @@ export async function sendInterviewResultEmail({
         <p style="margin: 0;">You may reapply in the future after gaining more experience. We welcome you to try again!</p>
       </div>
       
-      <p>If you have any questions, feel free to reach out to us at <a href="mailto:hello@asadofficial.org">hello@asadofficial.org</a>.</p>
+      <p>If you have any questions, feel free to reach out to us at <a href="mailto:amarsomoyamardesh.it@gmail.com">amarsomoyamardesh.it@gmail.com</a>.</p>
       
       <p>
         Best regards,<br>
@@ -850,7 +850,7 @@ export async function sendFinalPaymentStatusEmail({
         <a href="${process.env.NEXTAUTH_URL}/payments/final" class="button" style="color: #ffffff !important; text-decoration: none;">💳 Re-submit Payment</a>
       </div>
       
-      <p>If you believe this is an error, please contact us at <a href="mailto:hello@asadofficial.org">hello@asadofficial.org</a> with your payment proof.</p>
+      <p>If you believe this is an error, please contact us at <a href="mailto:amarsomoyamardesh.it@gmail.com">amarsomoyamardesh.it@gmail.com</a> with your payment proof.</p>
       
       <p>
         Best regards,<br>

@@ -188,7 +188,7 @@ export default function FinalPaymentPage({ userEmail: propEmail }: Props) {
               <li>Use the sender number you paid from.</li>
               <li>Admin verifies payments within 24 hours.</li>
             </ul>
-            <div className="mt-4 text-xs text-muted">Need help? Contact hello@asadofficial.org</div>
+            <div className="mt-4 text-xs text-muted">Need help? Contact amarsomoyamardesh.it@gmail.com</div>
           </div>
         </aside>
           </div>
