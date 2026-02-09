@@ -295,12 +295,12 @@ export async function sendInterviewInvitation(invitation: InterviewInvitation) {
       start: invitation.startTime,
       end: invitation.endTime,
       summary: "ASAD Volunteer Interview",
-      description: `Dear ${invitation.applicantName},\n\nYou have been scheduled for a volunteer interview with Amar Somoy Amar Desh (ASAD).\n\nInterview Details:\nDate: ${invitation.interviewDate.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}\nTime: ${invitation.startTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })} - ${invitation.endTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}\n\nGoogle Meet Link: ${invitation.meetLink}\n\nPlease join on time. Best of luck!\n\nRegards,\n${invitation.hrName}\nASAD HR Team`,
+      description: `Dear ${invitation.applicantName},\n\nYou have been scheduled for a volunteer interview with Amar Somoy Amar Desh (ASAD).\n\nInterview Details:\nDate: ${invitation.interviewDate.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "Asia/Dhaka" })}\nTime: ${invitation.startTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Dhaka" })} - ${invitation.endTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Dhaka" })} (Bangladesh Time)\n\nGoogle Meet Link: ${invitation.meetLink}\n\nPlease join on time. Best of luck!\n\nRegards,\n${invitation.hrName}\nASAD HR Team`,
       location: invitation.meetLink,
       url: invitation.meetLink,
       organizer: {
         name: invitation.hrName,
-        email: process.env.SMTP_USER || "hr@asadofficial.org",
+        email: process.env.SMTP_USER || "amarsomoyamardesh.it@gmail.com",
       },
       attendees: [
         {
@@ -342,11 +342,11 @@ export async function sendInterviewInvitation(invitation: InterviewInvitation) {
         <h3 style="margin-top: 0; color: #1E3A5F;">Interview Details</h3>
         <div class="info-row">
           <span class="label">📅 Date:</span> 
-          ${invitation.interviewDate.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+          ${invitation.interviewDate.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "Asia/Dhaka" })}
         </div>
         <div class="info-row">
           <span class="label">🕐 Time:</span> 
-          ${invitation.startTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })} - ${invitation.endTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })} (Bangladesh Time)
+          ${invitation.startTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Dhaka" })} - ${invitation.endTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Dhaka" })} (Bangladesh Time)
         </div>
         <div class="info-row">
           <span class="label">💼 Interview Type:</span> 
@@ -871,5 +871,156 @@ export async function sendFinalPaymentStatusEmail({
   } catch (error) {
     console.error("Error sending final payment status email:", error);
     throw error;
+  }
+}
+
+// ============================================================================
+// INTERVIEW TIME CORRECTION EMAIL
+// ============================================================================
+
+export interface InterviewCorrectionParams {
+  applicantName: string;
+  applicantEmail: string;
+  interviewDate: Date;
+  startTime: Date;
+  endTime: Date;
+  meetLink: string;
+  hrName: string;
+}
+
+/**
+ * Send interview time correction email with calendar attachment
+ */
+export async function sendInterviewTimeCorrection(params: InterviewCorrectionParams) {
+  try {
+    // Create iCal calendar event
+    const cal = ical({ name: "ASAD Interview Schedule (CORRECTED)" });
+    
+    cal.createEvent({
+      start: params.startTime,
+      end: params.endTime,
+      summary: "ASAD Volunteer Interview - CORRECTED TIME",
+      description: `Dear ${params.applicantName},\n\nThis is a correction to your previously scheduled interview.\n\nCORRECT Interview Details:\nDate: ${params.interviewDate.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "Asia/Dhaka" })}\nTime: ${params.startTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Dhaka" })} - ${params.endTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Dhaka" })} (Bangladesh Time)\n\nGoogle Meet Link: ${params.meetLink}\n\nWe apologize for the error in the previous email.\n\nRegards,\n${params.hrName}\nASAD HR Team`,
+      location: params.meetLink,
+      url: params.meetLink,
+      organizer: {
+        name: params.hrName,
+        email: process.env.SMTP_USER || "hr@asadofficial.org",
+      },
+      attendees: [
+        {
+          name: params.applicantName,
+          email: params.applicantEmail,
+        },
+      ],
+    });
+
+    // Email HTML content
+    const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+    .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
+    .alert-box { background: #fef2f2; padding: 20px; margin: 20px 0; border-radius: 8px; border-left: 4px solid #dc2626; }
+    .info-box { background: #ecfdf5; padding: 20px; margin: 20px 0; border-radius: 8px; border-left: 4px solid #10b981; }
+    .info-row { margin: 10px 0; }
+    .label { font-weight: bold; color: #1E3A5F; }
+    .meet-button { display: inline-block; padding: 12px 30px; background: #1E3A5F; color: #ffffff !important; text-decoration: none; border-radius: 6px; margin: 20px 0; }
+    .footer { text-align: center; color: #666; margin-top: 30px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>⚠️ Interview Time Correction</h1>
+      <p>Important Update - Please Read</p>
+    </div>
+    <div class="content">
+      <p>Dear <strong>${params.applicantName}</strong>,</p>
+      
+      <div class="alert-box">
+        <h3 style="margin-top: 0; color: #dc2626;">⚠️ Important: Time Correction</h3>
+        <p style="margin: 0;">We sincerely apologize for an error in our previous email. The interview time was incorrectly stated due to a technical issue.</p>
+      </div>
+      
+      <div class="info-box">
+        <h3 style="margin-top: 0; color: #059669;">✓ CORRECT Interview Details</h3>
+        <div class="info-row">
+          <span class="label">📅 Date:</span> 
+          ${params.interviewDate.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "Asia/Dhaka" })}
+        </div>
+        <div class="info-row">
+          <span class="label">🕐 CORRECT Time:</span> 
+          <strong style="color: #059669; font-size: 18px;">${params.startTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Dhaka" })} - ${params.endTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Dhaka" })}</strong> (Bangladesh Time)
+        </div>
+        <div class="info-row">
+          <span class="label">💼 Interview Type:</span> 
+          Google Meet (Virtual)
+        </div>
+      </div>
+
+      <center>
+        <a href="${params.meetLink}" class="meet-button" style="color: #ffffff !important; text-decoration: none;">Join Google Meet</a>
+      </center>
+
+      <div style="background: #fff3cd; padding: 15px; border-radius: 6px; margin: 20px 0;">
+        <strong>⚠️ Important Notes:</strong>
+        <ul style="margin: 10px 0;">
+          <li>Please join the meeting 5 minutes before the scheduled time</li>
+          <li>Ensure you have a stable internet connection</li>
+          <li>Keep your camera on during the interview</li>
+          <li>Have your documents ready for verification</li>
+        </ul>
+      </div>
+
+      <p>A corrected calendar invitation (.ics file) is attached to this email. Please update your calendar.</p>
+
+      <div style="background: #f0f9ff; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #3b82f6;">
+        <p style="margin: 0;"><strong>Our Sincere Apologies</strong></p>
+        <p style="margin: 8px 0 0;">We apologize for any inconvenience this error may have caused. We have fixed our email system to prevent this from happening again. Thank you for your understanding.</p>
+      </div>
+
+      <p>If you have any questions, please contact us at <a href="mailto:amarsomoyamardesh.it@gmail.com">amarsomoyamardesh.it@gmail.com</a></p>
+
+      <p>Best of luck with your interview!</p>
+
+      <p>
+        Warm regards,<br>
+        <strong>${params.hrName}</strong><br>
+        HR Team<br>
+        Amar Somoy Amar Desh (ASAD)
+      </p>
+
+      <div class="footer">
+        <p>© ${new Date().getFullYear()} Amar Somoy Amar Desh. All rights reserved.</p>
+        <p>📍 Dhaka, Bangladesh | 📧 amarsomoyamardesh.it@gmail.com</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+    `;
+
+    // Send email with calendar attachment
+    await transporter.sendMail({
+      from: `"ASAD HR Team" <${process.env.SMTP_USER}>`,
+      to: params.applicantEmail,
+      subject: "⚠️ CORRECTION: Interview Time Update - ASAD Volunteer Program",
+      html: htmlContent,
+      icalEvent: {
+        filename: "interview-corrected.ics",
+        method: "REQUEST",
+        content: cal.toString(),
+      },
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error sending correction email:", error);
+    throw new Error("Failed to send correction email");
   }
 }
