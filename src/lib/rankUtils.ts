@@ -248,6 +248,7 @@ function findNextRankInSequence(
   console.log('[findNextRank] Points exceed current threshold! Looking for next rank...');
   
   // Find the next rank in sequence (skip parent-only and Adviser)
+  // Once points exceed current rank's threshold, upgrade to next rank immediately
   for (let i = currentIndex + 1; i < RANK_SEQUENCE.length; i++) {
     const rankName = RANK_SEQUENCE[i];
     
@@ -269,25 +270,10 @@ function findNextRankInSequence(
       continue;
     }
 
-    // Only upgrade to this rank if totalPoints meets its threshold
-    // Determine whether this transition would reset points (i.e., new parent group)
-    const willReset = shouldResetPointsOnUpgrade(currentRankFromDB?.name || null, rankFromDB.name);
-
-    // If the transition does NOT reset points (same parent group), allow upgrade
-    // when totalPoints exceeds the CURRENT rank's threshold. Otherwise require
-    // meeting the NEXT rank's threshold as before.
-    const requiredThreshold = willReset
-      ? rankFromDB.thresholdPoints
-      : (currentRankFromDB ? currentRankFromDB.thresholdPoints : rankFromDB.thresholdPoints);
-
-    if (totalPoints >= requiredThreshold) {
-      console.log('[findNextRank] Found next rank:', rankName, 'requiredThreshold:', requiredThreshold);
-      return rankFromDB;
-    }
-
-    // If totalPoints doesn't reach the required threshold, no further higher rank
-    console.log('[findNextRank] Not enough points for rank:', rankName, 'needed:', requiredThreshold, 'have:', totalPoints);
-    return null;
+    // Upgrade to next rank - we already verified points exceed current rank's threshold
+    // Don't check next rank's threshold, just return it as the upgrade target
+    console.log('[findNextRank] Upgrading to next rank:', rankName);
+    return rankFromDB;
   }
   
   console.log('[findNextRank] No next rank found in sequence');
