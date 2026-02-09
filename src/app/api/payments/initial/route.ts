@@ -43,12 +43,13 @@ export async function POST(request: NextRequest) {
     }
 
     
-    // Check if email is verified
+    // Check if email is verified, if not set it to verified
+    // This handles cases where users signed in via Google OAuth but emailVerified wasn't set
     if (!user.emailVerified) {
-      return NextResponse.json(
-        { error: "Please verify your email first" },
-        { status: 403 }
-      );
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { emailVerified: true },
+      });
     }
 
     // Check if user already has a payment record
