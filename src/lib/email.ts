@@ -363,8 +363,8 @@ export async function sendInterviewInvitation(invitation: InterviewInvitation) {
         <ul style="margin: 10px 0;">
           <li>Please join the meeting 5 minutes before the scheduled time</li>
           <li>Ensure you have a stable internet connection</li>
-          <li>Keep your camera on during the interview</li>
-          <li>Have your documents ready for verification</li>
+          <li>Keep your camera on during the interview, for better communication</li>
+          
         </ul>
       </div>
 
