@@ -206,7 +206,7 @@ export default function TasksPage() {
   const refresh = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/tasks');
+      const res = await fetch('/api/tasks', { cache: 'no-store' });
       if (!res.ok) return;
       const d = await res.json();
       setTasks(d.tasks || []);
@@ -217,7 +217,7 @@ export default function TasksPage() {
     setCreatedLoading(true);
     try {
       const url = isSuperAdmin ? '/api/secretaries/tasks?all=1' : '/api/secretaries/tasks';
-      const res = await fetch(url);
+      const res = await fetch(url, { cache: 'no-store' });
       if (res.ok) {
         const d = await res.json();
         setCreatedTasks(d.tasks || []);

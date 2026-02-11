@@ -129,7 +129,7 @@ export default function SecretariesPage() {
   const fetchTasks = async () => {
     setLoadingTasks(true);
     try {
-      const res = await fetch('/api/secretaries/tasks');
+      const res = await fetch('/api/secretaries/tasks', { cache: 'no-store' });
       if (!res.ok) throw new Error('Failed to load tasks');
       const data = await res.json();
       setTasks(Array.isArray(data.tasks) ? data.tasks : data.tasks || []);

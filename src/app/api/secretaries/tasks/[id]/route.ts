@@ -15,6 +15,10 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     if (!['SECRETARIES', 'MASTER', 'ADMIN', 'DIRECTOR'].includes(requester.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     const { id } = await params;
+    // ensure task exists first
+    const existing = await prisma.task.findUnique({ where: { id } });
+    if (!existing) return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+
     // delete related notifications first
     await prisma.notification.deleteMany({ where: { link: `/tasks/${id}` } });
     const deleted = await prisma.task.delete({ where: { id } });
