@@ -234,11 +234,22 @@ export default function TasksPage() {
   const deleteTask = async (id: string) => {
     const ok = await confirm('Delete this task?', 'Confirm Delete', 'warning');
     if (!ok) return;
+    // Optimistic UI: remove item immediately, restore on failure
+    const prevTasks = tasks;
+    const prevCreated = createdTasks;
+    setTasks((p) => p.filter((t) => t.id !== id));
+    setCreatedTasks((p) => p.filter((t) => t.id !== id));
     try {
       const res = await fetch(`/api/secretaries/tasks/${id}`, { method: 'DELETE' });
       const d = await res.json();
-      if (!res.ok) throw new Error(d?.error || 'Delete failed');
-      await refresh();
+      if (!res.ok) {
+        // restore
+        setTasks(prevTasks);
+        setCreatedTasks(prevCreated);
+        throw new Error(d?.error || 'Delete failed');
+      }
+      // Keep optimistic removal, but refresh in background to ensure consistency
+      refresh();
     } catch (err: any) {
       await alert('Delete failed: ' + (err?.message || 'Unknown'));
     }

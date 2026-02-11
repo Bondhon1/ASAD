@@ -238,11 +238,18 @@ export default function SecretariesPage() {
   const deleteTask = async (id: string) => {
     const ok = await confirm('Delete this task?', 'Confirm Delete', 'warning');
     if (!ok) return;
+    // Optimistic UI: remove immediately and restore if the request fails
+    const prev = tasks;
+    setTasks(prev => prev.filter(t => t.id !== id));
     try {
       const res = await fetch(`/api/secretaries/tasks/${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Delete failed');
-      setTasks(prev => prev.filter(t => t.id !== id));
+      if (!res.ok) {
+        setTasks(prev);
+        throw new Error('Delete failed');
+      }
+      // success: nothing else to do
     } catch (e) {
+      setTasks(prev);
       await alert('Failed to delete task');
     }
   };
