@@ -20,8 +20,41 @@ export default function ApprovalsPage() {
   const [modalPayment, setModalPayment] = useState<any | null>(null);
   const [assignMode, setAssignMode] = useState<'auto' | 'manual'>('auto');
   const [manualVolunteerId, setManualVolunteerId] = useState('');
+  const [authCheckComplete, setAuthCheckComplete] = useState(false);
 
-  const isLoading = paymentsLoading || userLoading || status === "loading";
+  // Module-level cache/promise to dedupe /api/hr/payments calls (dev strict-mode
+  // remounts or rapid re-renders can cause duplicate calls). Cached for 5s.
+  // Note: kept at module-level to persist across component remounts in dev.
+
+
+let __hrPaymentsCache: any | null = null;
+let __hrPaymentsCacheTs = 0;
+let __hrPaymentsPendingPromise: Promise<any> | null = null;
+
+async function getHrPayments() {
+  const now = Date.now();
+  if (__hrPaymentsCache && now - __hrPaymentsCacheTs < 5000) return __hrPaymentsCache;
+  if (__hrPaymentsPendingPromise) return __hrPaymentsPendingPromise;
+
+  __hrPaymentsPendingPromise = (async () => {
+    try {
+      const res = await fetch(`/api/hr/payments`, { cache: "no-store" });
+      if (!res.ok) throw new Error("Fetch failed");
+      const data = await res.json();
+      __hrPaymentsCache = data;
+      __hrPaymentsCacheTs = Date.now();
+      return data;
+    } finally {
+      __hrPaymentsPendingPromise = null;
+    }
+  })();
+
+  return __hrPaymentsPendingPromise;
+}
+  // Get role from session first (fast), fallback to user profile
+  const sessionRole = (session as any)?.user?.role;
+  const userRole = sessionRole || user?.role;
+  const isLoading = paymentsLoading || status === "loading";
   const skeletonCards = (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-pulse">
       {[1, 2, 3, 4].map((i) => (
@@ -40,7 +73,7 @@ export default function ApprovalsPage() {
   );
   const displayName = user?.fullName || user?.username || session?.user?.name || "HR";
   const displayEmail = user?.email || session?.user?.email || "";
-  const displayRole = (session as any)?.user?.role || (user?.role as "VOLUNTEER" | "HR" | "MASTER" | "ADMIN" | "DIRECTOR" | "DATABASE_DEPT" | "SECRETARIES") || "HR";
+  const displayRole = sessionRole || (user?.role as "VOLUNTEER" | "HR" | "MASTER" | "ADMIN" | "DIRECTOR" | "DATABASE_DEPT" | "SECRETARIES") || "HR";
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -66,22 +99,36 @@ export default function ApprovalsPage() {
     }
   }, [status, userEmail, user, userLoading, error, refresh, router]);
 
+  // Check authorization and fetch payments immediately using session role
   useEffect(() => {
-    if (!user || userLoading) return;
-    if (user.role !== "HR" && user.role !== "MASTER" && user.role !== "ADMIN") {
+    if (status === "loading") return;
+    if (!userEmail) return;
+
+    // Use session role for quick auth check (don't wait for slow user profile)
+    const role = sessionRole || user?.role;
+    
+    if (sessionRole && sessionRole !== "HR" && sessionRole !== "MASTER" && sessionRole !== "ADMIN") {
+      // Session has loaded and user is not authorized
       router.push("/dashboard");
       return;
     }
 
-    fetchPayments();
-  }, [user, userLoading, router]);
+    // If we have a role (from session or user), mark auth check complete
+    if (role) {
+      setAuthCheckComplete(true);
+    }
+
+    // Fetch payments immediately without waiting for user profile
+    if (!authCheckComplete && (sessionRole || user)) {
+      fetchPayments();
+    }
+  }, [status, userEmail, sessionRole, user, authCheckComplete, router]);
 
   const fetchPayments = async () => {
     try {
       setPaymentsLoading(true);
       // Backend now returns only PENDING payments and a capped payload for speed
-      const res = await fetch(`/api/hr/payments`, { cache: "no-store" });
-      const data = await res.json();
+      const data = await getHrPayments();
       // show only pending payments (exclude already processed)
       const finals = (data.finalPayments || []).filter((p: any) => p.status === 'PENDING');
       setFinalPayments(finals);

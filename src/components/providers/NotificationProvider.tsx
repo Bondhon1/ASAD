@@ -42,6 +42,7 @@ export function NotificationProvider({ children, userId }: NotificationProviderP
   const [unreadCount, setUnreadCount] = useState(0);
   const [isConnected, setIsConnected] = useState(false);
   const ablyClientRef = useRef<any>(null);
+  const hasFetchedRef = useRef(false);
 
   // Fetch notifications from API
   const refreshNotifications = useCallback(async () => {
@@ -128,7 +129,9 @@ export function NotificationProvider({ children, userId }: NotificationProviderP
         if (!isMounted) return;
 
         // Fetch a token request first to know the server-side clientId we should subscribe to
-        const tokenRes = await fetch("/api/ably/token");
+        const tokenRes = await fetch("/api/ably/token", {
+          headers: { 'Cache-Control': 'no-cache' }
+        });
         if (!tokenRes.ok) {
           console.error('Failed to fetch Ably token request');
           return;
@@ -177,8 +180,11 @@ export function NotificationProvider({ children, userId }: NotificationProviderP
       }
     };
 
-    // Fetch initial notifications
-    refreshNotifications();
+    // Fetch initial notifications only once
+    if (!hasFetchedRef.current) {
+      hasFetchedRef.current = true;
+      refreshNotifications();
+    }
     
     // Initialize Ably after a short delay to not block initial render
     const timer = setTimeout(initAbly, 100);
@@ -191,7 +197,7 @@ export function NotificationProvider({ children, userId }: NotificationProviderP
         ablyClientRef.current = null;
       }
     };
-  }, [userId, refreshNotifications]);
+  }, [userId]); // Removed refreshNotifications from deps to prevent infinite loop
 
   return (
     <NotificationContext.Provider

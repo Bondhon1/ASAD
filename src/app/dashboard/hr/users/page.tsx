@@ -60,16 +60,51 @@ export default function UsersManagementPage() {
   const [listLoading, setListLoading] = useState(false);
   const [debouncedQuery, setDebouncedQuery] = useState(query);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [userDetails, setUserDetails] = useState<Record<string, User>>({});
 
   const isCheckingAuth = status === "loading" || !authChecked;
   const isLoading = loading || isCheckingAuth;
   const skeletonPage = (
-    <div className="max-w-6xl mx-auto px-6 py-8 space-y-4 animate-pulse">
-      <div className="h-8 w-48 bg-gray-200 rounded" />
-      <div className="h-10 w-full bg-gray-200 rounded" />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <div className="h-8 w-64 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg mb-6 animate-pulse" />
+      
+      {/* Statistics cards skeleton */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="h-32 bg-gray-200 rounded" />
+          <div key={i} className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm animate-pulse">
+            <div className="flex items-center justify-between mb-3">
+              <div className="h-4 w-24 bg-gray-200 rounded" />
+              <div className="w-10 h-10 bg-gray-200 rounded-lg" />
+            </div>
+            <div className="h-8 w-16 bg-gray-300 rounded" />
+          </div>
+        ))}
+      </div>
+      
+      {/* Search and filters skeleton */}
+      <div className="bg-white border border-gray-200 rounded-xl shadow-sm mb-6 p-5 animate-pulse">
+        <div className="h-10 w-full bg-gray-200 rounded-lg mb-4" />
+        <div className="flex gap-3">
+          <div className="h-10 w-32 bg-gray-200 rounded-lg" />
+          <div className="h-10 w-32 bg-gray-200 rounded-lg" />
+          <div className="h-10 w-32 bg-gray-200 rounded-lg" />
+        </div>
+      </div>
+      
+      {/* User list skeleton */}
+      <div className="space-y-3">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="bg-white border border-gray-100 rounded-lg p-4 animate-pulse">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gray-300 rounded-full flex-shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 w-48 bg-gray-300 rounded" />
+                <div className="h-3 w-64 bg-gray-200 rounded" />
+              </div>
+              <div className="h-6 w-20 bg-gray-200 rounded-full" />
+            </div>
+          </div>
         ))}
       </div>
     </div>
@@ -112,7 +147,7 @@ export default function UsersManagementPage() {
 
     const fetchStats = async () => {
       try {
-        const res = await fetch(buildStatsUrl(), { signal: controller.signal, cache: 'no-store' });
+        const res = await fetch(buildStatsUrl(), { signal: controller.signal });
         if (!res.ok) throw new Error(`Status ${res.status}`);
         const data = await res.json();
         if (!active) return;
@@ -125,7 +160,7 @@ export default function UsersManagementPage() {
 
     const fetchOverallStats = async () => {
       try {
-        const res = await fetch('/api/hr/users/stats', { signal: controller.signal, cache: 'no-store' });
+        const res = await fetch('/api/hr/users/stats', { signal: controller.signal });
         if (!res.ok) return;
         const data = await res.json();
         if (!active) return;
@@ -139,7 +174,7 @@ export default function UsersManagementPage() {
     // fetch sectors/clubs concurrently
     const fetchOrgs = async () => {
       try {
-        const res = await fetch('/api/orgs', { signal: controller.signal, cache: 'no-store' });
+        const res = await fetch('/api/orgs', { signal: controller.signal });
         if (!res.ok) throw new Error(`Status ${res.status}`);
         const data = await res.json();
         if (!active) return;
@@ -183,12 +218,32 @@ export default function UsersManagementPage() {
       if (finalFrom) params.push(`finalFrom=${encodeURIComponent(finalFrom)}`);
       if (finalTo) params.push(`finalTo=${encodeURIComponent(finalTo)}`);
       const url = `/api/hr/users/stats${params.length ? '?' + params.join('&') : ''}`;
-      const res = await fetch(url, { cache: 'no-store' });
+      const res = await fetch(url);
       if (!res.ok) return;
       const data = await res.json();
       setStats({ total: data.total, officialCount: data.officialCount, rankCounts: data.rankCounts });
     } catch (e) {
       // ignore
+    }
+  };
+
+  // Lazy-load detailed user data when user is expanded
+  const loadUserDetails = async (userId: string) => {
+    if (userDetails[userId]) return; // Already loaded
+    
+    setLoadingDetails(true);
+    try {
+      const res = await fetch(`/api/hr/users/${userId}`);
+      if (!res.ok) throw new Error('Failed to load user details');
+      const data = await res.json();
+      
+      // Merge detailed data into userDetails cache
+      setUserDetails(prev => ({ ...prev, [userId]: data.user }));
+    } catch (err: any) {
+      console.error('Failed to load user details', err);
+      await alert(err?.message || 'Failed to load user details');
+    } finally {
+      setLoadingDetails(false);
     }
   };
 
@@ -291,7 +346,6 @@ export default function UsersManagementPage() {
         const nonEmptyParams = [statusParam, rankParam].filter(Boolean).join('&');
         const res = await fetch(`/api/hr/users?${nonEmptyParams ? nonEmptyParams + '&' : ''}page=${page}&pageSize=${pageSize}&q=${qParam}${dateParams ? '&' + dateParams : ''}`, {
           signal: controller.signal,
-          cache: "no-store",
         });
         if (!res.ok) throw new Error(`Status ${res.status}`);
         const data = await res.json();
@@ -618,9 +672,18 @@ export default function UsersManagementPage() {
                   <div key={role} className="mb-6">
                     <div className="text-sm font-medium text-[#0b2545] mb-2">Role: {role} ({list.length})</div>
                     <div className="space-y-2">
-                      {list.map(u => (
+                      {list.map(u => {
+                        // Merge detailed data if available
+                        const displayUser = userDetails[u.id] || u;
+                        return (
                         <div key={u.id} className="w-full">
-                          <button onClick={() => setSelected(selected?.id === u.id ? null : u)} className="w-full text-left bg-white border border-gray-100 rounded-lg p-3 md:p-4 hover:shadow-md transition">
+                          <button onClick={() => {
+                            const isExpanding = selected?.id !== u.id;
+                            setSelected(isExpanding ? u : null);
+                            if (isExpanding) {
+                              loadUserDetails(u.id);
+                            }
+                          }} className="w-full text-left bg-white border border-gray-100 rounded-lg p-3 md:p-4 hover:shadow-md transition">
                             <div className="flex items-center justify-between gap-3">
                               <div className="flex items-center gap-3">
                                 <div className="w-8 h-8 md:w-10 md:h-10 bg-gray-100 rounded-full flex items-center justify-center text-sm font-semibold text-gray-700 flex-shrink-0">{(u.fullName || u.username || u.email || '').charAt(0).toUpperCase()}</div>
@@ -701,32 +764,49 @@ export default function UsersManagementPage() {
                                       )}
                                     </span>
                                   </div>
-                                  <div className="text-xs text-gray-500">Points: {u.volunteerProfile?.points ?? 0}</div>
-                                  <div className="text-xs text-gray-500">Rank: {getRankName(u.volunteerProfile?.rank)}</div>
+                                  <div className="text-xs text-gray-500">Points: {displayUser.volunteerProfile?.points ?? 0}</div>
+                                  <div className="text-xs text-gray-500">Rank: {getRankName(displayUser.volunteerProfile?.rank)}</div>
 
                                   {/* Service / Sectors / Clubs as tag-like buttons */}
-                                  <div className="mt-2 flex flex-wrap gap-2">
-                                    {u.volunteerProfile?.service ? (
-                                      <span className="px-3 py-1 rounded-full bg-gray-100 text-xs font-medium text-gray-800">{u.volunteerProfile.service?.name}</span>
-                                    ) : null}
+                                  <div className="mt-3">
+                                    <div className="text-xs text-gray-600 font-medium mb-2">Service / Sector / Club:</div>
+                                    {loadingDetails && !userDetails[u.id] ? (
+                                      <div className="flex gap-2 animate-pulse">
+                                        <div className="h-6 w-24 bg-gray-200 rounded-full" />
+                                        <div className="h-6 w-20 bg-gray-200 rounded-full" />
+                                        <div className="h-6 w-28 bg-gray-200 rounded-full" />
+                                      </div>
+                                    ) : (
+                                      <div className="flex flex-wrap gap-2">
+                                        {displayUser.volunteerProfile?.service ? (
+                                          <span className="px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-xs font-medium text-blue-800">
+                                            📋 {displayUser.volunteerProfile.service?.name}
+                                          </span>
+                                        ) : null}
 
-                                    {(u.volunteerProfile?.sectors || []).length > 0 ? (
-                                      (u.volunteerProfile?.sectors || []).map(s => (
-                                        <span key={`sector-${s}`} className="px-3 py-1 rounded-full bg-gray-100 text-xs font-medium text-gray-800">{sectorsList.find(x=>x.id===s)?.name || s}</span>
-                                      ))
-                                    ) : null}
+                                        {(displayUser.volunteerProfile?.sectors || []).length > 0 ? (
+                                          (displayUser.volunteerProfile?.sectors || []).map(s => (
+                                            <span key={`sector-${s}`} className="px-3 py-1 rounded-full bg-purple-50 border border-purple-200 text-xs font-medium text-purple-800">
+                                              🎯 {sectorsList.find(x=>x.id===s)?.name || s}
+                                            </span>
+                                          ))
+                                        ) : null}
 
-                                    {(u.volunteerProfile?.clubs || []).length > 0 ? (
-                                      (u.volunteerProfile?.clubs || []).map(c => (
-                                        <span key={`club-${c}`} className="px-3 py-1 rounded-full bg-gray-100 text-xs font-medium text-gray-800">{clubsList.find(x=>x.id===c)?.name || c}</span>
-                                      ))
-                                    ) : null}
+                                        {(displayUser.volunteerProfile?.clubs || []).length > 0 ? (
+                                          (displayUser.volunteerProfile?.clubs || []).map(c => (
+                                            <span key={`club-${c}`} className="px-3 py-1 rounded-full bg-green-50 border border-green-200 text-xs font-medium text-green-800">
+                                              🏆 {clubsList.find(x=>x.id===c)?.name || c}
+                                            </span>
+                                          ))
+                                        ) : null}
 
-                                    {(!u.volunteerProfile?.service && !(u.volunteerProfile?.sectors || []).length && !(u.volunteerProfile?.clubs || []).length) && (
-                                      <span className="text-xs text-gray-500">—</span>
+                                        {(!displayUser.volunteerProfile?.service && !(displayUser.volunteerProfile?.sectors || []).length && !(displayUser.volunteerProfile?.clubs || []).length) && (
+                                          <span className="text-xs text-gray-400 italic">Not assigned yet</span>
+                                        )}
+                                      </div>
                                     )}
                                   </div>
-                                  {u.volunteerProfile?.isOfficial && <div className="text-xs text-green-700 font-medium">Official member</div>}
+                                  {displayUser.volunteerProfile?.isOfficial && <div className="text-xs text-green-700 font-medium">Official member</div>}
                                 </div>
 
                                 <div className="space-y-3">
@@ -797,17 +877,24 @@ export default function UsersManagementPage() {
                                     </div>
                                   )}
                                   {/* Payment & management actions */}
-                                  <div className="mt-2 space-y-2">
-                                    <div className="text-xs text-gray-500">Initial payment: {u.initialPayment?.status ?? '—'}</div>
-                                    <div className="text-xs text-gray-500">Final payment: {(u as any).finalPayment?.status ?? '—'}</div>
-                                    <div className="text-xs text-gray-500">Initial approved by: {(u as any).initialPayment?.approvedBy?.fullName || (u as any).initialPayment?.approvedBy?.email || '—'}</div>
-                                    <div className="text-xs text-gray-500">Initial approved at: {formatShortDhakaDateTime((u as any).initialPayment?.verifiedAt) || '—'}</div>
-                                    <div className="text-xs text-gray-500">Final approved by: {(u as any).finalPayment?.approvedBy?.fullName || (u as any).finalPayment?.approvedBy?.email || '—'}</div>
-                                    <div className="text-xs text-gray-500">Final approved at: {formatShortDhakaDateTime((u as any).finalPayment?.verifiedAt) || '—'}</div>
-                                    <div className="text-xs text-gray-500">Interview approved by: {(u as any).interviewApprovedBy?.fullName || (u as any).interviewApprovedBy?.email || '—'}</div>
-
-                                    {/* Manage route removed; editing handled inline */}
-                                  </div>
+                                  {loadingDetails && !userDetails[u.id] ? (
+                                    <div className="mt-2 space-y-2 animate-pulse">
+                                      <div className="h-4 w-48 bg-gray-200 rounded" />
+                                      <div className="h-4 w-52 bg-gray-200 rounded" />
+                                      <div className="h-4 w-56 bg-gray-200 rounded" />
+                                      <div className="h-4 w-44 bg-gray-200 rounded" />
+                                    </div>
+                                  ) : (
+                                    <div className="mt-2 space-y-2">
+                                      <div className="text-xs text-gray-500">Initial payment: <span className="font-medium">{displayUser.initialPayment?.status ?? '—'}</span></div>
+                                      <div className="text-xs text-gray-500">Final payment: <span className="font-medium">{displayUser.finalPayment?.status ?? '—'}</span></div>
+                                      <div className="text-xs text-gray-500">Initial approved by: <span className="font-medium">{displayUser.initialPayment?.approvedBy?.fullName || displayUser.initialPayment?.approvedBy?.email || '—'}</span></div>
+                                      <div className="text-xs text-gray-500">Initial approved at: <span className="font-medium">{formatShortDhakaDateTime(displayUser.initialPayment?.verifiedAt) || '—'}</span></div>
+                                      <div className="text-xs text-gray-500">Final approved by: <span className="font-medium">{displayUser.finalPayment?.approvedBy?.fullName || displayUser.finalPayment?.approvedBy?.email || '—'}</span></div>
+                                      <div className="text-xs text-gray-500">Final approved at: <span className="font-medium">{formatShortDhakaDateTime(displayUser.finalPayment?.verifiedAt) || '—'}</span></div>
+                                      <div className="text-xs text-gray-500">Interview approved by: <span className="font-medium">{displayUser.interviewApprovedBy?.fullName || displayUser.interviewApprovedBy?.email || '—'}</span></div>
+                                    </div>
+                                  )}
                                   {/* Service / Sector / Club management */}
                                   <div className="mt-3">
                                     {(displayRole === 'DIRECTOR' || displayRole === 'MASTER' || displayRole === 'HR' || displayRole === 'ADMIN') && (
@@ -963,7 +1050,8 @@ export default function UsersManagementPage() {
                             </div>
                           )}
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 ))

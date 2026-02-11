@@ -4,6 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { createCalendarEvent, generateSimpleMeetLink } from "@/lib/googleCalendar";
 import { decrypt } from "@/lib/encryption";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { getSlotsCacheEntry, setSlotsCacheEntry, invalidateSlotsCache } from "@/lib/hrSlotsCache";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 20; // Cache for 20 seconds
 
 // GET - List all interview slots
 export async function GET() {
@@ -12,9 +16,22 @@ export async function GET() {
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    
+    const userEmail = session.user.email;
+    
+    // Check cache first
+    const cached = getSlotsCacheEntry(userEmail);
+    if (cached) {
+      return NextResponse.json(cached, { 
+        headers: { 
+          'X-Cache': 'HIT',
+          'Cache-Control': 'private, max-age=10'
+        }
+      });
+    }
 
     const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
+      where: { email: userEmail },
     });
 
     if (!user || (user.role !== "HR" && user.role !== "MASTER" && user.role !== "ADMIN")) {
@@ -29,8 +46,18 @@ export async function GET() {
         },
       },
     });
+    
+    const responseData = { slots };
+    
+    // Cache the result
+    setSlotsCacheEntry(userEmail, responseData);
 
-    return NextResponse.json({ slots });
+    return NextResponse.json(responseData, { 
+      headers: { 
+        'X-Cache': 'MISS',
+        'Cache-Control': 'private, max-age=10'
+      }
+    });
   } catch (error) {
     console.error("Error fetching slots:", error);
     return NextResponse.json({ error: "Failed to fetch slots" }, { status: 500 });
@@ -161,6 +188,9 @@ export async function POST(request: Request) {
         createdBy: user.id,
       },
     });
+    
+    // Invalidate cache for all HR users (slot creation affects everyone)
+    invalidateSlotsCache();
 
     return NextResponse.json({
       slot,

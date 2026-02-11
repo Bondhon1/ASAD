@@ -1,6 +1,7 @@
 import nodemailer from "nodemailer";
 import ical from "ical-generator";
 
+// Use connection pooling to improve performance and reliability
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: parseInt(process.env.SMTP_PORT || "587"),
@@ -9,7 +10,50 @@ const transporter = nodemailer.createTransport({
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
+  // Enable connection pooling for better performance
+  pool: true,
+  maxConnections: 5,
+  maxMessages: 100,
+  rateDelta: 1000, // 1 second
+  rateLimit: 5, // max 5 emails per second
+  // Add timeouts to prevent hanging
+  connectionTimeout: 10000, // 10 seconds
+  greetingTimeout: 5000, // 5 seconds
+  socketTimeout: 30000, // 30 seconds
 });
+
+/**
+ * Retry helper for sending emails with exponential backoff
+ */
+async function sendEmailWithRetry(
+  mailOptions: any,
+  maxRetries: number = 3,
+  initialDelay: number = 1000
+): Promise<void> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const info = await transporter.sendMail(mailOptions);
+      console.log(`[Email] Sent successfully to ${mailOptions.to}, messageId: ${info.messageId}`);
+      return; // Success!
+    } catch (error: any) {
+      lastError = error;
+      console.error(`[Email] Attempt ${attempt}/${maxRetries} failed for ${mailOptions.to}:`, error.message);
+      
+      if (attempt < maxRetries) {
+        // Exponential backoff: 1s, 2s, 4s
+        const delay = initialDelay * Math.pow(2, attempt - 1);
+        console.log(`[Email] Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  
+  // All retries failed
+  console.error(`[Email] All ${maxRetries} attempts failed for ${mailOptions.to}`);
+  throw lastError || new Error('Email sending failed after all retries');
+}
 
 interface EmailVerificationParams {
   email: string;
@@ -22,11 +66,10 @@ export async function sendVerificationEmail({
   fullName,
   verificationLink,
 }: EmailVerificationParams): Promise<void> {
-  try {
-    await transporter.sendMail({
-      from: process.env.SMTP_FROM,
-      to: email,
-      subject: "Verify Your Email - Amar Somoy, Amar Desh",
+  const mailOptions = {
+    from: process.env.SMTP_FROM,
+    to: email,
+    subject: "Verify Your Email - Amar Somoy, Amar Desh",
       html: `
         <!DOCTYPE html>
         <html>
@@ -161,11 +204,9 @@ export async function sendVerificationEmail({
           </body>
         </html>
       `,
-    });
-  } catch (error) {
-    console.error("Error sending verification email:", error);
-    throw error;
-  }
+  };
+  
+  await sendEmailWithRetry(mailOptions);
 }
 
 interface InitialPaymentEmailParams {
@@ -179,11 +220,10 @@ export async function sendInitialPaymentEmail({
   fullName,
   paymentLink,
 }: InitialPaymentEmailParams): Promise<void> {
-  try {
-    await transporter.sendMail({
-      from: process.env.SMTP_FROM,
-      to: email,
-      subject: "Complete Your Registration - Payment Required",
+  const mailOptions = {
+    from: process.env.SMTP_FROM,
+    to: email,
+    subject: "Complete Your Registration - Payment Required",
       html: `
         <!DOCTYPE html>
         <html>
@@ -222,11 +262,9 @@ export async function sendInitialPaymentEmail({
           </body>
         </html>
       `,
-    });
-  } catch (error) {
-    console.error("Error sending payment email:", error);
-    throw error;
-  }
+  };
+  
+  await sendEmailWithRetry(mailOptions);
 }
 
 interface PasswordResetEmailParams {
@@ -236,11 +274,10 @@ interface PasswordResetEmailParams {
 }
 
 export async function sendPasswordResetEmail({ email, fullName, resetLink }: PasswordResetEmailParams): Promise<void> {
-  try {
-    await transporter.sendMail({
-      from: process.env.SMTP_FROM,
-      to: email,
-      subject: "Reset your password - ASAD",
+  const mailOptions = {
+    from: process.env.SMTP_FROM,
+    to: email,
+    subject: "Reset your password - ASAD",
       html: `
         <!DOCTYPE html>
         <html>
@@ -266,11 +303,9 @@ export async function sendPasswordResetEmail({ email, fullName, resetLink }: Pas
           </body>
         </html>
       `,
-    });
-  } catch (err) {
-    console.error('Error sending password reset email', err);
-    throw err;
-  }
+  };
+  
+  await sendEmailWithRetry(mailOptions);
 }
 
 export interface InterviewInvitation {
@@ -391,19 +426,20 @@ export async function sendInterviewInvitation(invitation: InterviewInvitation) {
 </html>
     `;
 
-    // Send email with calendar attachment
-    await transporter.sendMail({
+    // Send email with calendar attachment using retry logic
+    const mailOptions = {
       from: `"ASAD HR Team" <${process.env.SMTP_USER}>`,
       to: invitation.applicantEmail,
-      subject: "🎉 Interview Scheduled - ASAD Volunteer Program",
+      subject: "Interview Scheduled - ASAD Volunteer Program",
       html: htmlContent,
       icalEvent: {
         filename: "interview-invitation.ics",
         method: "REQUEST",
         content: cal.toString(),
       },
-    });
-
+    };
+    
+    await sendEmailWithRetry(mailOptions);
     return { success: true };
   } catch (error) {
     console.error("Error sending invitation email:", error);
@@ -431,14 +467,13 @@ export async function sendInterviewResultEmail({
   passed,
   paymentLink,
 }: InterviewResultEmailParams): Promise<void> {
-  try {
-    if (passed) {
-      // Interview Passed - Ask to pay 170 BDT
-      await transporter.sendMail({
-        from: `"ASAD HR Team" <${process.env.SMTP_USER}>`,
-        to: email,
-        subject: "🎉 Congratulations! Interview Passed - ASAD Volunteer Program",
-        html: `
+  if (passed) {
+    // Interview Passed - Ask to pay 170 BDT
+    const mailOptions = {
+      from: `"ASAD HR Team" <${process.env.SMTP_USER}>`,
+      to: email,
+      subject: "Congratulations! Interview Passed - ASAD Volunteer Program",
+      html: `
 <!DOCTYPE html>
 <html>
 <head>
@@ -534,15 +569,17 @@ export async function sendInterviewResultEmail({
   </div>
 </body>
 </html>
-        `,
-      });
-    } else {
-      // Interview Rejected
-      await transporter.sendMail({
-        from: `"ASAD HR Team" <${process.env.SMTP_USER}>`,
-        to: email,
-        subject: "Interview Update - ASAD Volunteer Program",
-        html: `
+      `,
+    };
+    
+    await sendEmailWithRetry(mailOptions);
+  } else {
+    // Interview Rejected
+    const mailOptions = {
+      from: `"ASAD HR Team" <${process.env.SMTP_USER}>`,
+      to: email,
+      subject: "Interview Update - ASAD Volunteer Program",
+      html: `
 <!DOCTYPE html>
 <html>
 <head>
@@ -619,12 +656,10 @@ export async function sendInterviewResultEmail({
   </div>
 </body>
 </html>
-        `,
-      });
-    }
-  } catch (error) {
-    console.error("Error sending interview result email:", error);
-    throw error;
+      `,
+    };
+    
+    await sendEmailWithRetry(mailOptions);
   }
 }
 
@@ -648,14 +683,13 @@ export async function sendFinalPaymentStatusEmail({
   accepted,
   volunteerId,
 }: FinalPaymentStatusEmailParams): Promise<void> {
-  try {
-    if (accepted) {
-      // Final Payment Accepted - Welcome as Official Volunteer
-      await transporter.sendMail({
-        from: `"ASAD HR Team" <${process.env.SMTP_USER}>`,
-        to: email,
-        subject: "🎊 Welcome to ASAD - You're Now an Official Volunteer!",
-        html: `
+  if (accepted) {
+    // Final Payment Accepted - Welcome as Official Volunteer
+    const mailOptions = {
+      from: `"ASAD HR Team" <${process.env.SMTP_USER}>`,
+      to: email,
+      subject: "Welcome to ASAD - You're Now an Official Volunteer!",
+      html: `
 <!DOCTYPE html>
 <html>
 <head>
@@ -762,15 +796,17 @@ export async function sendFinalPaymentStatusEmail({
   </div>
 </body>
 </html>
-        `,
-      });
-    } else {
-      // Final Payment Rejected
-      await transporter.sendMail({
-        from: `"ASAD HR Team" <${process.env.SMTP_USER}>`,
-        to: email,
-        subject: "Payment Update Required - ASAD Volunteer Program",
-        html: `
+      `,
+    };
+    
+    await sendEmailWithRetry(mailOptions);
+  } else {
+    // Final Payment Rejected
+    const mailOptions = {
+      from: `"ASAD HR Team" <${process.env.SMTP_USER}>`,
+      to: email,
+      subject: "Payment Update Required - ASAD Volunteer Program",
+      html: `
 <!DOCTYPE html>
 <html>
 <head>
@@ -865,12 +901,10 @@ export async function sendFinalPaymentStatusEmail({
   </div>
 </body>
 </html>
-        `,
-      });
-    }
-  } catch (error) {
-    console.error("Error sending final payment status email:", error);
-    throw error;
+      `,
+    };
+    
+    await sendEmailWithRetry(mailOptions);
   }
 }
 
@@ -1006,17 +1040,19 @@ export async function sendInterviewTimeCorrection(params: InterviewCorrectionPar
     `;
 
     // Send email with calendar attachment
-    await transporter.sendMail({
+    const mailOptions = {
       from: `"ASAD HR Team" <${process.env.SMTP_USER}>`,
       to: params.applicantEmail,
-      subject: "⚠️ CORRECTION: Interview Time Update - ASAD Volunteer Program",
+      subject: "CORRECTION: Interview Time Update - ASAD Volunteer Program",
       html: htmlContent,
       icalEvent: {
         filename: "interview-corrected.ics",
         method: "REQUEST",
         content: cal.toString(),
       },
-    });
+    };
+    
+    await sendEmailWithRetry(mailOptions);
 
     return { success: true };
   } catch (error) {

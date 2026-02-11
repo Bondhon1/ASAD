@@ -49,7 +49,10 @@ export async function GET(req: Request) {
 
     const { fromCache, ...responseData } = usersData;
     return NextResponse.json(responseData, {
-      headers: { 'X-Cache': fromCache ? 'HIT' : 'MISS' }
+      headers: { 
+        'X-Cache': fromCache ? 'HIT' : 'MISS',
+        'Cache-Control': 'private, max-age=30, stale-while-revalidate=60'
+      }
     });
   } catch (err: any) {
     console.error('GET /api/hr/users error', err);
@@ -156,6 +159,8 @@ async function fetchUsersData(
 
   const skip = (page - 1) * pageSize;
 
+  // Lightweight query - only fetch what's displayed in the list view
+  // Detailed data can be fetched per-user when needed (e.g., when expanded)
   const [total, users] = await Promise.all([
     prisma.user.count({ where }),
     prisma.user.findMany({
@@ -169,17 +174,17 @@ async function fetchUsersData(
         role: true,
         volunteerId: true,
         createdAt: true,
+        // Only essential nested data for list view
         institute: { select: { name: true } },
-            volunteerProfile: { select: { points: true, isOfficial: true, rank: { select: { id: true, name: true } }, service: { select: { id: true, name: true } }, sectors: true, clubs: true } },
-            initialPayment: { select: { status: true, verifiedAt: true, approvedBy: { select: { id: true, fullName: true, email: true } } } },
-            finalPayment: { select: { status: true, verifiedAt: true, approvedBy: { select: { id: true, fullName: true, email: true } } } },
-            interviewApprovedBy: { select: { id: true, fullName: true, email: true } },
-        _count: {
-          select: {
-            taskSubmissions: true,
-            donations: true,
-          },
+        volunteerProfile: { 
+          select: { 
+            points: true, 
+            isOfficial: true, 
+            rank: { select: { id: true, name: true } },
+            // Service, sectors, clubs moved to detail endpoint
+          } 
         },
+        // Payment and interview data moved to detail endpoint
       },
       orderBy: { createdAt: 'desc' },
       skip,

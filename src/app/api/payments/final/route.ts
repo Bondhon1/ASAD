@@ -69,7 +69,16 @@ export async function POST(request: NextRequest) {
       data: { status: "INTERVIEW_PASSED" },
     });
 
-    return NextResponse.json({ success: true, paymentId: payment.id }, { status: 201 });
+    return NextResponse.json({ 
+      success: true, 
+      paymentId: payment.id 
+    }, { 
+      status: 201,
+      headers: {
+        // Invalidate cache to force fresh data fetch
+        'Cache-Control': 'no-store, must-revalidate'
+      }
+    });
   } catch (error) {
     console.error("Final payment error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

@@ -195,12 +195,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     const updated = await prisma.task.update({ where: { id }, data });
 
-    // Handle Notifications
+    // Handle Notifications (not broadcast)
     const newAudienceIds = targetUsers.filter(uId => !oldTask.targetUserIds.includes(uId));
     if (newAudienceIds.length > 0) {
       await prisma.notification.createMany({
         data: newAudienceIds.map(uId => ({
           userId: uId,
+          broadcast: false,
           type: NotificationType.NEW_TASK,
           title: 'New assignment: ' + updated.title,
           message: updated.description ? (updated.description.slice(0, 100) + (updated.description.length > 100 ? '...' : '')) : 'You have a new task assigned.',
@@ -211,10 +212,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     const isDeadlineExtended = newEndDate && newEndDate.getTime() > oldTask.endDate.getTime();
     if (isDeadlineExtended) {
-      // Notify all target users (the ones that were already there and the new ones)
+      // Notify all target users (the ones that were already there and the new ones, not broadcast)
       await prisma.notification.createMany({
         data: targetUsers.map(uId => ({
           userId: uId,
+          broadcast: false,
           type: NotificationType.APPLICATION_UPDATE,
           title: 'Deadline extended: ' + updated.title,
           message: `The deadline has been extended to ${newEndDate!.toLocaleString()}.`,

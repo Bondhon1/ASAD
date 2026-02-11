@@ -61,7 +61,14 @@ export async function GET(request: NextRequest) {
     const unreadBroadcastCount = broadcastIds.filter(id => !readIds.has(id)).length;
     const unreadCount = perUserUnread + unreadBroadcastCount;
 
-    return NextResponse.json({ notifications: notificationsWithRead, unreadCount });
+    return NextResponse.json(
+      { notifications: notificationsWithRead, unreadCount },
+      {
+        headers: {
+          'Cache-Control': 'private, max-age=10, stale-while-revalidate=30'
+        }
+      }
+    );
   } catch (error) {
     console.error("Error fetching notifications:", error);
     return NextResponse.json({ error: "Failed to fetch notifications" }, { status: 500 });

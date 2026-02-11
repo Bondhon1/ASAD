@@ -218,7 +218,7 @@ export async function POST(req: Request) {
             console.log(`[ProcessExpired] No points to deduct for ${user.fullName} (pointsNegative=0)`);
           }
 
-          // Notify user about missing the deadline
+          // Notify user about missing the deadline (not broadcast)
           const notificationMessage = task.pointsNegative > 0
             ? `You missed the deadline for "${task.title}". ${task.pointsNegative} points have been deducted.${deductionResult?.rankChanged ? ` Your rank has changed to ${deductionResult.newRankName}.` : ''}`
             : `You missed the deadline for "${task.title}".`;
@@ -226,6 +226,7 @@ export async function POST(req: Request) {
           await prisma.notification.create({
             data: {
               userId: targetUserId,
+              broadcast: false,
               type: NotificationType.TASK_REJECTED,
               title: task.pointsNegative > 0 ? '⚠️ Points Deducted' : '⚠️ Deadline Missed',
               message: notificationMessage,
@@ -418,6 +419,7 @@ export async function GET(req: Request) {
             await prisma.notification.create({
               data: {
                 userId: targetUserId,
+                broadcast: false,
                 type: NotificationType.TASK_REJECTED,
                 title: task.pointsNegative > 0 ? '⚠️ Points Deducted' : '⚠️ Deadline Missed',
                 message: notificationMessage,

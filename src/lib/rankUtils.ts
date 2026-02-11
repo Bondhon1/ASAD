@@ -581,12 +581,13 @@ export async function applyPointsChange(
       },
     });
     
-    // If rank changed, create a notification
+    // If rank changed, create a notification (not broadcast)
     if (result.rankChanged) {
       const isUpgrade = pointsChange > 0;
       await prisma.notification.create({
         data: {
           userId,
+          broadcast: false,
           type: 'RANK_UPDATE',
           title: isUpgrade ? '🎉 Rank Upgraded!' : '📉 Rank Changed',
           message: isUpgrade

@@ -1,5 +1,42 @@
 "use client";
 
+// Prevent double initial fetch caused by React Strict Mode (dev):
+// use a short-lived module-level timestamp so remounts within a few
+// seconds won't re-run the heavy initial fetch. This avoids duplicate
+// API requests while preserving normal navigation behaviour in prod.
+let __hrRequestsInitialFetchTs = 0;
+// Module-level cache for interview slot availability to avoid duplicate
+// network calls within a short window (dev strict-mode remounts, or
+// multiple callers in the same render cycle).
+let __hrInterviewSlotsCache: { hasAvailableSlots: boolean } | null = null;
+let __hrInterviewSlotsCacheTs = 0;
+let __hrInterviewSlotsCachedPromise: Promise<{ hasAvailableSlots: boolean }> | null = null;
+
+const getAvailableSlots = async (): Promise<{ hasAvailableSlots: boolean }> => {
+  const now = Date.now();
+  // Use cached value for 5s
+  if (__hrInterviewSlotsCache && now - __hrInterviewSlotsCacheTs < 5000) {
+    return __hrInterviewSlotsCache;
+  }
+
+  if (__hrInterviewSlotsCachedPromise) return __hrInterviewSlotsCachedPromise;
+
+  __hrInterviewSlotsCachedPromise = (async () => {
+    try {
+      const slotsResponse = await fetch("/api/hr/interview-slots/available");
+      const slotsData = await slotsResponse.json();
+      const value = { hasAvailableSlots: !!slotsData.hasAvailableSlots };
+      __hrInterviewSlotsCache = value;
+      __hrInterviewSlotsCacheTs = Date.now();
+      return value;
+    } finally {
+      // clear pending promise so subsequent callers can refresh after it resolves
+      __hrInterviewSlotsCachedPromise = null;
+    }
+  })();
+
+  return __hrInterviewSlotsCachedPromise;
+};
 import { useState, useEffect, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -62,7 +99,7 @@ export default function NewRequestsPage() {
   const [caSearchFilter, setCASearchFilter] = useState("");
   const [caDateFilter, setCADateFilter] = useState({ startDate: "", endDate: "" });
 
-  const isLoading = loading || userCacheLoading || status === "loading";
+  const isLoading = loading || status === "loading";
   const skeletonTable = (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 animate-pulse">
       <div className="p-6 space-y-4">
@@ -77,7 +114,8 @@ export default function NewRequestsPage() {
   );
   const displayName = user?.fullName || user?.username || session?.user?.name || "HR";
   const displayEmail = user?.email || session?.user?.email || "";
-  const displayRole = (session as any)?.user?.role || (user?.role as "VOLUNTEER" | "HR" | "MASTER" | "ADMIN" | "DIRECTOR" | "DATABASE_DEPT" | "SECRETARIES") || "HR";
+  const sessionRole = (session as any)?.user?.role;
+  const displayRole = sessionRole || (user?.role as "VOLUNTEER" | "HR" | "MASTER" | "ADMIN" | "DIRECTOR" | "DATABASE_DEPT" | "SECRETARIES") || "HR";
   const { alert, prompt } = useModal();
   
   // Track if initial fetch has been done
@@ -91,33 +129,48 @@ export default function NewRequestsPage() {
         return;
       }
 
+      // Avoid duplicate initial fetches triggered by React strict-mode
+      // remounts during development. If a recent initial fetch was
+      // started within the last 5s, skip starting another one.
       if (status === "loading" || hasFetched) return;
+      if (Date.now() - __hrRequestsInitialFetchTs < 5000) {
+        setHasFetched(true);
+        setLoading(false);
+        return;
+      }
 
       if (!email) {
         router.push("/auth");
         return;
       }
 
+      // Use session role for quick authorization without waiting for slow user profile
+      const role = sessionRole || user?.role;
+      if (sessionRole && sessionRole !== "HR" && sessionRole !== "MASTER" && sessionRole !== "ADMIN") {
+        router.push("/dashboard");
+        return;
+      }
+
+      // If we don't have role yet, wait for session or user
+      if (!role) return;
+
       try {
-        const currentUser = user || (await refreshUser());
-        if (!currentUser) return;
-        if (currentUser.role !== "HR" && currentUser.role !== "MASTER" && currentUser.role !== "ADMIN") {
-          router.push("/dashboard");
-          return;
-        }
-        
-        // Mark as fetched to prevent re-fetching
+        // Mark as fetched to prevent re-fetching and record timestamp
         setHasFetched(true);
-        
+        __hrRequestsInitialFetchTs = Date.now();
+
         // Fetch applications
         const response = await fetch("/api/hr/applications?status=INTERVIEW_REQUESTED");
         const data = await response.json();
         setApplications(data.applications || []);
-        
-        // Check slot availability
-        const slotsResponse = await fetch("/api/hr/interview-slots/available");
-        const slotsData = await slotsResponse.json();
-        setHasAvailableSlots(slotsData.hasAvailableSlots);
+
+        // Check slot availability (use cached helper to avoid duplicates)
+        try {
+          const slots = await getAvailableSlots();
+          setHasAvailableSlots(!!slots.hasAvailableSlots);
+        } catch (e) {
+          // ignore slot errors
+        }
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
@@ -135,9 +188,12 @@ export default function NewRequestsPage() {
       setApplications(data.applications || []);
       
       // Refresh slot availability
-      const slotsResponse = await fetch("/api/hr/interview-slots/available");
-      const slotsData = await slotsResponse.json();
-      setHasAvailableSlots(slotsData.hasAvailableSlots);
+      try {
+        const slots = await getAvailableSlots();
+        setHasAvailableSlots(!!slots.hasAvailableSlots);
+      } catch (e) {
+        // ignore slot errors
+      }
     } catch (error) {
       console.error("Error fetching applications:", error);
     } finally {
@@ -191,9 +247,8 @@ export default function NewRequestsPage() {
       // Refresh applications and slot availability
       fetchApplications();
       try {
-        const slotsResponse = await fetch("/api/hr/interview-slots/available");
-        const slotsData = await slotsResponse.json();
-        setHasAvailableSlots(!!slotsData.hasAvailableSlots);
+        const slots = await getAvailableSlots();
+        setHasAvailableSlots(!!slots.hasAvailableSlots);
       } catch (e) {
         // ignore slot refresh errors
       }

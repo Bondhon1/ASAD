@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Props { userEmail?: string }
@@ -12,6 +13,7 @@ const paymentMethods = [
 ];
 
 export default function FinalPaymentPage({ userEmail: propEmail }: Props) {
+  const router = useRouter();
   const [paymentMethod, setPaymentMethod] = useState("bkash");
   const [senderNumber, setSenderNumber] = useState("");
   const [trxId, setTrxId] = useState("");
@@ -81,11 +83,21 @@ export default function FinalPaymentPage({ userEmail: propEmail }: Props) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Submission failed");
-      setSuccess(true);
-      setTimeout(() => (window.location.href = "/dashboard"), 1400);
+      
+      // Set skip flag to prevent redirect back to payment page  
+      if (typeof window !== "undefined") {
+        try {
+          const skipUntil = Date.now() + 30000; // 30 seconds
+          sessionStorage.setItem('skipPaymentRedirectUntil', skipUntil.toString());
+          sessionStorage.setItem('paymentJustSubmitted', 'true');
+        } catch (e) {
+          // ignore
+        }
+        // Redirect immediately - no delay
+        window.location.href = "/dashboard?paymentSubmitted=1";
+      }
     } catch (err: any) {
       setError(err.message || "Submission failed");
-    } finally {
       setLoading(false);
     }
   };

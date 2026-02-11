@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const email = searchParams.get("email");
+    const bustCache = searchParams.get("bustCache") === "1";
 
     if (!email) {
       return NextResponse.json(
@@ -20,13 +21,18 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Check in-memory cache first
-    const cached = profileCache.get(email);
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-      return NextResponse.json(cached.data, { 
-        status: 200,
-        headers: { 'X-Cache': 'HIT' }
-      });
+    // Check in-memory cache first (unless bustCache is true)
+    if (!bustCache) {
+      const cached = profileCache.get(email);
+      if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+        return NextResponse.json(cached.data, { 
+          status: 200,
+          headers: { 
+            'X-Cache': 'HIT',
+            'Cache-Control': 'private, max-age=30, stale-while-revalidate=60'
+          }
+        });
+      }
     }
 
     // Fetch user with all includes in a single query (include accounts for OAuth detection)
@@ -129,7 +135,10 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(responseData, { 
       status: 200,
-      headers: { 'X-Cache': 'MISS' }
+      headers: { 
+        'X-Cache': 'MISS',
+        'Cache-Control': 'private, max-age=30, stale-while-revalidate=60'
+      }
     });
   } catch (error) {
     console.error("Error fetching user profile:", error);

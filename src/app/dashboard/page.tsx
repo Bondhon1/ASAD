@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
@@ -77,6 +77,7 @@ export default function DashboardPage() {
   const [pendingTasksLoading, setPendingTasksLoading] = useState(true);
   const [campaigns, setCampaigns] = useState<any[] | null>(null);
   const [campaignsLoading, setCampaignsLoading] = useState(true);
+  const hasRefreshedForPayment = useRef(false);
 
   useEffect(() => {
     if (status !== "unauthenticated") return;
@@ -104,30 +105,73 @@ export default function DashboardPage() {
     if (error) {
       router.push("/auth");
     }
+    
+    // If paymentSubmitted=1, set a sessionStorage flag immediately so other
+    // effects can detect a recent submission and skip auto-redirects. If the
+    // user data is already available, also force a refresh once.
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("paymentSubmitted")) {
+        try {
+          const skipUntil = Date.now() + 20000;
+          sessionStorage.setItem('skipPaymentRedirectUntil', skipUntil.toString());
+        } catch (e) {
+          // ignore storage errors
+        }
+
+        if (user && !hasRefreshedForPayment.current) {
+          console.log('[Dashboard] Payment submitted, refreshing user data...');
+          hasRefreshedForPayment.current = true;
+          refresh();
+        }
+
+        // Clean up URL parameter immediately
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete("paymentSubmitted");
+        window.history.replaceState({}, '', newUrl.toString());
+      }
+    }
   }, [status, userEmail, user, userLoading, error, refresh, router]);
 
   useEffect(() => {
     if (status !== "authenticated") return;
     if (!userEmail) return;
-    // Wait for user data to load before making payment redirect decision
     if (userLoading) return;
+    if (!user) return;
 
-    // If the user was just redirected here after submitting payment, skip the auto-redirect check
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get("paymentSubmitted")) return;
+    // Skip all payment checks for OFFICIAL users
+    if (user.status === 'OFFICIAL') return;
+
+    // Check if we just submitted a payment - skip auto-redirects until the
+    // stored `skipPaymentRedirectUntil` timestamp (set by the payment page).
+    if (typeof window !== 'undefined') {
+      const skipUntilStr = sessionStorage.getItem('skipPaymentRedirectUntil');
+      if (skipUntilStr) {
+        const skipUntil = parseInt(skipUntilStr, 10);
+        if (!isNaN(skipUntil) && Date.now() < skipUntil) {
+          console.log('[Dashboard] Payment recently submitted, skipping auto-redirects');
+          return;
+        }
+        // expired - remove
+        try { sessionStorage.removeItem('skipPaymentRedirectUntil'); } catch (e) { /* noop */ }
+      }
     }
 
-    // Prioritize actual payment status from database over JWT needsPayment flag
-    const paymentStatus = user?.initialPayment?.status;
-
-    // If user has a payment record that is not rejected, stay on dashboard
-    if (paymentStatus && paymentStatus !== "REJECTED") return;
-
-    // Only redirect if we've confirmed no valid payment exists
-    if (user && (!paymentStatus || paymentStatus === "REJECTED")) {
+    // Check initial payment first
+    const initialPaymentStatus = user.initialPayment?.status;
+    if (!initialPaymentStatus || initialPaymentStatus === "REJECTED") {
+      console.log('[Dashboard] Redirecting to initial payment, status:', initialPaymentStatus || 'none');
       router.push(`/payments/initial?email=${encodeURIComponent(userEmail)}`);
+      return;
     }
+
+    // For INTERVIEW_PASSED users we do not auto-redirect to the final payment
+    // page anymore. The `DashboardLayout` shows a banner with a link to
+    // `/payments/final` so the user can choose when to pay. This avoids
+    // surprising redirects when a user lands on the dashboard.
+    // (No-op)
+
+    console.log('[Dashboard] User has valid payments, staying on dashboard');
   }, [router, status, user, userEmail, userLoading]);
 
   useEffect(() => {

@@ -22,6 +22,19 @@ export default function Page() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Check if payment was just submitted - redirect to dashboard immediately
+    if (typeof window !== 'undefined') {
+      const skipUntilStr = sessionStorage.getItem('skipPaymentRedirectUntil');
+      if (skipUntilStr) {
+        const skipUntil = parseInt(skipUntilStr, 10);
+        if (!isNaN(skipUntil) && Date.now() < skipUntil) {
+          console.log('[FinalPayment] Skip flag detected, redirecting to dashboard');
+          window.location.href = "/dashboard?paymentSubmitted=1";
+          return;
+        }
+      }
+    }
+
     const fetchUser = async () => {
       if (status === "unauthenticated") {
         router.push("/auth");

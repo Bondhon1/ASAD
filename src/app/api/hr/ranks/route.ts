@@ -134,7 +134,15 @@ export async function GET() {
     }));
     const dropdownRanks = ranksWithSelectable.filter((r: any) => r.selectable);
 
-    return NextResponse.json({ ok: true, ranks: ranksWithSelectable, dropdownRanks });
+    return NextResponse.json(
+      { ok: true, ranks: ranksWithSelectable, dropdownRanks },
+      {
+        headers: {
+          // Cache for 5 minutes - ranks rarely change
+          'Cache-Control': 'public, max-age=300, stale-while-revalidate=600',
+        },
+      }
+    );
   } catch (err: any) {
     console.error('GET /api/hr/ranks error', err);
     return NextResponse.json({ error: err?.message || 'Server error' }, { status: 500 });

@@ -165,7 +165,15 @@ export async function GET(req: Request) {
     // sort desc
     rankCounts.sort((a, b) => b.count - a.count);
 
-    return NextResponse.json({ total, officialCount, rankCounts });
+    return NextResponse.json(
+      { total, officialCount, rankCounts },
+      {
+        headers: {
+          // Cache for 1 minute - stats change frequently
+          'Cache-Control': 'private, max-age=60, stale-while-revalidate=120',
+        },
+      }
+    );
   } catch (err: any) {
     console.error('GET /api/hr/users/stats error', err);
     return NextResponse.json({ error: err?.message || 'Server error' }, { status: 500 });

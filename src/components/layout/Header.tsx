@@ -5,6 +5,28 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 
+// Helper to clear all cached user data
+const clearAllCaches = () => {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('asad_user_profile_v1');
+      const keys = Object.keys(localStorage);
+      keys.forEach(key => {
+        if (key.startsWith('asad_user_profile_v2_')) {
+          localStorage.removeItem(key);
+        }
+      });
+      localStorage.removeItem('asad_session');
+      localStorage.removeItem('userEmail');
+    }
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.clear();
+    }
+  } catch (e) {
+    console.error('Error clearing cache:', e);
+  }
+};
+
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { data: session, status } = useSession();
@@ -33,7 +55,7 @@ export function Header() {
             {status === 'authenticated' ? (
               <div className="flex items-center gap-3">
                 <Link href="/dashboard" className="rounded-lg bg-white px-5 py-2 text-sm font-semibold text-[#1E3A5F] shadow-xl transition-all duration-300 hover:shadow-2xl">View Dashboard</Link>
-                <button onClick={() => signOut({ callbackUrl: '/' })} className="rounded-lg bg-[#f8fafc] px-4 py-2 text-sm font-semibold text-[#0b2140] border border-[#0b2140]">Logout</button>
+                <button onClick={() => { clearAllCaches(); signOut({ callbackUrl: '/' }); }} className="rounded-lg bg-[#f8fafc] px-4 py-2 text-sm font-semibold text-[#0b2140] border border-[#0b2140]">Logout</button>
               </div>
             ) : (
               <Link href="/auth" className="rounded-lg bg-[#1E3A5F] px-7 py-3 text-sm font-semibold text-white hover:bg-[#2a4d75] transition-all duration-300">Join Now</Link>
@@ -66,7 +88,7 @@ export function Header() {
           {status === 'authenticated' ? (
             <div className="flex gap-2">
               <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-[#1E3A5F]">View Dashboard</Link>
-              <button onClick={() => { setMobileMenuOpen(false); signOut({ callbackUrl: '/' }); }} className="rounded-lg bg-[#f8fafc] px-4 py-2 text-sm font-semibold text-[#0b2140] border border-[#0b2140]">Logout</button>
+              <button onClick={() => { setMobileMenuOpen(false); clearAllCaches(); signOut({ callbackUrl: '/' }); }} className="rounded-lg bg-[#f8fafc] px-4 py-2 text-sm font-semibold text-[#0b2140] border border-[#0b2140]">Logout</button>
             </div>
           ) : (
             <Link href="/auth" onClick={() => setMobileMenuOpen(false)} className="rounded-lg bg-[#1E3A5F] px-7 py-3 text-center text-sm font-semibold text-white transition-all duration-300">Join Now</Link>

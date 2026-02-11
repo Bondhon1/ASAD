@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
+import { invalidateSlotsCache } from "@/lib/hrSlotsCache";
 
 // DELETE - Remove interview slot
 export async function DELETE(
@@ -36,6 +37,9 @@ export async function DELETE(
     await prisma.interviewSlot.delete({
       where: { id },
     });
+    
+    // Invalidate cache for all HR users
+    invalidateSlotsCache();
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -76,6 +80,9 @@ export async function PUT(
       where: { id },
       data: updateData,
     });
+    
+    // Invalidate cache for all HR users
+    invalidateSlotsCache();
 
     return NextResponse.json({ slot });
   } catch (error) {

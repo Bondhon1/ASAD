@@ -139,20 +139,19 @@ export default function TasksPage() {
         const d = await res.json();
         setTasks(d.tasks || []);
         
-        // Fetch submission status for each task
-        const submissions: Record<string, any> = {};
-        for (const task of (d.tasks || [])) {
+        // Batch fetch submission status for all tasks in one request
+        const taskIds = (d.tasks || []).map((t: any) => t.id);
+        if (taskIds.length > 0) {
           try {
-            const subRes = await fetch(`/api/tasks/${task.id}`);
+            const subRes = await fetch(`/api/tasks/submissions?taskIds=${taskIds.join(',')}`);
             if (subRes.ok) {
               const subData = await subRes.json();
-              if (subData.userSubmission) {
-                submissions[task.id] = subData.userSubmission;
-              }
+              setUserSubmissions(subData.submissions || {});
             }
-          } catch (e) {}
+          } catch (e) {
+            console.error('Failed to fetch task submissions', e);
+          }
         }
-        setUserSubmissions(submissions);
       } catch (e) {
         // ignore
       } finally { setLoading(false); }

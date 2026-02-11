@@ -209,6 +209,7 @@ export async function POST(req: Request) {
             const notification = await prisma.notification.create({
               data: {
                 userId: uId,
+                broadcast: false,
                 type: NotificationType.NEW_TASK,
                 title: 'New assignment: ' + created.title,
                 message: messagePreview,
@@ -281,12 +282,26 @@ export async function GET(req: Request) {
     if (all === '1') {
       if (!['SECRETARIES', 'MASTER'].includes(requester.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       const tasks = await prisma.task.findMany({ orderBy: { createdAt: 'desc' } });
-      return NextResponse.json({ tasks });
+      return NextResponse.json(
+        { tasks },
+        {
+          headers: {
+            'Cache-Control': 'private, max-age=30, stale-while-revalidate=60',
+          },
+        }
+      );
     }
 
     // Otherwise return tasks created by the requester
     const tasks = await prisma.task.findMany({ where: { createdByUserId: requester.id }, orderBy: { createdAt: 'desc' } });
-    return NextResponse.json({ tasks });
+    return NextResponse.json(
+      { tasks },
+      {
+        headers: {
+          'Cache-Control': 'private, max-age=30, stale-while-revalidate=60',
+        },
+      }
+    );
   } catch (err: any) {
     console.error('GET /api/secretaries/tasks error', err);
     return NextResponse.json({ error: err?.message || 'Server error' }, { status: 500 });

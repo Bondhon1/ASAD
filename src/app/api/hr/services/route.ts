@@ -21,7 +21,15 @@ export async function GET(req: Request) {
     });
 
     const mapped = services.map(s => ({ id: s.id, name: s.name, code: s.code, institute: s.institute, usersCount: s._count?.volunteerProfiles || 0 }));
-    return NextResponse.json({ services: mapped });
+    return NextResponse.json(
+      { services: mapped },
+      {
+        headers: {
+          // Cache for 2 minutes - services don't change often
+          'Cache-Control': 'private, max-age=120, stale-while-revalidate=240',
+        },
+      }
+    );
   } catch (err: any) {
     console.error('GET /api/hr/services error', err);
     return NextResponse.json({ error: err?.message || 'Server error' }, { status: 500 });

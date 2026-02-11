@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, Suspense, type FormEvent } from "react";
+import { useEffect, useMemo, useState, useRef, useCallback, Suspense, type FormEvent } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, Calendar, Users, Link as LinkIcon, Trash2, CheckCircle, AlertCircle } from "lucide-react";
@@ -44,8 +44,13 @@ function InterviewSlotsContent() {
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
   const [participants, setParticipants] = useState<any[]>([]);
   const [participantsLoading, setParticipantsLoading] = useState(false);
+  
+  // Deduplication refs to prevent duplicate API calls
+  const fetchingSlots = useRef(false);
+  const fetchingCalendar = useRef(false);
+  const hasFetchedInitial = useRef(false);
 
-  const isLoading = loading || userCacheLoading || status === "loading";
+  const isLoading = loading || status === "loading";
 
   const skeletonGrid = (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -79,11 +84,64 @@ function InterviewSlotsContent() {
 
   const displayName = useMemo(() => user?.fullName || user?.username || session?.user?.name || "HR", [session?.user?.name, user?.fullName, user?.username]);
   const displayEmail = useMemo(() => user?.email || session?.user?.email || "", [session?.user?.email, user?.email]);
-  const displayRole = useMemo(() => (session as any)?.user?.role || (user?.role as "VOLUNTEER" | "HR" | "MASTER" | "ADMIN" | "DIRECTOR" | "DATABASE_DEPT" | "SECRETARIES") || "HR", [session, user?.role]);
+  const sessionRole = useMemo(() => (session as any)?.user?.role, [session]);
+  const displayRole = useMemo(() => sessionRole || (user?.role as "VOLUNTEER" | "HR" | "MASTER" | "ADMIN" | "DIRECTOR" | "DATABASE_DEPT" | "SECRETARIES") || "HR", [sessionRole, user?.role]);
 
   const { confirm, alert, toast } = useModal();
+  
+  // Memoized fetch functions to prevent recreating on every render
+  const fetchSlots = useCallback(async () => {
+    if (fetchingSlots.current) {
+      console.log('[HR Interviews] Already fetching slots, skipping...');
+      return;
+    }
+    
+    fetchingSlots.current = true;
+    try {
+      const response = await fetch("/api/hr/interview-slots");
+      const data = await response.json();
+      // sort slots by startTime descending (newest first)
+      const slotsData = (data.slots || []).slice();
+      slotsData.sort((a: InterviewSlot, b: InterviewSlot) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+      setSlots(slotsData);
+    } catch (error) {
+      console.error("Error fetching slots:", error);
+    } finally {
+      fetchingSlots.current = false;
+    }
+  }, []);
+
+  const fetchCalendarStatus = useCallback(async () => {
+    if (fetchingCalendar.current) {
+      console.log('[HR Interviews] Already fetching calendar status, skipping...');
+      return;
+    }
+    
+    fetchingCalendar.current = true;
+    try {
+      const response = await fetch("/api/hr/calendar-status");
+      if (!response.ok) {
+        console.error("Calendar status failed:", await response.text());
+        setCalendarStatus({ connected: false, email: null, connectedAt: null });
+        return;
+      }
+      const data = await response.json();
+      setCalendarStatus({ connected: !!data.connected, email: data.email ?? null, connectedAt: data.connectedAt ?? null });
+    } catch (error) {
+      console.error("Error fetching calendar status:", error);
+      setCalendarStatus({ connected: false, email: null, connectedAt: null });
+    } finally {
+      fetchingCalendar.current = false;
+    }
+  }, []);
 
   useEffect(() => {
+    // Prevent duplicate mount actions (dev StrictMode / HMR)
+    const mountKey = `hrInterviews:${email || 'no-email'}`;
+    if (hasFetchedInitial.current || (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(mountKey))) {
+      return;
+    }
+    
     const fetchUserAndSlots = async () => {
       if (status === "unauthenticated") {
         router.push("/auth");
@@ -96,13 +154,21 @@ function InterviewSlotsContent() {
       }
 
       try {
-        const currentUser = user || (await refreshUser());
-        if (!currentUser) return;
-        if (currentUser.role !== "HR" && currentUser.role !== "MASTER" && currentUser.role !== "ADMIN") {
+        // Use session role for quick authorization without waiting for slow user profile
+        const role = sessionRole || user?.role;
+        if (sessionRole && sessionRole !== "HR" && sessionRole !== "MASTER" && sessionRole !== "ADMIN") {
           router.push("/dashboard");
           return;
         }
-        setUser(currentUser);
+
+        // If user profile exists, set it (optional)
+        if (user) setUser(user);
+        
+        // Mark as mounted
+        hasFetchedInitial.current = true;
+        try { sessionStorage.setItem(mountKey, 'visited'); } catch (e) {}
+        
+        // Fetch data in parallel - proceed even if role not loaded yet from session
         await Promise.all([fetchSlots(), fetchCalendarStatus()]);
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -112,7 +178,7 @@ function InterviewSlotsContent() {
     };
 
     fetchUserAndSlots();
-  }, [router, session, status, email, user, refreshUser, setUser]);
+  }, [router, status, email, fetchSlots, fetchCalendarStatus]);
 
   // Handle OAuth callback from Google Calendar (exchange code for token)
   useEffect(() => {
@@ -142,36 +208,7 @@ function InterviewSlotsContent() {
     };
 
     exchange();
-  }, [router, searchParams]);
-
-  const fetchSlots = async () => {
-    try {
-      const response = await fetch("/api/hr/interview-slots");
-      const data = await response.json();
-      // sort slots by startTime descending (newest first)
-      const slotsData = (data.slots || []).slice();
-      slotsData.sort((a: InterviewSlot, b: InterviewSlot) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
-      setSlots(slotsData);
-    } catch (error) {
-      console.error("Error fetching slots:", error);
-    }
-  };
-
-  const fetchCalendarStatus = async () => {
-    try {
-      const response = await fetch("/api/hr/calendar-status");
-      if (!response.ok) {
-        console.error("Calendar status failed:", await response.text());
-        setCalendarStatus({ connected: false, email: null, connectedAt: null });
-        return;
-      }
-      const data = await response.json();
-      setCalendarStatus({ connected: !!data.connected, email: data.email ?? null, connectedAt: data.connectedAt ?? null });
-    } catch (error) {
-      console.error("Error fetching calendar status:", error);
-      setCalendarStatus({ connected: false, email: null, connectedAt: null });
-    }
-  };
+  }, [router, searchParams, fetchSlots, fetchCalendarStatus, alert, toast]);
 
   const generateMeetLink = () => {
     // Create a 10-character token and format as xxx-xxxx-xxx

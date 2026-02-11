@@ -5,6 +5,96 @@ import { prisma } from '@/lib/prisma';
 import { autoAssignServiceFromInstitute } from '@/lib/organizations';
 import { invalidateAll } from '@/lib/hrUsersCache';
 
+export async function GET(req: Request, context: any) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const requester = await prisma.user.findUnique({ 
+      where: { email: session.user.email }, 
+      select: { role: true, status: true } 
+    });
+    
+    if (!requester || requester.status === 'BANNED') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
+    if (!['HR', 'MASTER', 'ADMIN', 'DIRECTOR', 'DATABASE_DEPT'].includes(requester.role as string)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const params = await context.params;
+    const id = params?.id as string;
+    
+    if (!id) {
+      return NextResponse.json({ error: 'Missing user id' }, { status: 400 });
+    }
+
+    // Fetch detailed user data - only called when user details are expanded
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        username: true,
+        status: true,
+        role: true,
+        volunteerId: true,
+        createdAt: true,
+        institute: { select: { name: true } },
+        volunteerProfile: { 
+          select: { 
+            points: true, 
+            isOfficial: true, 
+            rank: { select: { id: true, name: true } }, 
+            service: { select: { id: true, name: true } }, 
+            sectors: true, 
+            clubs: true 
+          } 
+        },
+        initialPayment: { 
+          select: { 
+            status: true, 
+            verifiedAt: true, 
+            approvedBy: { select: { id: true, fullName: true, email: true } } 
+          } 
+        },
+        finalPayment: { 
+          select: { 
+            status: true, 
+            verifiedAt: true, 
+            approvedBy: { select: { id: true, fullName: true, email: true } } 
+          } 
+        },
+        interviewApprovedBy: { select: { id: true, fullName: true, email: true } },
+        _count: {
+          select: {
+            taskSubmissions: true,
+            donations: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    return NextResponse.json(
+      { user },
+      {
+        headers: {
+          'Cache-Control': 'private, max-age=60, stale-while-revalidate=120',
+        },
+      }
+    );
+  } catch (err: any) {
+    console.error('GET /api/hr/users/[id] error', err);
+    return NextResponse.json({ error: err?.message || 'Server error' }, { status: 500 });
+  }
+}
+
 export async function PATCH(req: Request, context: any) {
   try {
     const session = await getServerSession(authOptions);

@@ -165,6 +165,15 @@ export default function EmailVerificationPage() {
           if (data.error && data.error.toLowerCase().includes("already verified")) {
             setAlreadyVerified(true);
             setError("Email is already verified");
+            setVerifying(false);
+            
+            // Redirect to auth page after 2 seconds
+            redirectTimer = setTimeout(() => {
+              if (!cancelled) {
+                window.location.href = "/auth";
+              }
+            }, 2000);
+            return;
           } else {
             setError(data.error || "Email verification failed. The link may have expired.");
           }
@@ -385,10 +394,10 @@ export default function EmailVerificationPage() {
             </motion.div>
 
             <motion.h1 variants={itemVariants} className="text-2xl font-bold text-ink mb-2">
-              Verification Failed
+              {alreadyVerified ? "Email Already Verified" : "Verification Failed"}
             </motion.h1>
             <motion.p variants={itemVariants} className="text-muted mb-6">
-              {error}
+              {alreadyVerified ? "Your email is already verified. Redirecting to sign in..." : error}
             </motion.p>
 
             {resendSuccess && (

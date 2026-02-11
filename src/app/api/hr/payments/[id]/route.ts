@@ -42,10 +42,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           },
         });
         
-        // Create notification for initial payment approval
+        // Create notification for initial payment approval (not broadcast)
         const notification = await prisma.notification.create({
           data: {
             userId: payment.userId,
+            broadcast: false,
             type: "INITIAL_PAYMENT_ACCEPTED",
             title: "Payment Verified ✓",
             message: "Your initial payment has been verified. Your application is now under review.",
@@ -86,10 +87,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           },
         });
         
-        // Create notification for initial payment rejection
+        // Create notification for initial payment rejection (not broadcast)
         const notification = await prisma.notification.create({
           data: {
             userId: payment.userId,
+            broadcast: false,
             type: "INITIAL_PAYMENT_REJECTED",
             title: "Payment Issue",
             message: "Your initial payment could not be verified. Please re-submit with correct details.",
@@ -194,10 +196,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           },
         });
 
-        // Create notification for final payment approval
+        // Create notification for final payment approval (not broadcast)
         const notification = await prisma.notification.create({
           data: {
             userId: payment.userId,
+            broadcast: false,
             type: "FINAL_PAYMENT_ACCEPTED",
             title: "Welcome to ASAD! 🎊",
             message: `Congratulations! You are now an official volunteer. Your Volunteer ID is ${volunteerIdToUse}.`,
@@ -250,10 +253,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           },
         });
 
-        // Create notification for final payment rejection
+        // Create notification for final payment rejection (not broadcast)
         const notification = await prisma.notification.create({
           data: {
             userId: payment.userId,
+            broadcast: false,
             type: "FINAL_PAYMENT_REJECTED",
             title: "Payment Issue",
             message: "Your final payment could not be verified. Please re-submit the 170 BDT payment.",

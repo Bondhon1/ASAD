@@ -120,7 +120,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       );
     }
 
-    // Notify the volunteer
+    // Notify the volunteer (not broadcast)
     const notificationType = body.action === 'APPROVE' 
       ? NotificationType.TASK_APPROVED 
       : NotificationType.TASK_REJECTED;
@@ -128,6 +128,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     await prisma.notification.create({
       data: {
         userId: submission.userId,
+        broadcast: false,
         type: notificationType,
         title: body.action === 'APPROVE' 
           ? '✅ Task Approved!' 

@@ -98,10 +98,11 @@ export async function POST(
         },
       });
 
-      // Create notification for the user
+      // Create notification for the user (not broadcast)
       const notification = await prisma.notification.create({
         data: {
           userId: application.userId,
+          broadcast: false,
           type: "INTERVIEW_PASSED",
           title: "Interview Passed! 🎉",
           message: "Congratulations! You have passed the interview. Please complete the final payment of ৳170 to become an official volunteer.",
@@ -145,10 +146,11 @@ export async function POST(
       // Set the user's status to REJECTED to reflect decline.
       await prisma.user.update({ where: { id: application.userId }, data: { status: "REJECTED" } });
 
-      // Create notification for the user
+      // Create notification for the user (not broadcast)
       const notification = await prisma.notification.create({
         data: {
           userId: application.userId,
+          broadcast: false,
           type: "INTERVIEW_REJECTED",
           title: "Interview Update",
           message: "We regret to inform you that your interview was not successful. You may reapply in the future.",

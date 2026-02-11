@@ -9,6 +9,28 @@ import Image from "next/image";
 import { Footer } from '@/components/layout/Footer';
 import clsx from "clsx";
 
+// Helper to clear all cached user data
+const clearAllCaches = () => {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('asad_user_profile_v1');
+      const keys = Object.keys(localStorage);
+      keys.forEach(key => {
+        if (key.startsWith('asad_user_profile_v2_')) {
+          localStorage.removeItem(key);
+        }
+      });
+      localStorage.removeItem('asad_session');
+      localStorage.removeItem('userEmail');
+    }
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.clear();
+    }
+  } catch (e) {
+    console.error('Error clearing cache:', e);
+  }
+};
+
 type PaymentMethod = "bkash" | "nagad";
 
 interface PaymentMethodInfo {
@@ -285,7 +307,7 @@ export default function InitialPaymentPage() {
                 <Link href="/dashboard" className="text-sm font-semibold text-gray-600 hover:text-[#1E3A5F] transition-colors duration-300">Dashboard</Link>
               )}
               {session ? (
-                <button onClick={() => { window.location.href = '/api/auth/signout'; }} className="rounded-lg bg-red-600 px-7 py-3 text-sm font-semibold text-white hover:bg-red-700 transition-all duration-300">Logout</button>
+                <button onClick={() => { clearAllCaches(); window.location.href = '/api/auth/signout'; }} className="rounded-lg bg-red-600 px-7 py-3 text-sm font-semibold text-white hover:bg-red-700 transition-all duration-300">Logout</button>
               ) : (
                 <Link href="/auth" className="rounded-lg bg-[#1E3A5F] px-7 py-3 text-sm font-semibold text-white hover:bg-[#2a4d75] transition-all duration-300">Join Now</Link>
               )}
@@ -310,7 +332,7 @@ export default function InitialPaymentPage() {
               <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="text-base font-semibold text-gray-600 hover:text-[#1E3A5F] transition-colors duration-300">Dashboard</Link>
             )}
             {session ? (
-              <button onClick={() => { window.location.href = '/api/auth/signout'; }} className="rounded-lg bg-red-600 px-7 py-3 text-center text-sm font-semibold text-white">Logout</button>
+              <button onClick={() => { clearAllCaches(); window.location.href = '/api/auth/signout'; }} className="rounded-lg bg-red-600 px-7 py-3 text-center text-sm font-semibold text-white">Logout</button>
             ) : (
               <Link href="/auth" onClick={() => setMobileMenuOpen(false)} className="rounded-lg bg-[#1E3A5F] px-7 py-3 text-center text-sm font-semibold text-white transition-all duration-300">Join Now</Link>
             )}

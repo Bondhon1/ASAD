@@ -107,25 +107,31 @@ export default function DashboardLayout({
     }
   }, [initialFinalPaymentStatus]);
 
+  // If the user just submitted a final payment, the payments page sets a
+  // `paymentJustSubmitted` flag in sessionStorage. Respect that flag here
+  // so the dashboard shows "Payment Pending Review" immediately instead
+  // of prompting the user to pay again while the backend verifies the payment.
   useEffect(() => {
-    if (!userEmail) return;
-    // Only fetch when parent did not provide an initial initialPayment status
-    const shouldFetch = initialInitialPaymentStatus === undefined;
-
-    if (!shouldFetch) return;
-    (async () => {
-      try {
-        const res = await fetch(`/api/user/profile?email=${encodeURIComponent(userEmail)}`);
-        const data = await res.json();
-        setUserStatus(data?.user?.status || null);
-        setFinalPaymentStatus(data?.user?.finalPayment?.status || null);
-        setInitialPaymentStatus(data?.user?.initialPayment?.status || null);
-      } catch (e) {
-        // ignore
+    if (typeof window === 'undefined') return;
+    try {
+      const justSubmitted = sessionStorage.getItem('paymentJustSubmitted');
+      if (justSubmitted === 'true') {
+        // Only set pending if we don't already know of a final payment.
+        // Respect `initialFinalPaymentStatus` when available to avoid
+        // showing a pending banner incorrectly when no payment exists.
+        if (!initialFinalPaymentStatus || initialFinalPaymentStatus === 'REJECTED') {
+          setFinalPaymentStatus('PENDING');
+        }
+        // clear the one-time flag in all cases
+        sessionStorage.removeItem('paymentJustSubmitted');
       }
-    })();
-  }, [userEmail, initialInitialPaymentStatus]);
+    } catch (e) {
+      // ignore storage errors
+    }
+  }, []);
 
+  // Removed duplicate /api/user/profile fetch - parent pages already use useCachedUserProfile
+  // If initial statuses are not provided, components will handle it themselves
   useEffect(() => {
     if (initialInitialPaymentStatus !== undefined) {
       setInitialPaymentStatus(initialInitialPaymentStatus);
@@ -133,8 +139,14 @@ export default function DashboardLayout({
   }, [initialInitialPaymentStatus]);
 
   // Fetch scheduled interview (if any) for display on user dashboard
+  // Skip for OFFICIAL users - they don't need interview checks
   useEffect(() => {
     if (!userEmail) return;
+    // Skip if user is already OFFICIAL - no need for interview checks
+    if (userStatus === 'OFFICIAL') {
+      setScheduledInterview(null);
+      return;
+    }
     (async () => {
       try {
         const res = await fetch(`/api/user/interview?email=${encodeURIComponent(userEmail)}`);
@@ -145,7 +157,7 @@ export default function DashboardLayout({
         setScheduledInterview(null);
       }
     })();
-  }, [userEmail]);
+  }, [userEmail, userStatus]);
 
   const isStaff = userRole === "HR" || userRole === "MASTER" || userRole === "ADMIN" || userRole === "DIRECTOR" || userRole === "DATABASE_DEPT" || userRole === "SECRETARIES";
   const displayTopbarName = topbarName ?? userName;
@@ -177,9 +189,31 @@ export default function DashboardLayout({
 
   const handleLogout = async () => {
     try {
-      // clear local stored session
-      localStorage.removeItem('asad_session');
-    } catch (e) {}
+      // Clear all user profile caches (v1 and v2)
+      if (typeof localStorage !== 'undefined') {
+        // Clear old single-key cache
+        localStorage.removeItem('asad_user_profile_v1');
+        
+        // Clear all per-email caches (v2)
+        const keys = Object.keys(localStorage);
+        keys.forEach(key => {
+          if (key.startsWith('asad_user_profile_v2_')) {
+            localStorage.removeItem(key);
+          }
+        });
+        
+        // Clear session storage
+        localStorage.removeItem('asad_session');
+        localStorage.removeItem('userEmail');
+      }
+      
+      // Clear session storage flags
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.clear();
+      }
+    } catch (e) {
+      console.error('Error clearing cache:', e);
+    }
     // call NextAuth signOut to clear server session cookie
     try {
       await signOut({ redirect: false });
@@ -447,7 +481,7 @@ export default function DashboardLayout({
                     <div className="mb-4 p-4 bg-white border border-[#0b2140] rounded-md flex items-center justify-between">
                     <div>
                         <div className="font-semibold text-[#0b2140]">Payment Pending Review</div>
-                        <div className="text-sm text-[#3b5166]">We've received your final payment. Admin will verify it shortly.</div>
+                        <div className="text-sm text-[#3b5166]">We've received your final payment. Admin/HR will verify it shortly.</div>
                     </div>
                     <div className="flex items-center gap-2">
                     </div>

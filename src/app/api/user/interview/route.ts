@@ -25,7 +25,15 @@ export async function GET(request: NextRequest) {
     });
 
     if (!application) {
-      return NextResponse.json({ interview: null }, { status: 200 });
+      return NextResponse.json(
+        { interview: null }, 
+        { 
+          status: 200,
+          headers: {
+            'Cache-Control': 'private, max-age=60, stale-while-revalidate=120'
+          }
+        }
+      );
     }
 
     const slot = application.interviewSlot;
@@ -41,7 +49,12 @@ export async function GET(request: NextRequest) {
             }
           : null,
       },
-      { status: 200 }
+      { 
+        status: 200,
+        headers: {
+          'Cache-Control': 'private, max-age=60, stale-while-revalidate=120'
+        }
+      }
     );
   } catch (error) {
     console.error("Error fetching user interview:", error);
