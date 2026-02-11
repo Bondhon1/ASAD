@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Bell, Check, CheckCheck, Trash2, X, ExternalLink } from "lucide-react";
 import { useNotifications } from "@/components/providers/NotificationProvider";
+import { useModal } from '@/components/ui/ModalProvider';
 
 function getNotificationIcon(type: string): string {
   switch (type) {
@@ -55,6 +56,7 @@ export default function NotificationDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, isConnected } = useNotifications();
+  const { alert } = useModal();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -72,10 +74,15 @@ export default function NotificationDropdown() {
     if (!notification.read) {
       markAsRead(notification.id);
     }
-    if (notification.link) {
-      window.location.href = notification.link;
+    // If the notification points to dashboard or has no link, show full message using app alert modal
+    const link = notification.link || null;
+    if (!link || link === "/dashboard" || link === "dashboard") {
+      alert(notification.message || "", notification.title);
+      setIsOpen(false);
+    } else {
+      window.location.href = link;
+      setIsOpen(false);
     }
-    setIsOpen(false);
   };
 
   return (
@@ -229,6 +236,8 @@ export default function NotificationDropdown() {
           </div>
         </div>
       )}
+
+      {/* using app modal via ModalProvider.alert() instead of an inline modal */}
     </div>
   );
 }

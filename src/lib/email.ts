@@ -780,8 +780,15 @@ export async function sendFinalPaymentStatusEmail({
       <div class="button-container">
         <a href="${process.env.NEXTAUTH_URL}/dashboard" class="button" style="color: #ffffff !important; text-decoration: none;">🚀 Go to Dashboard</a>
       </div>
-      
-      <p>We're excited to have you on board. Together, we'll make a difference!</p>
+
+      <div style="margin-top:18px; background:#f8fafc; padding:16px; border-radius:8px; border-left:4px solid #5b21b6;">
+        <h4 style="margin:0 0 8px; color:#5b21b6;">Join Our Messenger Group</h4>
+        <p style="margin:0 0 8px; color:#374151;">Stay connected with fellow volunteers — click the link below to join our Messenger group.</p>
+        <p style="margin:0 0 8px;"><a href="https://m.me/j/AbZk3M3p6zt0CwwT/" style="color:#1E3A5F; font-weight:600; text-decoration:none;">Join Messenger Group</a></p>
+        <p style="margin:0; color:#6b7280; font-size:13px;">If the group link does not work, please DM: <a href="https://www.facebook.com/fatema.akter.anika.663182" style="color:#1E3A5F; text-decoration:none;">https://www.facebook.com/fatema.akter.anika.663182</a></p>
+      </div>
+
+      <p class="mt-4">We're excited to have you on board. Together, we'll make a difference!</p>
       
       <p>
         Best regards,<br>
