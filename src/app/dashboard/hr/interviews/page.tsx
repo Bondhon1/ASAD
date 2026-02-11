@@ -137,8 +137,7 @@ function InterviewSlotsContent() {
 
   useEffect(() => {
     // Prevent duplicate mount actions (dev StrictMode / HMR)
-    const mountKey = `hrInterviews:${email || 'no-email'}`;
-    if (hasFetchedInitial.current || (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(mountKey))) {
+    if (hasFetchedInitial.current) {
       return;
     }
     
@@ -166,7 +165,6 @@ function InterviewSlotsContent() {
         
         // Mark as mounted
         hasFetchedInitial.current = true;
-        try { sessionStorage.setItem(mountKey, 'visited'); } catch (e) {}
         
         // Fetch data in parallel - proceed even if role not loaded yet from session
         await Promise.all([fetchSlots(), fetchCalendarStatus()]);
