@@ -440,11 +440,12 @@ function InterviewSlotsContent() {
                       <Calendar className="w-5 h-5 text-[#1E3A5F]" />
                       <h3 className="font-semibold text-gray-900">{new Date(slot.startTime).toLocaleDateString()}</h3>
                     </div>
-                    {/* Delete disabled for safety
-                    <button onClick={() => handleDeleteSlot(slot.id)} className="text-red-600 hover:text-red-700" title="Delete slot">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                    */}
+                    {/* Show delete only for slots that are older than 1 day to avoid accidental removal */}
+                    {((new Date(slot.startTime).getTime() + 24 * 60 * 60 * 1000) < Date.now()) && (
+                      <button onClick={() => handleDeleteSlot(slot.id)} className="text-red-600 hover:text-red-700" title="Delete slot">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                   <div className="space-y-2 text-sm text-gray-700">
                     <div className="flex items-center gap-2">
