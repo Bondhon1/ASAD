@@ -380,7 +380,7 @@ function InterviewSlotsContent() {
       initialUserStatus={user?.status}
       initialFinalPaymentStatus={user?.finalPayment?.status}
     >
-      {isLoading || !user ? skeletonPage : (
+      {isLoading ? skeletonPage : (
         <div className="max-w-7xl mx-auto">
             <div className="mb-6 flex items-center justify-between">
             <div>
