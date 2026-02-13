@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     }
 
     const token = generateEmailVerificationToken();
-    const expiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
     await prisma.user.update({ where: { id: user.id }, data: { emailVerificationToken: token, emailVerificationExpiry: expiry } });
 

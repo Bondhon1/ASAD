@@ -225,35 +225,6 @@ export default function EmailVerificationPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 flex items-center justify-center p-4 relative overflow-hidden">
-      <style jsx>{`
-        .force-visible-button {
-          background-color: #e5e7eb !important;
-          color: #000000 !important;
-          border: 3px solid #6b7280 !important;
-          font-weight: 700 !important;
-          font-size: 16px !important;
-          opacity: 1 !important;
-          display: block !important;
-          text-decoration: none !important;
-          visibility: visible !important;
-        }
-        .force-visible-resend-button {
-          background-color: #dc2626 !important;
-          color: #ffffff !important;
-          border: none !important;
-          font-weight: 600 !important;
-          font-size: 16px !important;
-          opacity: 1 !important;
-          display: block !important;
-          visibility: visible !important;
-        }
-        .force-visible-resend-button:disabled {
-          background-color: #9ca3af !important;
-          color: #ffffff !important;
-          cursor: not-allowed !important;
-          opacity: 1 !important;
-        }
-      `}</style>
       {/* Decorative elements */}
       <motion.div
         className="absolute top-0 left-0 w-80 h-80 bg-primary/5 rounded-full blur-3xl"
@@ -343,23 +314,13 @@ export default function EmailVerificationPage() {
             >
               <Link
                 href="/payments/initial"
-                className="block w-full px-4 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-all shadow-sm"
-                style={{ backgroundColor: '#2563eb', color: '#ffffff' }}
+                className="block w-full px-3 py-2 bg-[#1E3A5F] text-white rounded-lg font-semibold hover:bg-[#152d47] transition-all shadow-sm text-center text-sm"
               >
                 Proceed to Payment
               </Link>
               <Link
                 href="/auth"
-                className="block w-full px-4 py-3 rounded-lg font-semibold text-center shadow-lg"
-                style={{ 
-                  backgroundColor: '#e5e7eb',
-                  color: '#000000',
-                  border: '3px solid #6b7280',
-                  fontWeight: '700',
-                  fontSize: '16px',
-                  opacity: '1',
-                  display: 'block'
-                }}
+                className="block w-full px-3 py-2 bg-gray-200 text-ink rounded-lg font-semibold text-center shadow-sm hover:bg-gray-300 transition-all border border-gray-400 text-sm"
               >
                 Back to Sign In
               </Link>
@@ -441,7 +402,7 @@ export default function EmailVerificationPage() {
                   variants={itemVariants}
                   onClick={handleResendVerification}
                   disabled={resending}
-                  className="force-visible-resend-button block w-full px-4 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                  className="block w-full px-3 py-2 bg-[#1E3A5F] text-white rounded-lg font-semibold hover:bg-[#152d47] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm text-sm"
                 >
                   {resending ? "Sending..." : "Resend Verification Email"}
                 </motion.button>
@@ -449,14 +410,14 @@ export default function EmailVerificationPage() {
               <motion.div variants={itemVariants}>
                 <Link
                   href="/auth"
-                  className="force-visible-button block w-full px-4 py-3 rounded-lg font-semibold text-center shadow-lg"
+                  className="block w-full px-3 py-2 bg-gray-200 text-ink rounded-lg font-semibold text-center shadow-sm hover:bg-gray-300 transition-all border border-gray-400 text-sm"
                 >
                   {alreadyVerified ? "Go to Sign In" : remainingAttempts === 0 ? "Contact Support" : "Back to Sign In"}
                 </Link>
               </motion.div>
-              <motion.p variants={itemVariants} className="text-sm text-gray-600" style={{ color: '#4b5563' }}>
+              <motion.p variants={itemVariants} className="text-sm text-gray-600">
                 Need help?{" "}
-                <Link href="/contact" className="text-blue-600 hover:text-blue-800 underline font-semibold" style={{ color: '#2563eb' }}>
+                <Link href="/contact" className="text-[#1E3A5F] hover:text-[#152d47] underline font-semibold">
                   Contact support
                 </Link>
               </motion.p>
