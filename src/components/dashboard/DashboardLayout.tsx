@@ -24,7 +24,6 @@ import {
   Bell
 } from "lucide-react";
 import { signOut } from "next-auth/react";
-import { NotificationProvider } from "@/components/providers/NotificationProvider";
 import NotificationDropdown from "@/components/dashboard/NotificationDropdown";
 
 // Fallback bell button when notifications are not available
@@ -518,15 +517,6 @@ export default function DashboardLayout({
       </div>
     </div>
   );
-
-  // Wrap with NotificationProvider only if we have a valid userId
-  if (hasValidUserId) {
-    return (
-      <NotificationProvider userId={userId}>
-        {dashboardContent}
-      </NotificationProvider>
-    );
-  }
 
   return dashboardContent;
 }
