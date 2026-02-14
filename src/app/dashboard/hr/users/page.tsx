@@ -593,7 +593,7 @@ export default function UsersManagementPage() {
                   </div>
 
                   {/* Date Range Filter (when OFFICIAL selected) */}
-                  {statusFilter === 'OFFICIAL' && (
+                    {statusFilter === 'OFFICIAL' && (
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
                       <div className="flex items-center gap-2 text-sm font-medium text-blue-900">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -601,7 +601,7 @@ export default function UsersManagementPage() {
                         </svg>
                         Final Payment Verification Date Range
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
                         <div className="space-y-1.5">
                           <label className="block text-xs font-medium text-gray-600">From Date</label>
                           <input 
@@ -625,6 +625,23 @@ export default function UsersManagementPage() {
                           className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
                         >
                           Clear Dates
+                        </button>
+                        </div>
+
+                      <div className="flex items-center gap-2 mt-3">
+                        <button
+                          onClick={() => {
+                            setQuery('');
+                            setStatusFilter('OFFICIAL');
+                            setRankFilter('');
+                            setFinalFrom('');
+                            setFinalTo('');
+                            setPageSize(20);
+                            setPage(1);
+                          }}
+                          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm"
+                        >
+                          Clear Filters
                         </button>
                       </div>
                     </div>
@@ -1181,6 +1198,22 @@ export default function UsersManagementPage() {
                             className="w-full px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
                           >
                             Clear Dates
+                          </button>
+                        </div>
+                        <div>
+                          <button
+                            onClick={() => {
+                              setQuery('');
+                              setStatusFilter('OFFICIAL');
+                              setRankFilter('');
+                              setFinalFrom('');
+                              setFinalTo('');
+                              setPageSize(20);
+                              setPage(1);
+                            }}
+                            className="w-full mt-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm font-medium"
+                          >
+                            Clear Filters
                           </button>
                         </div>
                       </div>
