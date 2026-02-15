@@ -36,6 +36,9 @@
  */
 
 import { prisma } from './prisma';
+import { NotificationType } from '@prisma/client';
+import { publishNotification } from './ably';
+import { invalidateAll } from './hrUsersCache';
 
 // Type for rank from DB
 type RankFromDB = {
@@ -580,15 +583,31 @@ export async function applyPointsChange(
         relatedDonationId,
       },
     });
+
+    // Publish a lightweight realtime points update so clients can refresh UI (even if rank didn't change)
+    try {
+      // send a small transient message to user's channel
+      await publishNotification(userId, {
+        id: `points-${Date.now()}`,
+        type: 'POINTS_UPDATE',
+        title: 'Points Updated',
+        message: `Your points changed by ${pointsChange > 0 ? '+' : ''}${pointsChange}. New total: ${result.newPoints}`,
+        link: '/dashboard',
+        createdAt: new Date(),
+      });
+    } catch (e) {
+      // fail silently - realtime notifications are best-effort
+      console.error('Failed to publish points update via Ably', e);
+    }
     
     // If rank changed, create a notification (not broadcast)
     if (result.rankChanged) {
       const isUpgrade = pointsChange > 0;
-      await prisma.notification.create({
+      const notification = await prisma.notification.create({
         data: {
           userId,
           broadcast: false,
-          type: 'RANK_UPDATE',
+          type: NotificationType.RANK_UPDATE,
           title: isUpgrade ? '🎉 Rank Upgraded!' : '📉 Rank Changed',
           message: isUpgrade
             ? `Congratulations! You've been promoted from ${result.oldRankName || 'Unranked'} to ${result.newRankName}!`
@@ -596,6 +615,23 @@ export async function applyPointsChange(
           link: '/dashboard',
         },
       });
+
+      // Publish real-time notification via Ably (if configured)
+      try {
+        await publishNotification(userId, {
+          id: notification.id,
+          type: notification.type,
+          title: notification.title,
+          message: notification.message,
+          link: notification.link,
+          createdAt: notification.createdAt,
+        });
+      } catch (e) {
+        console.error('Failed to publish rank update notification via Ably', e);
+      }
+
+      // Invalidate users cache so server-side caches reflect new points quickly
+      try { invalidateAll(); } catch (e) { /* ignore cache errors */ }
     }
     
     return {

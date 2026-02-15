@@ -23,6 +23,7 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { applyPointsChange } from '@/lib/rankUtils';
 import { NotificationType } from '@prisma/client';
+import { parseAudience, resolveAudienceUserIds } from '@/lib/taskAudience';
 
 // Special marker for auto-created deduction submissions
 const DEDUCTION_MARKER = '__DEADLINE_MISSED_DEDUCTION__';
@@ -101,6 +102,7 @@ export async function POST(req: Request) {
         id: true,
         title: true,
         targetUserIds: true,
+        assignedGroup: true,
         pointsNegative: true,
         endDate: true,
         mandatory: true,
@@ -111,7 +113,8 @@ export async function POST(req: Request) {
     console.log('[ProcessExpired] Total mandatory tasks found:', allMandatoryTasks.length);
     for (const t of allMandatoryTasks) {
       const isExpired = t.endDate < now;
-      console.log(`[ProcessExpired] Task: "${t.title}" | endDate: ${t.endDate.toISOString()} | expired: ${isExpired} | pointsNegative: ${t.pointsNegative} | targetUsers: ${t.targetUserIds.length}`);
+      const audienceCount = (await resolveAudienceUserIds(parseAudience(t.assignedGroup), { fallbackTargetIds: t.targetUserIds })).length;
+      console.log(`[ProcessExpired] Task: "${t.title}" | endDate: ${t.endDate.toISOString()} | expired: ${isExpired} | pointsNegative: ${t.pointsNegative} | targetUsers: ${audienceCount}`);
     }
     
     // Find all mandatory tasks that have expired
@@ -127,6 +130,7 @@ export async function POST(req: Request) {
         id: true,
         title: true,
         targetUserIds: true,
+        assignedGroup: true,
         pointsNegative: true,
         endDate: true,
       },
@@ -147,8 +151,9 @@ export async function POST(req: Request) {
     for (const task of expiredMandatoryTasks) {
       results.tasksProcessed++;
       
+      const audienceIds = await resolveAudienceUserIds(parseAudience(task.assignedGroup), { fallbackTargetIds: task.targetUserIds });
       console.log(`[ProcessExpired] Processing task: "${task.title}" (${task.id})`);
-      console.log(`[ProcessExpired] Target users count: ${task.targetUserIds.length}`);
+      console.log(`[ProcessExpired] Target users count: ${audienceIds.length}`);
 
       // Get all existing submissions for this task
       const existingSubmissions = await prisma.taskSubmission.findMany({
@@ -160,7 +165,7 @@ export async function POST(req: Request) {
       console.log(`[ProcessExpired] Already submitted/processed count: ${submittedUserIds.size}`);
 
       // Find users who should have submitted but didn't
-      for (const targetUserId of task.targetUserIds) {
+      for (const targetUserId of audienceIds) {
         // Skip if already submitted (including deduction marker)
         if (submittedUserIds.has(targetUserId)) {
           continue;
@@ -312,6 +317,7 @@ export async function GET(req: Request) {
           id: true,
           title: true,
           targetUserIds: true,
+          assignedGroup: true,
           pointsNegative: true,
           endDate: true,
           mandatory: true,
@@ -322,7 +328,8 @@ export async function GET(req: Request) {
       console.log('[GET/ProcessExpired] Total mandatory tasks found:', allMandatoryTasks.length);
       for (const t of allMandatoryTasks) {
         const isExpired = t.endDate < now;
-        console.log(`[GET/ProcessExpired] Task: "${t.title}" | endDate: ${t.endDate.toISOString()} | expired: ${isExpired} | pointsNegative: ${t.pointsNegative} | targetUsers: ${t.targetUserIds.length}`);
+        const audienceCount = (await resolveAudienceUserIds(parseAudience(t.assignedGroup), { fallbackTargetIds: t.targetUserIds })).length;
+        console.log(`[GET/ProcessExpired] Task: "${t.title}" | endDate: ${t.endDate.toISOString()} | expired: ${isExpired} | pointsNegative: ${t.pointsNegative} | targetUsers: ${audienceCount}`);
       }
       
       // Find all mandatory tasks that have expired
@@ -335,6 +342,7 @@ export async function GET(req: Request) {
           id: true,
           title: true,
           targetUserIds: true,
+          assignedGroup: true,
           pointsNegative: true,
           endDate: true,
         },
@@ -353,6 +361,7 @@ export async function GET(req: Request) {
         results.tasksProcessed++;
         
         console.log(`[GET/ProcessExpired] Processing task: "${task.title}" (${task.id})`);
+        const audienceIds = await resolveAudienceUserIds(parseAudience(task.assignedGroup), { fallbackTargetIds: task.targetUserIds });
 
         const existingSubmissions = await prisma.taskSubmission.findMany({
           where: { taskId: task.id },
@@ -360,9 +369,9 @@ export async function GET(req: Request) {
         });
 
         const submittedUserIds = new Set(existingSubmissions.map((s: { userId: string }) => s.userId));
-        console.log(`[GET/ProcessExpired] Target users: ${task.targetUserIds.length}, Already submitted: ${submittedUserIds.size}`);
+        console.log(`[GET/ProcessExpired] Target users: ${audienceIds.length}, Already submitted: ${submittedUserIds.size}`);
 
-        for (const targetUserId of task.targetUserIds) {
+        for (const targetUserId of audienceIds) {
           if (submittedUserIds.has(targetUserId)) {
             continue;
           }
@@ -476,6 +485,7 @@ export async function GET(req: Request) {
         id: true,
         title: true,
         targetUserIds: true,
+        assignedGroup: true,
         pointsNegative: true,
         endDate: true,
       },
@@ -484,13 +494,15 @@ export async function GET(req: Request) {
     const preview = [];
 
     for (const task of expiredMandatoryTasks) {
+      const audienceIds = await resolveAudienceUserIds(parseAudience(task.assignedGroup), { fallbackTargetIds: task.targetUserIds });
+
       const existingSubmissions = await prisma.taskSubmission.findMany({
         where: { taskId: task.id },
         select: { userId: true },
       });
 
       const submittedUserIds = new Set(existingSubmissions.map((s: { userId: string }) => s.userId));
-      const missedUsers = task.targetUserIds.filter((id: string) => !submittedUserIds.has(id));
+      const missedUsers = audienceIds.filter((id: string) => !submittedUserIds.has(id));
 
       if (missedUsers.length > 0) {
         // Get user details for preview

@@ -10,6 +10,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
+import { parseAudience, isUserInAudience, resolveAudienceUserIds } from '@/lib/taskAudience';
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -20,7 +21,19 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
     const requester = await prisma.user.findUnique({
       where: { email: session.user.email },
-      select: { id: true, status: true, role: true },
+      select: {
+        id: true,
+        status: true,
+        role: true,
+        volunteerProfile: {
+          select: {
+            serviceId: true,
+            service: { select: { name: true } },
+            sectors: true,
+            clubs: true,
+          },
+        },
+      },
     });
 
     if (!requester) {
@@ -46,8 +59,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
+    const audienceSpec = parseAudience(task.assignedGroup);
+    const computedAudience = await resolveAudienceUserIds(audienceSpec, { fallbackTargetIds: task.targetUserIds });
     // Check if user is in target audience or is admin/creator
-    const isTargetUser = task.targetUserIds.includes(requester.id);
+    const isTargetUser = isUserInAudience(audienceSpec, { id: requester.id, volunteerProfile: requester.volunteerProfile as any }, task.targetUserIds);
     const isCreator = task.createdByUserId === requester.id;
     const isAdmin = ['MASTER', 'ADMIN', 'SECRETARIES', 'HR', 'DIRECTOR'].includes(requester.role);
 
@@ -82,7 +97,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     // Get submission stats if admin
     let submissionStats = null;
     if (isAdmin || isCreator) {
-      const totalTarget = task.targetUserIds.length;
+      const totalTarget = computedAudience.length;
       const submissionCount = await prisma.taskSubmission.count({
         where: { taskId },
       });

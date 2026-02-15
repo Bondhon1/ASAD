@@ -174,6 +174,14 @@ export function NotificationProvider({ children, userId }: NotificationProviderP
           
           setNotifications((prev) => [newNotification, ...prev]);
           setUnreadCount((prev) => prev + 1);
+          // Dispatch a global window event so other parts of the app can react
+          try {
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('asad:notification', { detail: message.data }));
+            }
+          } catch (e) {
+            // ignore
+          }
         });
       } catch (error) {
         console.error("Failed to initialize Ably:", error);

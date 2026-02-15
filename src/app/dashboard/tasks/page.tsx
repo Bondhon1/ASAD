@@ -1204,12 +1204,49 @@ export default function TasksPage() {
               <button onClick={closeViewSubmission} className="text-slate-500 hover:text-slate-800">Close</button>
             </div>
             <div className="mt-4 space-y-3">
-              {viewSubmission.submissionData && (
-                <div>
-                  <h4 className="text-sm font-medium text-slate-600">Notes</h4>
-                  <div className="mt-1">{renderSubmissionData(viewSubmission.submissionData)}</div>
-                </div>
-              )}
+              {
+                (() => {
+                  // Safely parse submission data and render YES/NO as a clear badge
+                  const raw = viewSubmission.submissionData;
+                  let parsed: any = null;
+                  if (raw === undefined || raw === null) parsed = null;
+                  else if (typeof raw === 'string') {
+                    try { parsed = JSON.parse(raw); } catch (e) { parsed = raw; }
+                  } else parsed = raw;
+
+                  let yesnoAnswer: string | null = null;
+                  if (typeof parsed === 'string' && (parsed.toUpperCase() === 'YES' || parsed.toUpperCase() === 'NO')) {
+                    yesnoAnswer = parsed.toUpperCase();
+                  } else if (parsed && typeof parsed === 'object' && typeof parsed.answer === 'string' && (parsed.answer.toUpperCase() === 'YES' || parsed.answer.toUpperCase() === 'NO')) {
+                    yesnoAnswer = parsed.answer.toUpperCase();
+                  }
+
+                  if (yesnoAnswer) {
+                    return (
+                      <div>
+                        <h4 className="text-sm font-medium text-slate-600">Answer</h4>
+                        <div className="mt-2">
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full font-bold ${yesnoAnswer === 'YES' ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
+                            {yesnoAnswer === 'YES' ? 'Yes' : 'No'}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // For non-YESNO or complex data, show notes normally
+                  if (viewSubmission.submissionData) {
+                    return (
+                      <div>
+                        <h4 className="text-sm font-medium text-slate-600">Notes</h4>
+                        <div className="mt-1">{renderSubmissionData(viewSubmission.submissionData)}</div>
+                      </div>
+                    );
+                  }
+
+                  return null;
+                })()
+              }
 
               {viewSubmission.submissionFiles && viewSubmission.submissionFiles.length > 0 && (
                 <div>

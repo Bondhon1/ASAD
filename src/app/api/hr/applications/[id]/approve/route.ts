@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { sendInterviewInvitation } from "@/lib/email";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getServiceIdForInstitute } from "@/lib/serviceAssignment";
+import { publishNotification } from "@/lib/ably";
+import { NotificationType } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -117,6 +119,37 @@ export async function POST(
         },
       }),
     ]);
+
+    // Create notification for the applicant about the scheduled interview
+    const interviewDateText = availableSlot.startTime.toLocaleString("en-US", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+
+    try {
+      const notification = await prisma.notification.create({
+        data: {
+          userId: application.userId,
+          broadcast: false,
+          type: NotificationType.APPLICATION_UPDATE,
+          title: "Interview Scheduled",
+          message: `Your interview is scheduled on ${interviewDateText}. Meet link: ${availableSlot.meetLink || "TBA"}.`,
+          link: "/dashboard",
+        },
+      });
+
+      await publishNotification(application.userId, {
+        id: notification.id,
+        type: notification.type,
+        title: notification.title,
+        message: notification.message,
+        link: notification.link,
+        createdAt: notification.createdAt,
+      });
+    } catch (notifyError) {
+      console.error("Failed to create/publish interview schedule notification:", notifyError);
+      // Do not block the approval if notification fails
+    }
 
     // Send interview invitation email
     try {

@@ -77,6 +77,7 @@ export default function DashboardPage() {
   const [pendingTasksLoading, setPendingTasksLoading] = useState(true);
   const [campaigns, setCampaigns] = useState<any[] | null>(null);
   const [campaignsLoading, setCampaignsLoading] = useState(true);
+  const [taskSubmissionMap, setTaskSubmissionMap] = useState<Record<string, any>>({});
   const hasRefreshedForPayment = useRef(false);
 
   useEffect(() => {
@@ -218,6 +219,33 @@ export default function DashboardPage() {
     return () => { mounted = false; };
   }, [userEmail]);
 
+  // Keep submission status in sync for the tasks shown on the dashboard
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!pendingTasks || pendingTasks.length === 0) {
+        setTaskSubmissionMap({});
+        return;
+      }
+      const ids = pendingTasks.map((t) => t.id).filter(Boolean);
+      if (!ids.length) {
+        setTaskSubmissionMap({});
+        return;
+      }
+      try {
+        const res = await fetch(`/api/tasks/submissions?taskIds=${ids.join(',')}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) {
+          setTaskSubmissionMap(data.submissions || {});
+        }
+      } catch (e) {
+        if (!cancelled) setTaskSubmissionMap({});
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [pendingTasks]);
+
   // If the session is unauthenticated, allow rendering when we have a stored
   // `userEmail` (email-verify -> payment flow). Otherwise return null to avoid
   // showing dashboard to unauthenticated visitors.
@@ -249,7 +277,7 @@ export default function DashboardPage() {
   );
 
   const skeletonPage = (
-    <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 sm:py-8 space-y-8">
+    <div className="max-w-6xl mx-auto px-3.5 py-5 sm:px-5 sm:py-6 space-y-8">
       <div className="bg-white border border-gray-200 rounded-lg p-6 animate-pulse">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -275,8 +303,8 @@ export default function DashboardPage() {
   }
 
   const experiencePanel = (
-    <aside className="bg-gray-50 border border-gray-200 rounded-lg p-4 h-full">
-      <div className="bg-white rounded-md border border-gray-100 p-4 h-full flex flex-col">
+    <aside className="bg-gray-50 border border-gray-200 rounded-lg p-3.5 h-full">
+      <div className="bg-white rounded-md border border-gray-100 p-3.5 h-full flex flex-col">
         <h3 className="text-sm font-medium text-gray-800 mb-3">Experience & Roles</h3>
         <div className="flex-1 overflow-y-auto pr-2 space-y-3">
           {user?.experiences?.length ? (
@@ -299,15 +327,32 @@ export default function DashboardPage() {
   );
 
   const tasksPanel = (
-    <section className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+    <section className="bg-gray-50 border border-gray-200 rounded-lg p-3.5">
       <h3 className="text-sm font-medium text-[#0b2545] mb-4">Pending Tasks</h3>
       <div className="space-y-3">
         {pendingTasksLoading ? (
           <div className="text-sm text-gray-600">Loading…</div>
         ) : (
           (() => {
-            const submittedPending = (user?.taskSubmissions || []).filter(s => s.status === 'PENDING');
-            const visiblePending = (pendingTasks || []).filter(t => !((user?.taskSubmissions || []).some(s => s.task?.id === t.id)));
+            const submissionByTaskId = new Map<string, any>();
+
+            // Prefer fresh submission map from API, fall back to cached profile data
+            (user?.taskSubmissions || []).forEach((s) => {
+              const taskId = s.task?.id;
+              if (taskId) submissionByTaskId.set(taskId, s);
+            });
+
+            Object.entries(taskSubmissionMap || {}).forEach(([taskId, submission]) => {
+              if (!submissionByTaskId.has(taskId)) {
+                submissionByTaskId.set(taskId, {
+                  ...submission,
+                  task: (pendingTasks || []).find((t) => t.id === taskId) || null,
+                });
+              }
+            });
+
+            const submittedPending = Array.from(submissionByTaskId.values()).filter((s: any) => s?.status === 'PENDING');
+            const visiblePending = (pendingTasks || []).filter((t) => !submissionByTaskId.has(t.id));
 
             if (!visiblePending.length && !submittedPending.length) {
               return <div className="text-sm text-gray-600">No pending tasks.</div>;
@@ -316,9 +361,20 @@ export default function DashboardPage() {
             return (
               <div className="space-y-3">
                 {visiblePending.slice(0, 6).map((t) => (
-                  <div key={t.id} onClick={() => router.push('/dashboard/tasks')} className="bg-white border border-gray-100 rounded-lg p-4 h-16 flex items-center justify-between cursor-pointer hover:shadow-sm hover:translate-y-[-1px] transition-transform">
-                    <div className="text-sm text-gray-800">{t.title || 'Task'}</div>
-                    <div className="text-xs text-gray-500">{t.endDate ? formatDhakaDate(t.endDate) : ''}</div>
+                  <div
+                    key={t.id}
+                    onClick={() => router.push('/dashboard/tasks')}
+                    className="bg-white border border-gray-100 rounded-lg p-3.5 flex flex-col gap-1 cursor-pointer hover:shadow-sm hover:translate-y-[-1px] transition-transform"
+                  >
+                    <div className="flex items-center justify-between text-sm text-gray-800">
+                      <span className="font-medium text-slate-900 truncate pr-2">{t.title || 'Task'}</span>
+                      <span className="text-xs text-gray-500">{t.endDate ? formatDhakaDate(t.endDate) : ''}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-[11px] text-slate-600 flex-wrap">
+                      <span className="font-semibold text-amber-700">+{t.pointsPositive ?? 0} pts</span>
+                      {t.mandatory ? <span className="text-red-600 font-semibold">Mandatory</span> : null}
+                      <span className="uppercase bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full font-semibold tracking-wide">{t.taskType || 'TASK'}</span>
+                    </div>
                   </div>
                 ))}
 
@@ -347,20 +403,27 @@ export default function DashboardPage() {
   );
 
   const donationsPanel = (
-    <aside className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+    <aside className="bg-gray-50 border border-gray-200 rounded-lg p-3.5">
       <h3 className="text-sm font-medium text-[#0b2545] mb-4">Pending Donations</h3>
       <div className="space-y-4">
         {campaignsLoading ? (
           <div className="text-sm text-gray-600">Loading…</div>
         ) : (campaigns && campaigns.length ? (
           campaigns.slice(0,6).map((d:any) => (
-            <div key={d.id || d.purpose} className="bg-white border border-gray-100 rounded-lg p-4 cursor-pointer hover:shadow-sm">
+            <div key={d.id || d.purpose} className="bg-white border border-gray-100 rounded-lg p-3.5 cursor-pointer hover:shadow-sm">
               <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-sm font-semibold text-gray-900">{d.purpose || d.title || 'Campaign'}</div>
+                <div className="pr-3 min-w-0">
+                  <div className="text-sm font-semibold text-gray-900 truncate">{d.purpose || d.title || 'Campaign'}</div>
                   <div className="text-xs text-gray-500">{d.bkashNumber || ''} {d.nagadNumber ? ` • ${d.nagadNumber}` : ''}</div>
                 </div>
-                <div className="text-sm text-gray-800">৳{d.amountTarget?.toLocaleString() ?? 0}</div>
+                <div className="text-sm text-gray-800 text-right">
+                  <div>৳{d.amountTarget?.toLocaleString?.() ?? 0}</div>
+                  {d.amountCollected ? <div className="text-[11px] text-slate-500">Raised ৳{d.amountCollected?.toLocaleString?.()}</div> : null}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 mt-2 text-[11px] text-slate-600 flex-wrap">
+                {d.status ? <span className="uppercase bg-slate-100 px-2 py-0.5 rounded-full font-semibold tracking-wide">{d.status}</span> : null}
+                {d.deadline ? <span className="text-slate-500">Due {formatDhakaDate(d.deadline)}</span> : null}
               </div>
             </div>
           ))
@@ -392,9 +455,9 @@ export default function DashboardPage() {
       {isLoading || !user ? (
         skeletonPage
       ) : (
-        <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 sm:py-8">
+        <div className="max-w-6xl mx-auto px-3.5 py-5 sm:px-5 sm:py-6 lg:px-6">
           {/* Top Profile Header */}
-          <div className="bg-white border border-gray-200 rounded-lg p-6 mb-8">
+          <div className="bg-white border border-gray-200 rounded-lg p-5 mb-6">
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
                 <div className="w-20 h-20 bg-gray-50 border border-gray-200 rounded-md flex items-center justify-center overflow-hidden">
@@ -472,7 +535,7 @@ export default function DashboardPage() {
           </div>
 
           {/* 3-column content area */}
-          <div className="hidden md:grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="hidden md:grid grid-cols-1 md:grid-cols-3 gap-5">
             {experiencePanel}
             {tasksPanel}
             {donationsPanel}

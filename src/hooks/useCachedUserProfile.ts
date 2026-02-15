@@ -130,5 +130,25 @@ export function useCachedUserProfile<T = any>(email?: string | null, ttlMs: numb
     refresh();
   }, [email, ttlMs]); // Removed 'refresh' from dependencies to prevent infinite loop
 
+  // Listen for rank update notifications and refresh cached profile
+  useEffect(() => {
+    if (!email) return;
+    const handler = (e: any) => {
+      try {
+        const d = e?.detail;
+        if (!d) return;
+        const t = String(d.type || '').toUpperCase();
+        // Refresh on rank updates or points updates
+        if (t === 'RANK_UPDATE' || t === 'POINTS_UPDATE') {
+          refresh();
+        }
+      } catch (err) {
+        // ignore
+      }
+    };
+    window.addEventListener('asad:notification', handler as EventListener);
+    return () => window.removeEventListener('asad:notification', handler as EventListener);
+  }, [email, refresh]);
+
   return { user, loading, error, refresh, setUser } as const;
 }

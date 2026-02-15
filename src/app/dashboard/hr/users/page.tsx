@@ -988,6 +988,22 @@ export default function UsersManagementPage() {
                                               // update local user entry
                                               setUsers(prev => prev.map(x => x.id === u.id ? { ...x, volunteerProfile: { ...(x.volunteerProfile || {}), service: (displayRole === 'HR' || displayRole === 'MASTER' || displayRole === 'ADMIN') ? (selectedServiceLocal ? { id: selectedServiceLocal, name: svcName } : null) : x.volunteerProfile?.service, sectors: selectedSectorsLocal, clubs: selectedClubsLocal } } : x));
                                               setSelected(prev => prev ? { ...prev, volunteerProfile: { ...(prev.volunteerProfile || {}), service: (displayRole === 'HR' || displayRole === 'MASTER' || displayRole === 'ADMIN') ? (selectedServiceLocal ? { id: selectedServiceLocal, name: svcName } : null) : prev.volunteerProfile?.service, sectors: selectedSectorsLocal, clubs: selectedClubsLocal } } : prev);
+
+                                              // Also update the detailed user cache so expanded view reflects changes immediately
+                                              setUserDetails(prev => {
+                                                const existing = prev[u.id];
+                                                if (!existing) return prev;
+                                                const updated = {
+                                                  ...existing,
+                                                  volunteerProfile: {
+                                                    ...(existing.volunteerProfile || {}),
+                                                    service: (displayRole === 'HR' || displayRole === 'MASTER' || displayRole === 'ADMIN') ? (selectedServiceLocal ? { id: selectedServiceLocal, name: svcName } : null) : existing.volunteerProfile?.service,
+                                                    sectors: selectedSectorsLocal,
+                                                    clubs: selectedClubsLocal,
+                                                  }
+                                                };
+                                                return { ...prev, [u.id]: updated };
+                                              });
                                               setEditingOrgUserId(null);
                                             } catch (err: any) {
                                               await alert(err?.message || 'Error saving');

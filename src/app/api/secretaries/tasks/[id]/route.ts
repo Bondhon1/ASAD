@@ -3,6 +3,29 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { NotificationType } from '@prisma/client';
+import { parseAudience, resolveAudienceUserIds } from '@/lib/taskAudience';
+
+async function enrichAssignedWithNames(assigned: any) {
+  const a = assigned || {};
+  const [services, sectors, clubs] = await Promise.all([
+    a?.services?.length
+      ? prisma.service.findMany({ where: { id: { in: a.services } }, select: { id: true, name: true } })
+      : Promise.resolve([]),
+    a?.sectors?.length
+      ? prisma.sector.findMany({ where: { id: { in: a.sectors } }, select: { id: true, name: true } })
+      : Promise.resolve([]),
+    a?.clubs?.length
+      ? prisma.club.findMany({ where: { id: { in: a.clubs } }, select: { id: true, name: true } })
+      : Promise.resolve([]),
+  ]);
+
+  return {
+    ...a,
+    serviceNames: services.map((s) => s.name),
+    sectorNames: sectors.map((s) => s.name),
+    clubNames: clubs.map((c) => c.name),
+  };
+}
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -92,115 +115,25 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (typeof body.taskType === 'string') data.taskType = body.taskType;
     if (typeof body.inputType === 'string') data.taskType = body.inputType; // handle both
 
-    let targetUsers = oldTask.targetUserIds;
+    const oldAudience = parseAudience(oldTask.assignedGroup);
+    const oldAudienceIds = await resolveAudienceUserIds(oldAudience, { fallbackTargetIds: oldTask.targetUserIds });
+
+    let targetUsers = oldAudienceIds;
     let audienceChanged = false;
 
     if (body.assigned) {
       audienceChanged = true;
-      const assigned = body.assigned;
-      const targetSet = new Set<string>();
-      if (assigned.all) {
-        const users = await prisma.user.findMany({ 
-          where: { status: 'OFFICIAL' }, 
-          select: { id: true } 
-        });
-        users.forEach(u => targetSet.add(u.id));
-      } else {
-        if (assigned.services && assigned.services.length) {
-          const profiles = await prisma.volunteerProfile.findMany({ 
-            where: { serviceId: { in: assigned.services } }, 
-            select: { userId: true } 
-          });
-          const uids = profiles.map(p => p.userId);
-          if (uids.length) {
-            const users = await prisma.user.findMany({ 
-              where: { id: { in: uids }, status: 'OFFICIAL' }, 
-              select: { id: true } 
-            });
-            users.forEach(u => targetSet.add(u.id));
-          }
-        }
-        if (assigned.sectors && assigned.sectors.length) {
-          // VolunteerProfile.sectors stores sector IDs. Match directly by IDs.
-          const sectorIds = assigned.sectors.filter(Boolean);
-          if (sectorIds.length) {
-            const profiles = await prisma.volunteerProfile.findMany({
-              where: { sectors: { hasSome: sectorIds } },
-              select: { userId: true },
-            });
-            const uids = profiles.map((p) => p.userId);
-            if (uids.length) {
-              const users = await prisma.user.findMany({
-                where: {
-                  AND: [
-                    { id: { in: uids } },
-                    { OR: [{ status: 'OFFICIAL' }, { id: requester.id }] },
-                  ],
-                },
-                select: { id: true },
-              });
-              users.forEach((u) => targetSet.add(u.id));
-            }
-          }
-        }
-        if (assigned.clubs && assigned.clubs.length) {
-          // volunteerProfile.clubs stores club IDs. Match directly by IDs.
-          const clubIds = assigned.clubs.filter(Boolean);
-          if (clubIds.length) {
-            const profiles = await prisma.volunteerProfile.findMany({
-              where: { clubs: { hasSome: clubIds } },
-              select: { userId: true },
-            });
-            const uids = profiles.map((p) => p.userId);
-            if (uids.length) {
-              const users = await prisma.user.findMany({
-                where: {
-                  AND: [
-                    { id: { in: uids } },
-                    { OR: [{ status: 'OFFICIAL' }, { id: requester.id }] },
-                  ],
-                },
-                select: { id: true },
-              });
-              users.forEach((u) => targetSet.add(u.id));
-            }
-          }
-        }
-        if (assigned.committees && assigned.committees.length) {
-          const members = await prisma.committeeMember.findMany({ 
-            where: { committeeId: { in: assigned.committees } }, 
-            select: { userId: true } 
-          });
-          const uids = members.map(m => m.userId);
-          const users = await prisma.user.findMany({ 
-            where: { id: { in: uids }, status: 'OFFICIAL' }, 
-            select: { id: true } 
-          });
-          users.forEach(u => targetSet.add(u.id));
-        }
-        if (assigned.departments && assigned.departments.length) {
-          const committees = await prisma.committee.findMany({ 
-            where: { departmentId: { in: assigned.departments } }, 
-            include: { members: true } 
-          });
-          const uids = committees.flatMap(c => c.members).map(m => m.userId);
-          const users = await prisma.user.findMany({ 
-            where: { id: { in: uids }, status: 'OFFICIAL' }, 
-            select: { id: true } 
-          });
-          users.forEach(u => targetSet.add(u.id));
-        }
-      }
-      targetUsers = Array.from(targetSet);
-      data.targetUserIds = targetUsers;
-      data.assignedGroup = JSON.stringify(assigned);
-      data.assignedGroupType = assigned.all ? 'ALL' : 'SECTOR';
+      const assigned = await enrichAssignedWithNames(body.assigned);
+      targetUsers = await resolveAudienceUserIds(assigned, { fallbackTargetIds: oldTask.targetUserIds });
+      data.targetUserIds = [];
+      data.assignedGroup = JSON.stringify(assigned || {});
+      data.assignedGroupType = assigned?.all ? 'ALL' : 'SECTOR';
     }
 
     const updated = await prisma.task.update({ where: { id }, data });
 
     // Handle Notifications (not broadcast)
-    const newAudienceIds = targetUsers.filter(uId => !oldTask.targetUserIds.includes(uId));
+    const newAudienceIds = targetUsers.filter(uId => !oldAudienceIds.includes(uId));
     if (newAudienceIds.length > 0) {
       await prisma.notification.createMany({
         data: newAudienceIds.map(uId => ({

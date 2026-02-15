@@ -20,6 +20,7 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { applyPointsChange } from '@/lib/rankUtils';
 import { NotificationType } from '@prisma/client';
+import { parseAudience, isUserInAudience } from '@/lib/taskAudience';
 
 type SubmissionBody = {
   taskId: string;
@@ -50,7 +51,7 @@ export async function POST(req: Request) {
         status: true, 
         role: true,
         volunteerProfile: {
-          select: { points: true, rankId: true },
+          select: { points: true, rankId: true, serviceId: true, service: { select: { name: true } }, sectors: true, clubs: true },
         },
       },
     });
@@ -81,8 +82,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
-    // Check if user is in target audience
-    if (!task.targetUserIds.includes(requester.id)) {
+    // Check if user is in target audience (computed dynamically)
+    const audienceSpec = parseAudience(task.assignedGroup);
+    const isAllowed = isUserInAudience(audienceSpec, { id: requester.id, volunteerProfile: requester.volunteerProfile as any }, task.targetUserIds);
+    if (!isAllowed) {
       return NextResponse.json({ 
         error: 'You are not in the target audience for this task' 
       }, { status: 403 });
@@ -138,24 +141,30 @@ export async function POST(req: Request) {
       }
     }
 
+    // Prepare submissionData to store. Preserve raw YES/NO strings for YESNO tasks.
+    let submissionDataToStore: string | null = null;
+    if (task.taskType === 'YESNO' && typeof body.submissionData === 'string' && ['YES', 'NO'].includes(body.submissionData.toUpperCase())) {
+      submissionDataToStore = body.submissionData.toUpperCase();
+    } else {
+      try {
+        const base = body.submissionData ? tryParseJSON(body.submissionData) : null;
+        const merged = {
+          ...(base || {}),
+          ...(body.donation || {}),
+          donationId: createdDonation?.id || undefined,
+        } as any;
+        submissionDataToStore = Object.keys(merged).length ? JSON.stringify(merged) : null;
+      } catch (e) {
+        submissionDataToStore = body.submissionData || null;
+      }
+    }
+
     // Create the submission (include donation details and donationId if present)
     let submission = await prisma.taskSubmission.create({
       data: {
         taskId: body.taskId,
         userId: requester.id,
-        submissionData: (() => {
-          try {
-            const base = body.submissionData ? tryParseJSON(body.submissionData) : null;
-            const merged = {
-              ...(base || {}),
-              ...(body.donation || {}),
-              donationId: createdDonation?.id || undefined,
-            } as any;
-            return Object.keys(merged).length ? JSON.stringify(merged) : null;
-          } catch (e) {
-            return body.submissionData || null;
-          }
-        })(),
+        submissionData: submissionDataToStore,
         submissionFiles: body.submissionFiles || [],
         status: 'PENDING', // Start as pending
       },

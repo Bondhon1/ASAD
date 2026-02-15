@@ -4,6 +4,7 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { publishNotification } from '@/lib/ably';
 import { NotificationType } from '@prisma/client';
+import { resolveAudienceUserIds } from '@/lib/taskAudience';
 
 type Body = {
   title: string;
@@ -22,6 +23,28 @@ type Body = {
     all?: boolean;
   };
 };
+
+async function enrichAssignedWithNames(assigned: Body['assigned'] | undefined) {
+  const a = assigned || {};
+  const [services, sectors, clubs] = await Promise.all([
+    a?.services?.length
+      ? prisma.service.findMany({ where: { id: { in: a.services } }, select: { id: true, name: true } })
+      : Promise.resolve([]),
+    a?.sectors?.length
+      ? prisma.sector.findMany({ where: { id: { in: a.sectors } }, select: { id: true, name: true } })
+      : Promise.resolve([]),
+    a?.clubs?.length
+      ? prisma.club.findMany({ where: { id: { in: a.clubs } }, select: { id: true, name: true } })
+      : Promise.resolve([]),
+  ]);
+
+  return {
+    ...a,
+    serviceNames: services.map((s) => s.name),
+    sectorNames: sectors.map((s) => s.name),
+    clubNames: clubs.map((c) => c.name),
+  } as Body['assigned'] & { serviceNames?: string[]; sectorNames?: string[]; clubNames?: string[] };
+}
 
 export async function POST(req: Request) {
   try {
@@ -54,129 +77,13 @@ export async function POST(req: Request) {
     }
 
     // Build target user set BEFORE creating task so we can persist it to the task row
-    const assigned = body.assigned || {};
-    const targetSet = new Set<string>();
+    const assigned = await enrichAssignedWithNames(body.assigned);
+    let targetUsers: string[] = [];
     try {
-      if (assigned.all) {
-        const users = await prisma.user.findMany({
-          where: { status: 'OFFICIAL' },
-          select: { id: true },
-        });
-        users.forEach((u) => targetSet.add(u.id));
-      } else {
-        if (assigned.services && assigned.services.length) {
-          const profiles = await prisma.volunteerProfile.findMany({
-            where: { serviceId: { in: assigned.services } },
-            select: { userId: true },
-          });
-          const uids = profiles.map((p) => p.userId);
-          if (uids.length) {
-            const users = await prisma.user.findMany({
-              where: {
-                AND: [
-                  { id: { in: uids } },
-                  { OR: [{ status: 'OFFICIAL' }, { id: requester.id }] },
-                ],
-              },
-              select: { id: true },
-            });
-            users.forEach((u) => targetSet.add(u.id));
-          }
-        }
-
-        if (assigned.sectors && assigned.sectors.length) {
-          // VolunteerProfile.sectors stores sector IDs. Match directly by IDs.
-          const sectorIds = assigned.sectors.filter(Boolean);
-          if (sectorIds.length) {
-            const profiles = await prisma.volunteerProfile.findMany({
-              where: { sectors: { hasSome: sectorIds } },
-              select: { userId: true },
-            });
-            const uids = profiles.map((p) => p.userId);
-            if (uids.length) {
-              const users = await prisma.user.findMany({
-                where: {
-                  AND: [
-                    { id: { in: uids } },
-                    { OR: [{ status: 'OFFICIAL' }, { id: requester.id }] },
-                  ],
-                },
-                select: { id: true },
-              });
-              users.forEach((u) => targetSet.add(u.id));
-            }
-          }
-        }
-
-        if (assigned.clubs && assigned.clubs.length) {
-          // volunteerProfile.clubs stores club IDs. Match directly by IDs.
-          const clubIds = assigned.clubs.filter(Boolean);
-          if (clubIds.length) {
-            const profiles = await prisma.volunteerProfile.findMany({
-              where: { clubs: { hasSome: clubIds } },
-              select: { userId: true },
-            });
-            const uids = profiles.map((p) => p.userId);
-            if (uids.length) {
-              const users = await prisma.user.findMany({
-                where: {
-                  AND: [
-                    { id: { in: uids } },
-                    { OR: [{ status: 'OFFICIAL' }, { id: requester.id }] },
-                  ],
-                },
-                select: { id: true },
-              });
-              users.forEach((u) => targetSet.add(u.id));
-            }
-          }
-        }
-
-        if (assigned.committees && assigned.committees.length) {
-          const members = await prisma.committeeMember.findMany({
-            where: { committeeId: { in: assigned.committees } },
-            select: { userId: true },
-          });
-          const uids = members.map((m) => m.userId);
-          if (uids.length) {
-            const users = await prisma.user.findMany({
-              where: {
-                AND: [
-                  { id: { in: uids } },
-                  { OR: [{ status: 'OFFICIAL' }, { id: requester.id }] },
-                ],
-              },
-              select: { id: true },
-            });
-            users.forEach((u) => targetSet.add(u.id));
-          }
-        }
-
-        if (assigned.departments && assigned.departments.length) {
-          const committees = await prisma.committee.findMany({
-            where: { departmentId: { in: assigned.departments } },
-            include: { members: true },
-          });
-          const uids = committees.flatMap((c) => c.members).map((m) => m.userId);
-          if (uids.length) {
-            const users = await prisma.user.findMany({
-              where: {
-                AND: [
-                  { id: { in: uids } },
-                  { OR: [{ status: 'OFFICIAL' }, { id: requester.id }] },
-                ],
-              },
-              select: { id: true },
-            });
-            users.forEach((u) => targetSet.add(u.id));
-          }
-        }
-      }
+      targetUsers = await resolveAudienceUserIds(assigned || {}, { includeRequesterId: requester.id });
     } catch (e) {
       console.error('Failed to compute target users', e);
     }
-
-    const targetUsers = Array.from(targetSet);
     
 
     // Now create the task and save the explicit target list
@@ -185,9 +92,9 @@ export async function POST(req: Request) {
         title: body.title.trim(),
         description: body.description || undefined,
         createdByUserId: requester.id,
-        assignedGroupType: assigned.all ? 'ALL' : 'SECTOR', // using SECTOR as a fallback for multiple
+        assignedGroupType: assigned?.all ? 'ALL' : 'SECTOR', // using SECTOR as a fallback for multiple
         assignedGroup: JSON.stringify(assigned),
-        targetUserIds: targetUsers,
+        targetUserIds: [],
         taskType: (body.inputType || 'YESNO') as any,
         mandatory: !!body.mandatory,
         pointsPositive: typeof body.points === 'number' ? Math.max(0, Math.floor(body.points)) : 0,
@@ -202,7 +109,7 @@ export async function POST(req: Request) {
     try {
       if (targetUsers.length) {
         const messagePreview = created.description ? (created.description.slice(0, 100) + (created.description.length > 100 ? '...' : '')) : 'You have a new task assigned. Please check your Dashboard.';
-        const link = `/tasks/${created.id}`;
+        const link = `/dashboard/tasks`;
 
         for (const uId of targetUsers) {
           try {
