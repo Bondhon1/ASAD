@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import { invalidateProfileCache } from "@/lib/profileCache";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +55,9 @@ export async function POST(
         status: "REJECTED",
       },
     });
+
+    // Invalidate profile cache for fresh data
+    invalidateProfileCache(application.user.email);
 
     return NextResponse.json(
       { success: true, message: "Application rejected" },

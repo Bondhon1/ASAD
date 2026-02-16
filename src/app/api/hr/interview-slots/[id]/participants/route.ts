@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { sendInterviewResultEmail } from "@/lib/email";
 import { publishNotification } from "@/lib/ably";
+import { invalidateProfileCache } from "@/lib/profileCache";
 
 // GET - list participants (applications) for a slot
 export async function GET(
@@ -133,6 +134,9 @@ export async function POST(
         // Don't fail the request if email fails
       }
 
+      // Invalidate profile cache for fresh data
+      invalidateProfileCache(applicantUser.email);
+
       return NextResponse.json({ application: updatedApp });
     }
 
@@ -179,6 +183,9 @@ export async function POST(
         console.error("Failed to send interview rejected email:", emailError);
         // Don't fail the request if email fails
       }
+
+      // Invalidate profile cache for fresh data
+      invalidateProfileCache(applicantUser.email);
 
       return NextResponse.json({ application: updatedApp });
     }

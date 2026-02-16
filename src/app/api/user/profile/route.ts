@@ -1,18 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getCachedProfile, setCachedProfile, getCacheTTL } from "@/lib/profileCache";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 60; // Cache response for 60 seconds
-
-// In-memory cache for user profiles (reduces DB hits during the same session)
-const profileCache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_TTL = 30000; // 30 seconds
+export const revalidate = 30; // Cache for 30 seconds with edge
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const email = searchParams.get("email");
     const bustCache = searchParams.get("bustCache") === "1";
+    const lite = searchParams.get("lite") === "1"; // Lite mode: minimal fields
 
     if (!email) {
       return NextResponse.json(
@@ -23,13 +21,15 @@ export async function GET(request: NextRequest) {
 
     // Check in-memory cache first (unless bustCache is true)
     if (!bustCache) {
-      const cached = profileCache.get(email);
-      if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      const cached = getCachedProfile(email);
+      if (cached && Date.now() - cached.timestamp < getCacheTTL()) {
         return NextResponse.json(cached.data, { 
           status: 200,
           headers: { 
             'X-Cache': 'HIT',
-            'Cache-Control': 'private, max-age=30, stale-while-revalidate=60'
+            // Use stale-while-revalidate for normal requests (edge caching enabled)
+            'Cache-Control': 'private, s-maxage=10, stale-while-revalidate=30',
+            'CDN-Cache-Control': 'max-age=10'
           }
         });
       }
@@ -38,28 +38,59 @@ export async function GET(request: NextRequest) {
     // Fetch user with all includes in a single query (include accounts for OAuth detection)
     const user = await prisma.user.findUnique({
       where: { email },
-      include: {
-        accounts: true,
-        institute: true,
-        // include service on volunteerProfile and rank
-        volunteerProfile: { include: { rank: true, service: true } },
-        initialPayment: true,
-        finalPayment: true,
-        experiences: {
-          orderBy: { startDate: 'desc' },
-        },
-        taskSubmissions: {
-          // Exclude auto-created deduction records (created by /api/tasks/process-expired)
-          where: { NOT: { submissionData: '__DEADLINE_MISSED_DEDUCTION__' } },
-          include: { task: true },
-          orderBy: { submittedAt: 'desc' },
-          take: 20,
-        },
-        donations: {
-          orderBy: { donatedAt: 'desc' },
-          take: 20,
-        },
-      },
+      ...(lite ? {
+        // Lite mode: only essential fields for dashboard/payment pages
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
+          username: true,
+          phone: true,
+          status: true,
+          role: true,
+          volunteerId: true,
+          profilePicUrl: true,
+          emailVerified: true,
+          createdAt: true,
+          institute: { select: { id: true, name: true } },
+          volunteerProfile: { 
+            select: { 
+              points: true, 
+              isOfficial: true, 
+              rank: { select: { id: true, name: true } },
+              service: { select: { id: true, name: true } }
+            } 
+          },
+          initialPayment: { 
+            select: { id: true, status: true, createdAt: true, amount: true }
+          },
+          finalPayment: { 
+            select: { id: true, status: true, createdAt: true, amount: true }
+          }
+        }
+      } : {
+        // Full mode: all data including submissions and donations
+        include: {
+          accounts: true,
+          institute: true,
+          volunteerProfile: { include: { rank: true, service: true } },
+          initialPayment: true,
+          finalPayment: true,
+          experiences: {
+            orderBy: { startDate: 'desc' },
+          },
+          taskSubmissions: {
+            where: { NOT: { submissionData: '__DEADLINE_MISSED_DEDUCTION__' } },
+            include: { task: true },
+            orderBy: { submittedAt: 'desc' },
+            take: 20,
+          },
+          donations: {
+            orderBy: { donatedAt: 'desc' },
+            take: 20,
+          },
+        }
+      })
     });
 
     if (!user) {
@@ -69,11 +100,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get follower/following counts in parallel
-    const [followersCount, followingCount] = await Promise.all([
-      prisma.friendList.count({ where: { friendId: user.id } }),
-      prisma.friendList.count({ where: { userId: user.id } }),
-    ]);
+    // Get follower/following counts in parallel (skip in lite mode)
+    let followersCount = 0;
+    let followingCount = 0;
+    
+    if (!lite) {
+      [followersCount, followingCount] = await Promise.all([
+        prisma.friendList.count({ where: { friendId: user.id } }),
+        prisma.friendList.count({ where: { userId: user.id } }),
+      ]);
+    }
 
     // normalize rank to a name string for frontend
     const vp = user.volunteerProfile as any | null;
@@ -81,10 +117,8 @@ export async function GET(request: NextRequest) {
       vp.rank = vp.rank.name ?? vp.rank;
     }
 
-    // Resolve sector/club IDs to names when possible. The DB may contain
-    // either names or ids (historical data), so we try to map ids to names
-    // but fall back to the stored value if no record is found.
-    if (vp) {
+    // Resolve sector/club IDs to names (skip in lite mode for performance)
+    if (vp && !lite) {
       try {
         const [allSectors, allClubs] = await Promise.all([
           prisma.sector.findMany({ select: { id: true, name: true } }),
@@ -124,21 +158,35 @@ export async function GET(request: NextRequest) {
     // Do not expose password hash to clients; provide helper flags for frontend
     const safeUser: any = { ...user };
     if (safeUser.password) delete safeUser.password;
-    const authProviders = (user.accounts || []).map(a => a.provider).filter(Boolean);
+    
+    // In lite mode, we don't include accounts, so we skip OAuth detection
+    const authProviders = lite ? [] : ((user as any).accounts || []).map((a: any) => a.provider).filter(Boolean);
     safeUser.hasPassword = !!user.password;
     safeUser.authProviders = authProviders;
 
     const responseData = { user: { ...safeUser, followersCount, followingCount } };
 
     // Cache the response
-    profileCache.set(email, { data: responseData, timestamp: Date.now() });
+    setCachedProfile(email, responseData);
+
+    // Conditional caching based on bustCache flag
+    const cacheHeaders = bustCache 
+      ? {
+          // For bustCache requests (payment pages), prevent all caching
+          'X-Cache': 'MISS-BUST',
+          'Cache-Control': 'private, no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      : {
+          // For normal requests, use edge caching with short TTL
+          'X-Cache': 'MISS',
+          'Cache-Control': 'private, s-maxage=10, stale-while-revalidate=30',
+          'CDN-Cache-Control': 'max-age=10'
+        };
 
     return NextResponse.json(responseData, { 
       status: 200,
-      headers: { 
-        'X-Cache': 'MISS',
-        'Cache-Control': 'private, max-age=30, stale-while-revalidate=60'
-      }
+      headers: cacheHeaders
     });
   } catch (error) {
     console.error("Error fetching user profile:", error);

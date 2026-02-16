@@ -4,6 +4,7 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { autoAssignServiceFromInstitute } from '@/lib/organizations';
 import { invalidateAll } from '@/lib/hrUsersCache';
+import { invalidateProfileCache } from '@/lib/profileCache';
 
 export async function GET(req: Request, context: any) {
   try {
@@ -136,6 +137,12 @@ export async function PATCH(req: Request, context: any) {
 
     if (!hasPoints && !hasRank && !hasVolunteerId && !hasStatus && !hasRole && !hasServiceId && !hasSectors && !hasClubs) return NextResponse.json({ error: 'No changes provided' }, { status: 400 });
 
+    // Fetch target user's email for cache invalidation
+    const targetUser = await prisma.user.findUnique({ where: { id }, select: { email: true } });
+    if (!targetUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
     // If volunteerId update requested, only HR/MASTER/ADMIN can change volunteerId
     if (hasVolunteerId) {
       if (!['HR', 'MASTER', 'ADMIN'].includes(requester.role as string)) {
@@ -143,6 +150,8 @@ export async function PATCH(req: Request, context: any) {
       }
       try {
         await prisma.user.update({ where: { id }, data: { volunteerId: volunteerId === null ? null : volunteerId } });
+        // Invalidate profile cache
+        invalidateProfileCache(targetUser.email);
       } catch (err: any) {
         // Handle Prisma unique constraint for volunteerId specially
         console.error('PATCH /api/hr/users/[id] volunteerId update error', err);
@@ -198,6 +207,8 @@ export async function PATCH(req: Request, context: any) {
 
         // Invalidate cached users list immediately so HR sees fresh data
         try { invalidateAll(); } catch (e) { /* ignore */ }
+        // Invalidate profile cache
+        invalidateProfileCache(targetUser.email);
 
         return NextResponse.json({ ok: true, user: updatedUser });
       } catch (err: any) {
@@ -220,6 +231,8 @@ export async function PATCH(req: Request, context: any) {
 
         const updatedUser = await prisma.user.update({ where: { id }, data: { role: role as any } });
         try { invalidateAll(); } catch (e) { /* ignore */ }
+        // Invalidate profile cache
+        invalidateProfileCache(targetUser.email);
         return NextResponse.json({ ok: true, user: updatedUser });
       } catch (err: any) {
         console.error('PATCH /api/hr/users/[id] role update error', err);

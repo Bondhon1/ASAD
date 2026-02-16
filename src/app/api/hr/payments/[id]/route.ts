@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { sendFinalPaymentStatusEmail } from "@/lib/email";
 import { publishNotification } from "@/lib/ably";
+import { invalidateProfileCache } from "@/lib/profileCache";
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -64,6 +65,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           createdAt: notification.createdAt,
         });
         
+        // Invalidate profile cache for fresh data
+        invalidateProfileCache(payment.user.email);
+        
         return NextResponse.json({ success: true });
       }
 
@@ -108,6 +112,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           link: notification.link,
           createdAt: notification.createdAt,
         });
+        
+        // Invalidate profile cache for fresh data
+        invalidateProfileCache(payment.user.email);
         
         return NextResponse.json({ success: true });
       }
@@ -235,6 +242,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           // Don't fail the request if email fails
         }
 
+        // Invalidate profile cache for fresh data
+        invalidateProfileCache(payment.user.email);
+
         return NextResponse.json({ success: true });
       }
 
@@ -290,6 +300,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           console.error("Failed to send final payment rejected email:", emailError);
           // Don't fail the request if email fails
         }
+
+        // Invalidate profile cache for fresh data
+        invalidateProfileCache(payment.user.email);
 
         return NextResponse.json({ success: true });
       }

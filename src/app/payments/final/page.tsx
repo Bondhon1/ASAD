@@ -49,7 +49,10 @@ export default function Page() {
       }
 
       try {
-        const res = await fetch(`/api/user/profile?email=${encodeURIComponent(userEmail)}`);
+        // Use lite mode and bustCache for payment page (minimal fields, fresh data)
+        const res = await fetch(`/api/user/profile?email=${encodeURIComponent(userEmail)}&bustCache=1&lite=1`, {
+          cache: 'no-store'
+        });
         const data = await res.json();
         if (data?.user) setUser(data.user);
         else router.push("/auth");

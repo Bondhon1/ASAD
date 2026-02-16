@@ -6,6 +6,44 @@
       "NODE_OPTIONS": "--max-old-space-size=4096"
     }
   },
+  "headers": [
+    {
+      "source": "/api/user/profile",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "private, s-maxage=10, stale-while-revalidate=30"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-DNS-Prefetch-Control",
+          "value": "on"
+        }
+      ]
+    },
+    {
+      "source": "/icons/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/sectors/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
+  ],
   "crons": [
     {
       "path": "/api/tasks/process-expired",

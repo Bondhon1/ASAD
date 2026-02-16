@@ -6,6 +6,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getServiceIdForInstitute } from "@/lib/serviceAssignment";
 import { publishNotification } from "@/lib/ably";
 import { NotificationType } from "@prisma/client";
+import { invalidateProfileCache } from "@/lib/profileCache";
 
 export const dynamic = "force-dynamic";
 
@@ -166,6 +167,9 @@ export async function POST(
       console.error("Failed to send invitation email:", emailError);
       // Don't fail the approval if email fails
     }
+
+    // Invalidate profile cache for fresh data
+    invalidateProfileCache(application.user.email);
 
     return NextResponse.json(
       { 

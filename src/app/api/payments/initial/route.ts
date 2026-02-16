@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { InitialPaymentSchema } from "@/lib/validations";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
+import { invalidateProfileCache } from "@/lib/profileCache";
 
 export const dynamic = "force-dynamic";
 
@@ -98,6 +99,9 @@ export async function POST(request: NextRequest) {
         status: "INTERVIEW_REQUESTED",
       },
     });
+
+    // Invalidate profile cache
+    invalidateProfileCache(email);
 
     // Create payment record
     // Interpret submitted date/time as Asia/Dhaka local time to avoid timezone shifts

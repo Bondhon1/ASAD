@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { FinalPaymentSchema } from "@/lib/validations";
 import { prisma } from "@/lib/prisma";
+import { invalidateProfileCache } from "@/lib/profileCache";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,9 @@ export async function POST(request: NextRequest) {
 
     // Allow final payment if interview passed or if final payment was previously rejected
     if (!(user.status === "INTERVIEW_PASSED" || user.status === "FINAL_PAYMENT_REJECTED")) {
-      return NextResponse.json({ error: "User is not eligible for final payment" }, { status: 403 });
+      return NextResponse.json({ 
+        error: `You cannot submit final payment yet. Your current status is ${user.status}. Please complete your interview and wait for approval before proceeding with the final payment.` 
+      }, { status: 403 });
     }
 
     // Check if user already has final payment
@@ -31,7 +34,9 @@ export async function POST(request: NextRequest) {
 
     let payment;
     if (existing && existing.status !== "REJECTED") {
-      return NextResponse.json({ error: "Final payment already submitted" }, { status: 409 });
+      return NextResponse.json({ 
+        error: `Final payment already submitted and is currently ${existing.status}. Please check your dashboard for payment status.` 
+      }, { status: 409 });
     }
 
     if (existing && existing.status === "REJECTED") {
@@ -68,6 +73,9 @@ export async function POST(request: NextRequest) {
       where: { id: user.id },
       data: { status: "INTERVIEW_PASSED" },
     });
+
+    // Invalidate profile cache to ensure fresh data on next fetch
+    invalidateProfileCache(email);
 
     return NextResponse.json({ 
       success: true, 

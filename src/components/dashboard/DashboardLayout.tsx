@@ -475,7 +475,7 @@ export default function DashboardLayout({
 
               {userStatus === "INTERVIEW_PASSED" && (
                 // If user has submitted a final payment and it's pending, show pending review message.
-                // If final payment is verified, don't show any banner. If no final payment, prompt to pay.
+                // If final payment is verified or approved, don't show any banner. If no final payment, prompt to pay.
                 (finalPaymentStatus === "PENDING") ? (
                     <div className="mb-4 p-4 bg-white border border-[#0b2140] rounded-md flex items-center justify-between">
                     <div>
@@ -485,7 +485,7 @@ export default function DashboardLayout({
                     <div className="flex items-center gap-2">
                     </div>
                   </div>
-                ) : (finalPaymentStatus === "VERIFIED") ? null : (
+                ) : (finalPaymentStatus === "VERIFIED" || finalPaymentStatus === "APPROVED") ? null : (
                   <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md flex items-center justify-between">
                     <div>
                       <div className="font-semibold text-blue-800">Interview Passed</div>

@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { clearUserProfileCache } from "@/lib/cacheUtils";
 
 interface Props { userEmail?: string }
 
@@ -27,6 +28,11 @@ export default function FinalPaymentPage({ userEmail: propEmail }: Props) {
   // Prefill basic info if available
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
+  
+  // Payment status check
+  const [existingPayment, setExistingPayment] = useState<any>(null);
+  const [userStatus, setUserStatus] = useState<string>("");
+  const [checkingPayment, setCheckingPayment] = useState(true);
 
   useEffect(() => {
     if (propEmail) {
@@ -44,14 +50,24 @@ export default function FinalPaymentPage({ userEmail: propEmail }: Props) {
 
   const fetchProfile = async (emailToUse: string) => {
     try {
-      const res = await fetch(`/api/user/profile?email=${encodeURIComponent(emailToUse)}`);
+      // Use lite mode and bustCache for payment page (minimal fields, fresh data)
+      const res = await fetch(`/api/user/profile?email=${encodeURIComponent(emailToUse)}&bustCache=1&lite=1`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      });
       const data = await res.json();
       if (data?.user) {
         setFullName(data.user.fullName || "");
         setPhone(data.user.phone || "");
+        setUserStatus(data.user.status || "");
+        setExistingPayment(data.user.finalPayment || null);
       }
     } catch (e) {
-      // ignore
+      console.error('Error fetching profile:', e);
+    } finally {
+      setCheckingPayment(false);
     }
   };
 
@@ -90,11 +106,13 @@ export default function FinalPaymentPage({ userEmail: propEmail }: Props) {
           const skipUntil = Date.now() + 30000; // 30 seconds
           sessionStorage.setItem('skipPaymentRedirectUntil', skipUntil.toString());
           sessionStorage.setItem('paymentJustSubmitted', 'true');
+          // Clear all cached profile data using utility function
+          clearUserProfileCache(email);
         } catch (e) {
           // ignore
         }
-        // Redirect immediately - no delay
-        window.location.href = "/dashboard?paymentSubmitted=1";
+        // Redirect immediately
+        window.location.href = `/dashboard?paymentSubmitted=1`;
       }
     } catch (err: any) {
       setError(err.message || "Submission failed");
@@ -109,6 +127,100 @@ export default function FinalPaymentPage({ userEmail: propEmail }: Props) {
           <div className="text-green-600 text-4xl mb-4">✓</div>
           <h3 className="text-2xl font-semibold mb-2">Payment submitted</h3>
           <p className="text-sm text-muted">Thanks — your payment is sent for verification. You will be redirected shortly.</p>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // Show loading while checking payment status
+  if (checkingPayment) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1E3A5F] mx-auto mb-4"></div>
+          <p className="text-sm text-muted">Checking payment status...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if user is not eligible
+  const isEligible = userStatus === "INTERVIEW_PASSED" || userStatus === "FINAL_PAYMENT_REJECTED";
+  
+  // Check if payment already exists and is not rejected
+  const hasNonRejectedPayment = existingPayment && existingPayment.status !== "REJECTED";
+
+  // Show not eligible message
+  if (!isEligible) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-2xl p-8 shadow max-w-lg w-full">
+          <div className="text-amber-600 text-4xl mb-4 text-center">⚠️</div>
+          <h3 className="text-2xl font-semibold mb-2 text-center">Not Eligible for Final Payment</h3>
+          <p className="text-sm text-muted text-center mb-4">
+            Your current status is <span className="font-semibold text-[#1E3A5F]">{userStatus}</span>. 
+            You need to complete your interview first before proceeding with the final payment.
+          </p>
+          <div className="flex justify-center mt-6">
+            <a href="/dashboard" className="px-6 py-3 bg-gradient-to-r from-blue-900 to-indigo-800 text-white rounded-lg font-semibold">
+              Go to Dashboard
+            </a>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // Show already submitted message
+  if (hasNonRejectedPayment) {
+    const statusColors: Record<string, { bg: string; text: string; icon: string }> = {
+      PENDING: { bg: "bg-amber-50 border-amber-200", text: "text-amber-700", icon: "⏳" },
+      APPROVED: { bg: "bg-green-50 border-green-200", text: "text-green-700", icon: "✓" },
+      VERIFIED: { bg: "bg-green-50 border-green-200", text: "text-green-700", icon: "✓" }
+    };
+    
+    const statusStyle = statusColors[existingPayment.status] || statusColors.PENDING;
+    
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-2xl p-8 shadow max-w-lg w-full">
+          <div className="text-center mb-6">
+            <div className="text-4xl mb-4">{statusStyle.icon}</div>
+            <h3 className="text-2xl font-semibold mb-2">Final Payment Already Submitted</h3>
+          </div>
+          
+          <div className={`p-4 ${statusStyle.bg} border rounded-lg mb-4`}>
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm font-medium">Status:</span>
+              <span className={`font-semibold ${statusStyle.text}`}>{existingPayment.status}</span>
+            </div>
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm font-medium">Amount:</span>
+              <span className="font-semibold">{existingPayment.amount} BDT</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium">Submitted:</span>
+              <span className="text-sm">{new Date(existingPayment.createdAt).toLocaleString('en-US', { timeZone: 'Asia/Dhaka' })}</span>
+            </div>
+          </div>
+
+          {existingPayment.status === "PENDING" && (
+            <p className="text-sm text-muted text-center mb-4">
+              Your payment is being reviewed. You'll be notified once it's verified. This usually takes up to 24 hours.
+            </p>
+          )}
+
+          {(existingPayment.status === "APPROVED" || existingPayment.status === "VERIFIED") && (
+            <p className="text-sm text-green-600 text-center mb-4 font-medium">
+              🎉 Your payment has been verified! You are now an official volunteer.
+            </p>
+          )}
+
+          <div className="flex justify-center mt-6">
+            <a href="/dashboard" className="px-6 py-3 bg-gradient-to-r from-blue-900 to-indigo-800 text-white rounded-lg font-semibold">
+              Go to Dashboard
+            </a>
+          </div>
         </motion.div>
       </div>
     );
