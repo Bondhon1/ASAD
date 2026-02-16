@@ -176,7 +176,7 @@ export async function GET(request: NextRequest) {
     setCachedProfile(email, responseData);
 
     // Conditional caching based on bustCache flag
-    const cacheHeaders = bustCache 
+    const cacheHeaders = (bustCache
       ? {
           // For bustCache requests (payment pages), prevent all caching
           'X-Cache': 'MISS-BUST',
@@ -188,7 +188,7 @@ export async function GET(request: NextRequest) {
           'X-Cache': 'MISS',
           'Cache-Control': 'private, s-maxage=10, stale-while-revalidate=30',
           'CDN-Cache-Control': 'max-age=10'
-        };
+        }) as HeadersInit;
 
     return NextResponse.json(responseData, { 
       status: 200,
