@@ -35,11 +35,13 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Fetch user with all includes in a single query (include accounts for OAuth detection)
-    const user = await prisma.user.findUnique({
-      where: { email },
-      ...(lite ? {
-        // Lite mode: only essential fields for dashboard/payment pages
+    // Fetch user with conditional query based on lite mode
+    let user: any;
+    
+    if (lite) {
+      // Lite mode: only essential fields for dashboard/payment pages
+      user = await prisma.user.findUnique({
+        where: { email },
         select: {
           id: true,
           email: true,
@@ -66,10 +68,14 @@ export async function GET(request: NextRequest) {
           },
           finalPayment: { 
             select: { id: true, status: true, createdAt: true, amount: true }
-          }
+          },
+          password: true // Include for hasPassword check
         }
-      } : {
-        // Full mode: all data including submissions and donations
+      });
+    } else {
+      // Full mode: all data including submissions and donations
+      user = await prisma.user.findUnique({
+        where: { email },
         include: {
           accounts: true,
           institute: true,
@@ -90,8 +96,8 @@ export async function GET(request: NextRequest) {
             take: 20,
           },
         }
-      })
-    });
+      });
+    }
 
     if (!user) {
       return NextResponse.json(
