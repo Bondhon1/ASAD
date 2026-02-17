@@ -26,6 +26,13 @@ import {
 import { signOut } from "next-auth/react";
 import NotificationDropdown from "@/components/dashboard/NotificationDropdown";
 
+// Simple coin icon component using the SVG asset
+function CoinIcon({ size = 20, ...props }: any) {
+  return (
+    <Image src="/icons/coin.svg" alt="Coins" width={size} height={size} className="object-contain" {...props} />
+  );
+}
+
 // Fallback bell button when notifications are not available
 function FallbackNotificationButton() {
   return (
@@ -184,6 +191,7 @@ export default function DashboardLayout({
     '/dashboard/secretaries': ClipboardList,
     '/dashboard/donations/create': DollarSign,
     '/dashboard/admin/audit-logs': FileText,
+    '/dashboard/admin/coin-management': CoinIcon,
   };
 
   const handleLogout = async () => {
@@ -295,6 +303,7 @@ export default function DashboardLayout({
       { label: "User Management", href: "/dashboard/hr/users" },
       { label: "Services", href: "/dashboard/hr/services" },
       { label: "Manage Points / Ranks", href: "/dashboard/database" },
+      { label: "Coin Management", href: "/dashboard/admin/coin-management" },
       { label: "Tasks", href: "/dashboard/tasks" },
       { label: "Secretaries", href: "/dashboard/secretaries" },
       { label: "Community", href: "/dashboard/community" },
@@ -304,7 +313,15 @@ export default function DashboardLayout({
 
     if (userRole === "MASTER") return mergeWithCommon(masterItems as any);
     if (userRole === "DIRECTOR") return mergeWithCommon(directorItems as any);
-    if (userRole === "HR" || userRole === "ADMIN") return mergeWithCommon(hrItems as any);
+    if (userRole === "HR" || userRole === "ADMIN") {
+      // Add coin management to admin items
+      const adminItemsWithCoins = [
+        ...hrItems.slice(0, -1), // All items except Settings
+        { label: "Coin Management", href: "/dashboard/admin/coin-management" },
+        hrItems[hrItems.length - 1], // Settings at the end
+      ];
+      return mergeWithCommon(adminItemsWithCoins as any);
+    }
     if (userRole === "DATABASE_DEPT") return mergeWithCommon(databaseItems as any);
     if (userRole === "SECRETARIES") return mergeWithCommon(secretariesItems as any);
     // default: attach icons to common items

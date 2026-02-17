@@ -94,6 +94,11 @@ model User {
   interviewApprovedUsers User[]            @relation("InterviewApprovedBy")
   createdServices        Service[]
   
+  // Coins system
+  coins                 Int                   @default(0)
+  coinWithdrawals       CoinWithdrawal[]      @relation("UserWithdrawals")
+  processedWithdrawals  CoinWithdrawal[]      @relation("ProcessedBy")
+  
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
   
@@ -805,4 +810,35 @@ model CAReference {
   
   @@index([caCode])
   @@index([teamLeader])
+}
+
+// ============================================================================
+// COINS & WITHDRAWAL SYSTEM
+// ============================================================================
+
+model CoinWithdrawal {
+  id                    String           @id @default(cuid())
+  user                  User             @relation("UserWithdrawals", fields: [userId], references: [id], onDelete: Cascade)
+  userId                String
+  coins                 Int              // Number of coins withdrawn
+  takaAmount            Float            // Calculated taka (coins / 5)
+  paymentMethod         String?          // bkash, nagad, bank
+  accountNumber         String?          // User's payment account
+  status                WithdrawalStatus @default(PENDING)
+  processedBy           User?            @relation("ProcessedBy", fields: [processedById], references: [id], onDelete: SetNull)
+  processedById         String?
+  processedAt           DateTime?
+  notes                 String?          // Admin notes
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum WithdrawalStatus {
+  PENDING
+  COMPLETED
+  REJECTED
 }

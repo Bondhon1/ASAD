@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import Image from 'next/image';
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
@@ -22,6 +23,7 @@ interface User {
   district?: string | null;
   upazila?: string | null;
   addressLine?: string | null;
+  coins?: number;
   experiences?: Array<{
     id: string;
     title: string;
@@ -79,6 +81,16 @@ export default function DashboardPage() {
   const [campaignsLoading, setCampaignsLoading] = useState(true);
   const [taskSubmissionMap, setTaskSubmissionMap] = useState<Record<string, any>>({});
   const hasRefreshedForPayment = useRef(false);
+  
+  // Coin withdrawal states
+  const [showCoinModal, setShowCoinModal] = useState(false);
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [withdrawCoins, setWithdrawCoins] = useState<number | ''>('');
+  const [withdrawMethod, setWithdrawMethod] = useState('bkash');
+  const [withdrawAccount, setWithdrawAccount] = useState('');
+  const [withdrawSubmitting, setWithdrawSubmitting] = useState(false);
+  const [withdrawals, setWithdrawals] = useState<any[]>([]);
+  const [withdrawalsLoading, setWithdrawalsLoading] = useState(false);
 
   useEffect(() => {
     if (status !== "unauthenticated") return;
@@ -219,6 +231,11 @@ export default function DashboardPage() {
     return () => { mounted = false; };
   }, [userEmail]);
 
+  // Compute pending and available coins from withdrawals
+  const totalCoins = Number(user?.coins ?? 0);
+  const pendingCoins = (withdrawals || []).filter((w: any) => w.status === 'PENDING').reduce((s: number, w: any) => s + (w?.coins || 0), 0);
+  const availableCoins = Math.max(0, totalCoins - pendingCoins);
+
   // Keep submission status in sync for the tasks shown on the dashboard
   useEffect(() => {
     let cancelled = false;
@@ -245,6 +262,86 @@ export default function DashboardPage() {
     })();
     return () => { cancelled = true; };
   }, [pendingTasks]);
+
+  // Fetch withdrawal history
+  useEffect(() => {
+    if (!userEmail) return;
+    let cancelled = false;
+    (async () => {
+      setWithdrawalsLoading(true);
+      try {
+        const res = await fetch('/api/coins/request-withdrawal');
+        if (!res.ok) {
+          if (!cancelled) setWithdrawals([]);
+          return;
+        }
+        const data = await res.json();
+        if (!cancelled) setWithdrawals(data.withdrawals || []);
+      } catch (e) {
+        if (!cancelled) setWithdrawals([]);
+      } finally {
+        if (!cancelled) setWithdrawalsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [userEmail]);
+
+  const handleWithdrawRequest = async () => {
+    if (!withdrawCoins || withdrawCoins <= 0) {
+      alert('Please enter a valid coin amount');
+      return;
+    }
+    if (withdrawCoins < 1500) {
+      alert('Minimum 1500 coins required for withdrawal');
+      return;
+    }
+    if (!withdrawAccount) {
+      alert('Please enter your payment account number');
+      return;
+    }
+
+    setWithdrawSubmitting(true);
+    try {
+      const res = await fetch('/api/coins/request-withdrawal', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          coins: Number(withdrawCoins),
+          paymentMethod: withdrawMethod,
+          accountNumber: withdrawAccount,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Failed');
+      
+      alert('Withdrawal request submitted successfully!');
+      setShowWithdrawModal(false);
+      setShowCoinModal(true); // Reopen coin modal to show updated status
+      setWithdrawCoins('');
+      setWithdrawAccount('');
+
+      // Optimistically add the new pending withdrawal so UI updates immediately
+      if (data?.withdrawal) {
+        setWithdrawals((prev) => [data.withdrawal, ...(prev || [])]);
+      }
+
+      // Refresh server state in background
+      try {
+        const refreshRes = await fetch('/api/coins/request-withdrawal');
+        if (refreshRes.ok) {
+          const refreshData = await refreshRes.json();
+          setWithdrawals(refreshData.withdrawals || []);
+        }
+      } catch (e) {
+        // ignore
+      }
+      refresh();
+    } catch (e: any) {
+      alert(e?.message || 'Failed to submit withdrawal request');
+    } finally {
+      setWithdrawSubmitting(false);
+    }
+  };
 
   // If the session is unauthenticated, allow rendering when we have a stored
   // `userEmail` (email-verify -> payment flow). Otherwise return null to avoid
@@ -481,9 +578,16 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <span className="inline-flex items-center px-4 py-2 rounded-full bg-gray-100 text-sm font-medium text-gray-800">{user.volunteerProfile?.rank ?? '—'}</span>
                 <span className="inline-flex items-center px-3 py-2 rounded-full bg-gradient-to-r from-[#0b2545] to-[#07223f] text-white text-sm font-medium">Points: {user.volunteerProfile?.points ?? 0}</span>
+                <button
+                  onClick={() => setShowCoinModal(true)}
+                  className="inline-flex items-center px-3 py-2 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white text-sm font-medium hover:from-amber-600 hover:to-amber-700 transition-all shadow-md hover:shadow-lg transform hover:scale-105"
+                >
+                  <Image src="/icons/coin.svg" alt="coin" width={14} height={14} className="mr-1" />
+                  {user.coins ?? 0} Coins
+                </button>
               </div>
             </div>
           </div>
@@ -539,6 +643,170 @@ export default function DashboardPage() {
             {experiencePanel}
             {tasksPanel}
             {donationsPanel}
+          </div>
+        </div>
+      )}
+
+      {/* Withdrawal Request Modal */}
+      {showWithdrawModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+            <div className="px-6 py-4 bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-gray-900">Request Withdrawal</h2>
+                <button onClick={() => setShowWithdrawModal(false)} className="p-2 hover:bg-white rounded-lg transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Coins to Withdraw
+                  <span className="ml-2 text-xs font-normal text-gray-500">(min: 1500 coins)</span>
+                </label>
+                <input
+                  type="number"
+                  value={withdrawCoins}
+                  onChange={(e) => setWithdrawCoins(e.target.value === '' ? '' : Number(e.target.value))}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  placeholder="Enter amount"
+                  min="1500"
+                  max={user?.coins ?? 0}
+                />
+                {withdrawCoins && (
+                  <div className="mt-1 text-sm text-gray-600">Get an amount</div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Payment Method</label>
+                <select
+                  value={withdrawMethod}
+                  onChange={(e) => setWithdrawMethod(e.target.value)}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                >
+                  <option value="bkash">bKash</option>
+                  <option value="nagad">Nagad</option>
+                  <option value="bank">Bank Transfer</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Account Number</label>
+                <input
+                  type="text"
+                  value={withdrawAccount}
+                  onChange={(e) => setWithdrawAccount(e.target.value)}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  placeholder="Enter your account number"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={handleWithdrawRequest}
+                  disabled={withdrawSubmitting}
+                  className="flex-1 px-4 py-2.5 bg-amber-600 text-white font-medium rounded-lg hover:bg-amber-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                >
+                  {withdrawSubmitting ? 'Submitting...' : 'Submit Request'}
+                </button>
+                <button
+                  onClick={() => setShowWithdrawModal(false)}
+                  disabled={withdrawSubmitting}
+                  className="px-4 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Coin Details Modal */}
+      {showCoinModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[600px] overflow-auto">
+            <div className="px-6 py-4 bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-amber-100 rounded-lg">
+                    <Image src="/icons/coin.svg" alt="coin" width={24} height={24} />
+                  </div>
+                  <h2 className="text-xl font-bold text-gray-900">Your Coins</h2>
+                </div>
+                <button onClick={() => setShowCoinModal(false)} className="p-2 hover:bg-white rounded-lg transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Coin Balance Display */}
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-6 text-center">
+                <div className="text-sm text-gray-600 mb-2">Current Balance</div>
+                <div className="text-4xl font-bold text-amber-600 mb-2">{totalCoins} Coins</div>
+                <div className="mt-1 text-sm text-gray-600">Pending: {pendingCoins} • Available: {availableCoins}</div>
+                <div className="mt-2 text-xs text-gray-500">Minimum 1500 coins to withdraw</div>
+              </div>
+
+              {/* Withdrawal Button */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCoinModal(false);
+                    setShowWithdrawModal(true);
+                  }}
+                  disabled={(user?.coins ?? 0) < 1500}
+                  className="w-full px-6 py-3 bg-amber-600 text-white text-base font-medium rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md hover:shadow-lg"
+                >
+                  {(user?.coins ?? 0) < 1500 ? 'Need 1500+ Coins to Withdraw' : 'Request Withdrawal'}
+                </button>
+                {withdrawals.filter(w => w.status === 'PENDING').length > 0 && (
+                  <div className="mt-3 px-4 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
+                    <span className="text-sm text-yellow-800 font-medium">
+                      {withdrawals.filter(w => w.status === 'PENDING').length} Pending Request(s)
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Recent Withdrawals */}
+              {withdrawals.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Withdrawal History</h4>
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {withdrawals.map((w: any) => (
+                      <div key={w.id} className={`p-3 rounded-lg border ${w.status === 'PENDING' ? 'bg-yellow-50 border-yellow-200' : w.status === 'COMPLETED' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                        <div className="flex items-center justify-between mb-1">
+                          <div>
+                            <span className="font-semibold text-sm">{w.coins} coins</span>
+                            
+                          </div>
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${w.status === 'PENDING' ? 'bg-yellow-200 text-yellow-800' : w.status === 'COMPLETED' ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}>
+                            {w.status}
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {new Date(w.createdAt).toLocaleDateString()} • {w.paymentMethod?.toUpperCase()}
+                        </div>
+                        {w.notes && w.status === 'REJECTED' && (
+                          <div className="text-xs text-red-600 mt-1 italic">Reason: {w.notes}</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
