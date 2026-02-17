@@ -148,6 +148,7 @@ export async function PATCH(req: Request) {
             status,
             notes,
           }),
+          affectedVolunteerId: withdrawal.user?.volunteerId || undefined,
         },
       });
     } catch (e) {
