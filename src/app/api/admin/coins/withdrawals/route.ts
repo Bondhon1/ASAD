@@ -11,7 +11,8 @@ export async function GET(req: Request) {
 
     const requester = await prisma.user.findUnique({ where: { email: session.user.email } });
     if (!requester) return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    if (!['MASTER', 'ADMIN'].includes(requester.role)) {
+    const role = String(requester.role || '').toUpperCase();
+    if (role !== 'MASTER' && role !== 'ADMIN') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -52,7 +53,8 @@ export async function PATCH(req: Request) {
 
     const requester = await prisma.user.findUnique({ where: { email: session.user.email } });
     if (!requester) return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    if (!['MASTER', 'ADMIN'].includes(requester.role)) {
+    const role = String(requester.role || '').toUpperCase();
+    if (role !== 'MASTER' && role !== 'ADMIN') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

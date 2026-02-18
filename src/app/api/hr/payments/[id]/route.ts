@@ -204,7 +204,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         });
 
         // Create notification for final payment approval (not broadcast)
-        const messengerPrimary = "https://m.me/j/AbZk3M3p6zt0CwwT/";
+        const messengerPrimary = "https://m.me/j/AbaLNSicNaKgVdak/";
         const messengerFallback = "https://www.facebook.com/fatema.akter.anika.663182";
         const notificationMessage = `Congratulations! You are now an official volunteer. Your Volunteer ID is ${volunteerIdToUse}.\n\nJoin our Messenger group: ${messengerPrimary}\nIf that fails, DM: ${messengerFallback}`;
 

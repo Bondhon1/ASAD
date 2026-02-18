@@ -313,8 +313,12 @@ export default function DashboardLayout({
 
     if (userRole === "MASTER") return mergeWithCommon(masterItems as any);
     if (userRole === "DIRECTOR") return mergeWithCommon(directorItems as any);
-    if (userRole === "HR" || userRole === "ADMIN") {
-      // Add coin management to admin items
+    if (userRole === "HR") {
+      // HR should not see coin management
+      return mergeWithCommon(hrItems as any);
+    }
+    if (userRole === "ADMIN") {
+      // ADMIN sees the HR/admin menu plus Coin Management
       const adminItemsWithCoins = [
         ...hrItems.slice(0, -1), // All items except Settings
         { label: "Coin Management", href: "/dashboard/admin/coin-management" },
