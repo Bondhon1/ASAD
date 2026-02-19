@@ -92,6 +92,23 @@ export default function DashboardPage() {
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [withdrawalsLoading, setWithdrawalsLoading] = useState(false);
 
+  // Points history modal state
+  const [showPointsModal, setShowPointsModal] = useState(false);
+  // Rank status modal state
+  const [showRankModal, setShowRankModal] = useState(false);
+  // Shared data fetched once for both modals
+  const [pointsData, setPointsData] = useState<{
+    history: Array<{ id: string; change: number; reason: string; createdAt: string; relatedTask: { id: string; title: string } | null; relatedDonation: { id: string; amount: number } | null }>;
+    currentPoints: number;
+    currentRankName: string | null;
+    currentRankThreshold: number;
+    nextRankName: string | null;
+    nextRankThreshold: number | null;
+    rankSequence: Array<{ name: string; thresholdPoints: number }>;
+  } | null>(null);
+  const [pointsDataLoading, setPointsDataLoading] = useState(false);
+  const pointsDataFetched = useRef(false);
+
   useEffect(() => {
     if (status !== "unauthenticated") return;
     // If the userEmail was stored (email-verification -> payment flow), allow access
@@ -285,6 +302,26 @@ export default function DashboardPage() {
     })();
     return () => { cancelled = true; };
   }, [userEmail]);
+
+  // Fetch points history & rank data on demand (once per session)
+  const fetchPointsData = async () => {
+    if (pointsDataFetched.current) return;
+    pointsDataFetched.current = true;
+    setPointsDataLoading(true);
+    try {
+      const res = await fetch('/api/user/points-history');
+      if (!res.ok) { setPointsData(null); return; }
+      const data = await res.json();
+      setPointsData(data);
+    } catch (e) {
+      setPointsData(null);
+    } finally {
+      setPointsDataLoading(false);
+    }
+  };
+
+  const openPointsModal = () => { fetchPointsData(); setShowPointsModal(true); };
+  const openRankModal  = () => { fetchPointsData(); setShowRankModal(true);  };
 
   const handleWithdrawRequest = async () => {
     if (!withdrawCoins || withdrawCoins <= 0) {
@@ -579,8 +616,24 @@ export default function DashboardPage() {
               </div>
 
               <div className="flex items-center gap-3 flex-wrap">
-                <span className="inline-flex items-center px-4 py-2 rounded-full bg-gray-100 text-sm font-medium text-gray-800">{user.volunteerProfile?.rank ?? '—'}</span>
-                <span className="inline-flex items-center px-3 py-2 rounded-full bg-gradient-to-r from-[#0b2545] to-[#07223f] text-white text-sm font-medium">Points: {user.volunteerProfile?.points ?? 0}</span>
+                <button
+                  onClick={openRankModal}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-gray-100 text-sm font-medium text-gray-800 hover:bg-gray-200 transition-colors cursor-pointer"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500 flex-shrink-0">
+                    <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+                  </svg>
+                  {user.volunteerProfile?.rank ?? '—'}
+                </button>
+                <button
+                  onClick={openPointsModal}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-gradient-to-r from-[#0b2545] to-[#07223f] text-white text-sm font-medium hover:opacity-90 transition-opacity cursor-pointer"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                  </svg>
+                  {user.volunteerProfile?.points ?? 0} Points
+                </button>
                 <button
                   onClick={() => setShowCoinModal(true)}
                   className="inline-flex items-center px-3 py-2 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white text-sm font-medium hover:from-amber-600 hover:to-amber-700 transition-all shadow-md hover:shadow-lg transform hover:scale-105"
@@ -808,6 +861,232 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* ── Points History Modal ───────────────────────────────────────── */}
+      {showPointsModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[600px] flex flex-col overflow-hidden">
+            {/* Header */}
+            <div className="px-6 py-4 bg-gradient-to-r from-[#0b2545] to-[#07223f] flex items-center justify-between flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/10 rounded-lg">
+                  <svg xmlns="http://www.w3.org/2000/svg" width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                  </svg>
+                </div>
+                <h2 className="text-lg font-bold text-white">Points History</h2>
+              </div>
+              <button onClick={() => setShowPointsModal(false)} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+                </svg>
+              </button>
+            </div>
+
+            {/* Summary strip */}
+            <div className="px-6 py-3 bg-[#0b2545]/5 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
+              <span className="text-sm text-gray-600">Total Points</span>
+              <span className="text-xl font-bold text-[#0b2545]">{user?.volunteerProfile?.points ?? 0}</span>
+            </div>
+
+            {/* History list */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              {pointsDataLoading ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-3">
+                  <div className="w-8 h-8 border-2 border-[#0b2545] border-t-transparent rounded-full animate-spin"/>
+                  <span className="text-sm text-gray-500">Loading history…</span>
+                </div>
+              ) : !pointsData || pointsData.history.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width={40} height={40} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                  </svg>
+                  <p className="text-sm text-gray-500">No points history yet.</p>
+                  <p className="text-xs text-gray-400">Complete tasks or make donations to earn points!</p>
+                </div>
+              ) : (
+                pointsData.history.map((entry) => {
+                  const isPositive = entry.change >= 0;
+                  const date = new Date(entry.createdAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Dhaka' });
+                  const label = entry.relatedTask?.title
+                    ? entry.relatedTask.title
+                    : entry.relatedDonation
+                    ? `Donation • ৳${entry.relatedDonation.amount}`
+                    : entry.reason;
+                  return (
+                    <div key={entry.id} className="flex items-start gap-3 px-4 py-3 rounded-xl border border-gray-100 bg-white hover:bg-gray-50 transition-colors">
+                      <div className={`mt-0.5 flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${isPositive ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}`}>
+                        {isPositive ? '+' : '−'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-gray-800 truncate">{label}</div>
+                        <div className="text-xs text-gray-500 mt-0.5">{date}</div>
+                      </div>
+                      <div className={`flex-shrink-0 text-sm font-bold ${isPositive ? 'text-emerald-600' : 'text-red-500'}`}>
+                        {isPositive ? '+' : ''}{entry.change}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Rank Status Modal ──────────────────────────────────────────── */}
+      {showRankModal && (() => {
+        const cp       = pointsData?.currentPoints ?? user?.volunteerProfile?.points ?? 0;
+        const threshold = pointsData?.currentRankThreshold ?? 0;
+        const nextRank  = pointsData?.nextRankName ?? null;
+        const nextThreshold = pointsData?.nextRankThreshold ?? null;
+        const progressPct = threshold > 0 ? Math.min(100, Math.round((cp / threshold) * 100)) : (nextRank ? 0 : 100);
+        const rankSeq = pointsData?.rankSequence ?? [];
+        const currentRankName = pointsData?.currentRankName ?? user?.volunteerProfile?.rank ?? null;
+
+        const inspiringMessage = (() => {
+          if (!nextRank)           return "You've reached the pinnacle of leadership. Your journey is an inspiration to every volunteer in the community!";
+          if (progressPct >= 100)  return "You've hit the threshold — a new rank is on its way! Your incredible effort is about to be rewarded.";
+          if (progressPct >= 90)   return "Almost there! One final push and you'll claim your next rank. The community is cheering for you!";
+          if (progressPct >= 75)   return "You're in the home stretch! Your unwavering dedication is setting an example for everyone around you.";
+          if (progressPct >= 55)   return "Over halfway! Your commitment to the community is making a real, lasting difference.";
+          if (progressPct >= 35)   return "Great momentum! Every task you complete inches you closer to greatness.";
+          if (progressPct >= 15)   return "You're building something real. Keep showing up — the community grows stronger with every contribution you make.";
+          return "Every great journey starts with a single step. Your dedication, no matter how small, lights the way for others.";
+        })();
+
+        // Rank ladder: show current ±3 ranks in context
+        const currentSeqIdx = rankSeq.findIndex(r => r.name.trim().toLowerCase() === (currentRankName ?? '').trim().toLowerCase());
+
+        return (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[640px] flex flex-col overflow-hidden">
+              {/* Header */}
+              <div className="px-6 py-4 bg-gradient-to-r from-[#0b2545] to-[#07223f] flex items-center justify-between flex-shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white/10 rounded-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+                    </svg>
+                  </div>
+                  <h2 className="text-lg font-bold text-white">Rank Status</h2>
+                </div>
+                <button onClick={() => setShowRankModal(false)} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+                  </svg>
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto">
+                <div className="p-6 space-y-5">
+                  {pointsDataLoading ? (
+                    <div className="flex flex-col items-center justify-center py-12 gap-3">
+                      <div className="w-8 h-8 border-2 border-[#0b2545] border-t-transparent rounded-full animate-spin"/>
+                      <span className="text-sm text-gray-500">Loading rank data…</span>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Current rank badge */}
+                      <div className="text-center">
+                        <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#0b2545] text-white rounded-full text-sm font-semibold shadow-lg">
+                          <svg xmlns="http://www.w3.org/2000/svg" width={14} height={14} viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                          </svg>
+                          {currentRankName ?? 'VOLUNTEER'}
+                        </div>
+                      </div>
+
+                      {/* Progress bar */}
+                      <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Progress to next rank</span>
+                          <span className="text-xs font-bold text-[#0b2545]">{progressPct}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                          <div
+                            className="h-3 rounded-full transition-all duration-700"
+                            style={{
+                              width: `${progressPct}%`,
+                              background: progressPct >= 100
+                                ? 'linear-gradient(90deg, #059669, #10b981)'
+                                : progressPct >= 75
+                                ? 'linear-gradient(90deg, #1e40af, #3b82f6)'
+                                : 'linear-gradient(90deg, #0b2545, #1e4d8c)',
+                            }}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between mt-2">
+                          <span className="text-xs text-gray-500">{cp} pts earned</span>
+                          {nextRank ? (
+                            <span className="text-xs text-gray-500">{threshold} pts needed → <span className="font-medium text-gray-700">{nextRank}</span></span>
+                          ) : (
+                            <span className="text-xs font-medium text-emerald-600">Top rank achieved 🎉</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Inspiring message */}
+                      <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-100 rounded-xl">
+                        <svg xmlns="http://www.w3.org/2000/svg" width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500 mt-0.5 flex-shrink-0">
+                          <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
+                        </svg>
+                        <p className="text-sm text-blue-800 leading-relaxed italic">{inspiringMessage}</p>
+                      </div>
+
+                      {/* Rank ladder */}
+                      {rankSeq.length > 0 && (
+                        <div>
+                          <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Rank Progression</h4>
+                          <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                            {rankSeq.map((r, idx) => {
+                              const isCompleted = currentSeqIdx >= 0 && idx < currentSeqIdx;
+                              const isCurrent   = idx === currentSeqIdx;
+                              const isNext      = idx === currentSeqIdx + 1;
+                              return (
+                                <div
+                                  key={r.name}
+                                  className={`flex items-center gap-3 px-3 py-2 rounded-lg ${
+                                    isCurrent
+                                      ? 'bg-[#0b2545] text-white'
+                                      : isCompleted
+                                      ? 'bg-emerald-50 text-emerald-700'
+                                      : isNext
+                                      ? 'bg-blue-50 text-blue-700 border border-blue-100'
+                                      : 'text-gray-400'
+                                  }`}
+                                >
+                                  <div className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                                    isCurrent ? 'bg-white/20 text-white' : isCompleted ? 'bg-emerald-200 text-emerald-700' : 'bg-gray-100 text-gray-400'
+                                  }`}>
+                                    {isCompleted ? (
+                                      <svg xmlns="http://www.w3.org/2000/svg" width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                        <polyline points="20 6 9 17 4 12"/>
+                                      </svg>
+                                    ) : (
+                                      idx + 1
+                                    )}
+                                  </div>
+                                  <span className={`flex-1 text-xs font-medium`}>{r.name}</span>
+                                  {isCurrent && <span className="text-[10px] font-semibold bg-white/20 px-2 py-0.5 rounded-full">Current</span>}
+                                  {isNext && <span className="text-[10px] font-semibold text-blue-600">{r.thresholdPoints} pts</span>}
+                                  {!isCurrent && !isNext && !isCompleted && (
+                                    <span className="text-[10px] text-gray-300">{r.thresholdPoints} pts</span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </DashboardLayout>
   );
 }
