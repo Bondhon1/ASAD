@@ -615,10 +615,10 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                 <button
                   onClick={openRankModal}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-gray-100 text-sm font-medium text-gray-800 hover:bg-gray-200 transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-2 px-3 h-9 rounded-full bg-gray-100 text-sm font-medium text-gray-800 hover:bg-gray-200 transition-colors cursor-pointer whitespace-nowrap"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500 flex-shrink-0">
                     <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
@@ -627,7 +627,7 @@ export default function DashboardPage() {
                 </button>
                 <button
                   onClick={openPointsModal}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-gradient-to-r from-[#0b2545] to-[#07223f] text-white text-sm font-medium hover:opacity-90 transition-opacity cursor-pointer"
+                  className="inline-flex items-center gap-2 px-3 h-9 rounded-full bg-gradient-to-r from-[#0b2545] to-[#07223f] text-white text-sm font-medium hover:opacity-90 transition-opacity cursor-pointer whitespace-nowrap"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
                     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
@@ -636,10 +636,10 @@ export default function DashboardPage() {
                 </button>
                 <button
                   onClick={() => setShowCoinModal(true)}
-                  className="inline-flex items-center px-3 py-2 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white text-sm font-medium hover:from-amber-600 hover:to-amber-700 transition-all shadow-md hover:shadow-lg transform hover:scale-105"
+                  className="inline-flex items-center gap-2 px-3 h-9 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white text-sm font-medium hover:from-amber-600 hover:to-amber-700 transition-all shadow-md hover:shadow-lg transform hover:scale-105 whitespace-nowrap"
                 >
-                  <Image src="/icons/coin.svg" alt="coin" width={20} height={20} className="mr-1.5 flex-shrink-0 drop-shadow-sm" />
-                  {user.coins ?? 0} Coins
+                  <Image src="/icons/coin.svg" alt="coin" width={18} height={18} className="flex-shrink-0 drop-shadow-sm" />
+                  <span className="leading-none">{user.coins ?? 0} Coins</span>
                 </button>
               </div>
             </div>
