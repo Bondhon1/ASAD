@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from 'next/image';
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
@@ -422,9 +422,7 @@ export default function CoinManagementPage() {
       <div className="max-w-6xl mx-auto px-6 py-8">
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-amber-100 rounded-lg">
-              <Image src="/icons/coin.svg" alt="coin" width={24} height={24} />
-            </div>
+            <Image src="/icons/coin.svg" alt="coin" width={44} height={44} className="drop-shadow-md" />
             <div>
               <h1 className="text-2xl font-bold text-slate-900">Coin Management</h1>
               <p className="text-sm text-slate-600">Manage user coins and withdrawal requests</p>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import Image from 'next/image';
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
@@ -585,7 +585,7 @@ export default function DashboardPage() {
                   onClick={() => setShowCoinModal(true)}
                   className="inline-flex items-center px-3 py-2 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white text-sm font-medium hover:from-amber-600 hover:to-amber-700 transition-all shadow-md hover:shadow-lg transform hover:scale-105"
                 >
-                  <Image src="/icons/coin.svg" alt="coin" width={14} height={14} className="mr-1" />
+                  <Image src="/icons/coin.svg" alt="coin" width={20} height={20} className="mr-1.5 flex-shrink-0 drop-shadow-sm" />
                   {user.coins ?? 0} Coins
                 </button>
               </div>
@@ -735,9 +735,7 @@ export default function DashboardPage() {
             <div className="px-6 py-4 bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-200">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-amber-100 rounded-lg">
-                    <Image src="/icons/coin.svg" alt="coin" width={24} height={24} />
-                  </div>
+                  <Image src="/icons/coin.svg" alt="coin" width={36} height={36} className="drop-shadow-md" />
                   <h2 className="text-xl font-bold text-gray-900">Your Coins</h2>
                 </div>
                 <button onClick={() => setShowCoinModal(false)} className="p-2 hover:bg-white rounded-lg transition-colors">
