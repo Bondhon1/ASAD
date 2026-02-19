@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 
-const MINIMUM_COINS = 1500; // minimum coins to request withdrawal
+const MINIMUM_COINS = 15000; // minimum coins to request withdrawal
 const COINS_TO_TAKA_RATIO = 30; // 30 coins = 1 taka
 
 export async function POST(req: Request) {

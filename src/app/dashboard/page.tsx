@@ -291,8 +291,8 @@ export default function DashboardPage() {
       alert('Please enter a valid coin amount');
       return;
     }
-    if (withdrawCoins < 1500) {
-      alert('Minimum 1500 coins required for withdrawal');
+    if (withdrawCoins < 15000) {
+      alert('Minimum 15000 coins required for withdrawal');
       return;
     }
     if (!withdrawAccount) {
@@ -666,7 +666,7 @@ export default function DashboardPage() {
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Coins to Withdraw
-                  <span className="ml-2 text-xs font-normal text-gray-500">(min: 1500 coins)</span>
+                  <span className="ml-2 text-xs font-normal text-gray-500">(min: 15000 coins)</span>
                 </label>
                 <input
                   type="number"
@@ -674,7 +674,7 @@ export default function DashboardPage() {
                   onChange={(e) => setWithdrawCoins(e.target.value === '' ? '' : Number(e.target.value))}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                   placeholder="Enter amount"
-                  min="1500"
+                  min="15000"
                   max={user?.coins ?? 0}
                 />
                 {withdrawCoins && (
@@ -754,7 +754,7 @@ export default function DashboardPage() {
                 <div className="text-sm text-gray-600 mb-2">Current Balance</div>
                 <div className="text-4xl font-bold text-amber-600 mb-2">{totalCoins} Coins</div>
                 <div className="mt-1 text-sm text-gray-600">Pending: {pendingCoins} • Available: {availableCoins}</div>
-                <div className="mt-2 text-xs text-gray-500">Minimum 1500 coins to withdraw</div>
+                <div className="mt-2 text-xs text-gray-500">Minimum 15000 coins to withdraw</div>
               </div>
 
               {/* Withdrawal Button */}
@@ -765,10 +765,10 @@ export default function DashboardPage() {
                     setShowCoinModal(false);
                     setShowWithdrawModal(true);
                   }}
-                  disabled={(user?.coins ?? 0) < 1500}
+                  disabled={(user?.coins ?? 0) < 15000}
                   className="w-full px-6 py-3 bg-amber-600 text-white text-base font-medium rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md hover:shadow-lg"
                 >
-                  {(user?.coins ?? 0) < 1500 ? 'Need 1500+ Coins to Withdraw' : 'Request Withdrawal'}
+                  {(user?.coins ?? 0) < 15000 ? 'Need 15000+ Coins to Withdraw' : 'Request Withdrawal'}
                 </button>
                 {withdrawals.filter(w => w.status === 'PENDING').length > 0 && (
                   <div className="mt-3 px-4 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
