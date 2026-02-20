@@ -98,6 +98,10 @@ model User {
   coins                 Int                   @default(0)
   coinWithdrawals       CoinWithdrawal[]      @relation("UserWithdrawals")
   processedWithdrawals  CoinWithdrawal[]      @relation("ProcessedBy")
+  coinEndorsements      CoinEndorsement[]     @relation("UserEndorsements")
+  processedEndorsements CoinEndorsement[]     @relation("ProcessedEndorsements")
+  orgJoinRequests       OrgJoinRequest[]      @relation("UserOrgJoinRequests")
+  processedOrgJoinRequests OrgJoinRequest[]   @relation("ProcessedOrgJoinRequests")
   
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
@@ -606,6 +610,7 @@ model Sector {
   name                  String           @unique
   description           String?
   imageUrl              String?
+  isOpen                Boolean          @default(true)
   committees            Committee[]
   createdAt             DateTime         @default(now())
 }
@@ -625,6 +630,7 @@ model Club {
   name                  String           @unique
   description           String?
   imageUrl              String?
+  isOpen                Boolean          @default(true)
   committees            Committee[]
   createdAt             DateTime         @default(now())
 }
@@ -779,6 +785,14 @@ enum NotificationType {
   // General
   SYSTEM_ANNOUNCEMENT
   APPLICATION_UPDATE
+
+  // Coins
+  COIN_ENDORSED
+  COIN_ENDORSEMENT_REJECTED
+
+  // Org membership
+  ORG_JOIN_APPROVED
+  ORG_JOIN_REJECTED
 }
 
 model AuditLog {
@@ -840,5 +854,73 @@ model CoinWithdrawal {
 enum WithdrawalStatus {
   PENDING
   COMPLETED
+  REJECTED
+}
+
+// ============================================================================
+// COIN ENDORSEMENT (user deposits / tops-up coins)
+// ============================================================================
+
+model CoinEndorsement {
+  id             String            @id @default(cuid())
+  user           User              @relation("UserEndorsements", fields: [userId], references: [id], onDelete: Cascade)
+  userId         String
+  amount         Float
+  method         String            // bkash, nagad, bank, etc.
+  accountNumber  String            // sender number / account
+  transactionId  String?           // optional trx / reference ID
+  datetime       DateTime          // reported transfer datetime
+  status         EndorsementStatus @default(PENDING)
+  notes          String?           // admin notes
+  processedBy    User?             @relation("ProcessedEndorsements", fields: [processedById], references: [id], onDelete: SetNull)
+  processedById  String?
+  processedAt    DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum EndorsementStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ============================================================================
+// ORG JOIN REQUESTS (sector / club membership)
+// ============================================================================
+
+model OrgJoinRequest {
+  id             String            @id @default(cuid())
+  user           User              @relation("UserOrgJoinRequests", fields: [userId], references: [id], onDelete: Cascade)
+  userId         String
+  type           OrgJoinType
+  entityId       String            // sector or club ID
+  entityName     String?           // denormalised for display
+  status         JoinRequestStatus @default(PENDING)
+  notes          String?           // admin notes
+  processedBy    User?             @relation("ProcessedOrgJoinRequests", fields: [processedById], references: [id], onDelete: SetNull)
+  processedById  String?
+  processedAt    DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@unique([userId, type, entityId])
+  @@index([userId])
+  @@index([status])
+  @@index([type])
+}
+
+enum OrgJoinType {
+  SECTOR
+  CLUB
+}
+
+enum JoinRequestStatus {
+  PENDING
+  APPROVED
   REJECTED
 }

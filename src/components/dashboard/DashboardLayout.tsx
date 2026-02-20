@@ -209,6 +209,7 @@ export default function DashboardLayout({
     '/dashboard/donations/create': DollarSign,
     '/dashboard/admin/audit-logs': FileText,
     '/dashboard/admin/coin-management': CoinIcon,
+    '/dashboard/admin/org-requests': Users,
   };
 
   const handleLogout = async () => {
@@ -277,6 +278,7 @@ export default function DashboardLayout({
     const directorItems = [
       { label: "Dashboard", href: "/dashboard" },
       { label: "User Management", href: "/dashboard/hr/users" },
+      { label: "Org Requests", href: "/dashboard/admin/org-requests" },
       { label: "Settings", href: "/dashboard/settings" },
     ];
 
@@ -321,6 +323,7 @@ export default function DashboardLayout({
       { label: "Services", href: "/dashboard/hr/services" },
       { label: "Manage Points / Ranks", href: "/dashboard/database" },
       { label: "Coin Management", href: "/dashboard/admin/coin-management" },
+      { label: "Org Requests", href: "/dashboard/admin/org-requests" },
       { label: "Tasks", href: "/dashboard/tasks" },
       { label: "Secretaries", href: "/dashboard/secretaries" },
       { label: "Community", href: "/dashboard/community" },
@@ -339,6 +342,7 @@ export default function DashboardLayout({
       const adminItemsWithCoins = [
         ...hrItems.slice(0, -1), // All items except Settings
         { label: "Coin Management", href: "/dashboard/admin/coin-management" },
+        { label: "Org Requests", href: "/dashboard/admin/org-requests" },
         hrItems[hrItems.length - 1], // Settings at the end
       ];
       return mergeWithCommon(adminItemsWithCoins as any);

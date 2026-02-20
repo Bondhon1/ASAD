@@ -92,6 +92,16 @@ export default function DashboardPage() {
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [withdrawalsLoading, setWithdrawalsLoading] = useState(false);
 
+  // Coin endorsement states
+  const [showEndorseModal, setShowEndorseModal] = useState(false);
+  const [endorseAmount, setEndorseAmount] = useState<number | ''>('');
+  const [endorseMethod, setEndorseMethod] = useState('bkash');
+  const [endorseAccount, setEndorseAccount] = useState('');
+  const [endorseTxId, setEndorseTxId] = useState('');
+  const [endorseDatetime, setEndorseDatetime] = useState('');
+  const [endorseSubmitting, setEndorseSubmitting] = useState(false);
+  const [endorsements, setEndorsements] = useState<any[]>([]);
+
   // Points history modal state
   const [showPointsModal, setShowPointsModal] = useState(false);
   // Rank status modal state
@@ -280,6 +290,20 @@ export default function DashboardPage() {
     return () => { cancelled = true; };
   }, [pendingTasks]);
 
+  // Fetch endorsement history
+  useEffect(() => {
+    if (!userEmail) return;
+    (async () => {
+      try {
+        const res = await fetch('/api/coins/endorse');
+        if (res.ok) {
+          const data = await res.json();
+          setEndorsements(data.endorsements || []);
+        }
+      } catch (e) { /* ignore */ }
+    })();
+  }, [userEmail]);
+
   // Fetch withdrawal history
   useEffect(() => {
     if (!userEmail) return;
@@ -322,6 +346,40 @@ export default function DashboardPage() {
 
   const openPointsModal = () => { fetchPointsData(); setShowPointsModal(true); };
   const openRankModal  = () => { fetchPointsData(); setShowRankModal(true);  };
+
+  const handleEndorseSubmit = async () => {
+    if (!endorseAmount || Number(endorseAmount) <= 0) { alert('Enter a valid amount'); return; }
+    if (!endorseAccount) { alert('Enter your account / sender number'); return; }
+    if (!endorseDatetime) { alert('Select the transfer date & time'); return; }
+    setEndorseSubmitting(true);
+    try {
+      const res = await fetch('/api/coins/endorse', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          amount: Number(endorseAmount),
+          method: endorseMethod,
+          accountNumber: endorseAccount,
+          transactionId: endorseTxId || undefined,
+          datetime: endorseDatetime,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Failed');
+      alert('Endorsement request submitted! Admins will review it soon.');
+      setShowEndorseModal(false);
+      setShowCoinModal(true);
+      setEndorseAmount('');
+      setEndorseAccount('');
+      setEndorseTxId('');
+      setEndorseDatetime('');
+      if (data?.endorsement) setEndorsements((prev) => [data.endorsement, ...prev]);
+    } catch (e: any) {
+      alert(e?.message || 'Failed to submit endorsement');
+    } finally {
+      setEndorseSubmitting(false);
+    }
+  };
 
   const handleWithdrawRequest = async () => {
     if (!withdrawCoins || withdrawCoins <= 0) {
@@ -700,6 +758,101 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* Coin Endorsement Modal */}
+      {showEndorseModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+            <div className="px-6 py-4 bg-gradient-to-r from-[#0b2545]/10 to-[#0b2545]/5 border-b border-[#0b2545]/20">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-gray-900">Endorse Coins</h2>
+                <button onClick={() => { setShowEndorseModal(false); setShowCoinModal(true); }} className="p-2 hover:bg-white rounded-lg transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Submit payment details to top up your coin balance.</p>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Amount (BDT)</label>
+                <input
+                  type="number"
+                  value={endorseAmount}
+                  onChange={(e) => setEndorseAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-[#0b2545] focus:border-transparent"
+                  placeholder="e.g. 200"
+                  min="1"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Payment Method</label>
+                <select
+                  value={endorseMethod}
+                  onChange={(e) => setEndorseMethod(e.target.value)}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-[#0b2545] focus:border-transparent"
+                >
+                  <option value="bkash">bKash</option>
+                  <option value="nagad">Nagad</option>
+                  <option value="bank">Bank Transfer</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Sender Number / Account</label>
+                <input
+                  type="text"
+                  value={endorseAccount}
+                  onChange={(e) => setEndorseAccount(e.target.value)}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-[#0b2545] focus:border-transparent"
+                  placeholder="Your account number"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Transaction ID <span className="font-normal text-gray-400">(optional)</span></label>
+                <input
+                  type="text"
+                  value={endorseTxId}
+                  onChange={(e) => setEndorseTxId(e.target.value)}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-[#0b2545] focus:border-transparent"
+                  placeholder="TrxID or ref"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Transfer Date &amp; Time</label>
+                <input
+                  type="datetime-local"
+                  value={endorseDatetime}
+                  onChange={(e) => setEndorseDatetime(e.target.value)}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-[#0b2545] focus:border-transparent"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={handleEndorseSubmit}
+                  disabled={endorseSubmitting}
+                  className="flex-1 px-4 py-2.5 bg-[#0b2545] text-white font-medium rounded-lg hover:bg-[#0d2d5a] disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                >
+                  {endorseSubmitting ? 'Submitting...' : 'Submit Request'}
+                </button>
+                <button
+                  onClick={() => { setShowEndorseModal(false); setShowCoinModal(true); }}
+                  disabled={endorseSubmitting}
+                  className="px-4 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Withdrawal Request Modal */}
       {showWithdrawModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -808,8 +961,15 @@ export default function DashboardPage() {
                 <div className="mt-2 text-xs text-gray-500">Minimum 15000 coins to withdraw</div>
               </div>
 
-              {/* Withdrawal Button */}
-              <div>
+              {/* Action Buttons */}
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setShowCoinModal(false); setShowEndorseModal(true); }}
+                  className="w-full px-4 py-3 bg-[#0b2545] text-white text-sm font-medium rounded-lg hover:bg-[#0d2d5a] transition-colors shadow-md hover:shadow-lg"
+                >
+                  + Endorse Coins
+                </button>
                 <button
                   type="button"
                   onClick={() => {
@@ -817,18 +977,51 @@ export default function DashboardPage() {
                     setShowWithdrawModal(true);
                   }}
                   disabled={(user?.coins ?? 0) < 15000}
-                  className="w-full px-6 py-3 bg-amber-600 text-white text-base font-medium rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md hover:shadow-lg"
+                  className="w-full px-4 py-3 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md hover:shadow-lg"
                 >
-                  {(user?.coins ?? 0) < 15000 ? 'Need 15000+ Coins to Withdraw' : 'Request Withdrawal'}
+                  {(user?.coins ?? 0) < 15000 ? 'Need 15000+ to Withdraw' : 'Request Withdrawal'}
                 </button>
+              </div>
+              <div>
                 {withdrawals.filter(w => w.status === 'PENDING').length > 0 && (
                   <div className="mt-3 px-4 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
                     <span className="text-sm text-yellow-800 font-medium">
-                      {withdrawals.filter(w => w.status === 'PENDING').length} Pending Request(s)
+                      {withdrawals.filter(w => w.status === 'PENDING').length} Pending Withdrawal(s)
                     </span>
                   </div>
                 )}
               </div>
+
+              {/* Endorsement History */}
+              {endorsements.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Endorsement History</h4>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {endorsements.map((e: any) => (
+                      <div key={e.id} className={`p-3 rounded-lg border ${
+                        e.status === 'PENDING' ? 'bg-yellow-50 border-yellow-200' :
+                        e.status === 'APPROVED' ? 'bg-green-50 border-green-200' :
+                        'bg-red-50 border-red-200'
+                      }`}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-semibold text-sm">৳{Number(e.amount).toFixed(2)}</span>
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                            e.status === 'PENDING' ? 'bg-yellow-200 text-yellow-800' :
+                            e.status === 'APPROVED' ? 'bg-green-200 text-green-800' :
+                            'bg-red-200 text-red-800'
+                          }`}>{e.status}</span>
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {new Date(e.createdAt).toLocaleDateString()} · {e.method?.toUpperCase()}
+                        </div>
+                        {e.notes && e.status !== 'APPROVED' && (
+                          <div className="text-xs text-red-600 mt-1 italic">Note: {e.notes}</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Recent Withdrawals */}
               {withdrawals.length > 0 && (

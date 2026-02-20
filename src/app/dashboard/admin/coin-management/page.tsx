@@ -297,6 +297,11 @@ export default function CoinManagementPage() {
   const [loadingWithdrawals, setLoadingWithdrawals] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
 
+  const [endorsements, setEndorsements] = useState<any[]>([]);
+  const [loadingEndorsements, setLoadingEndorsements] = useState(true);
+  const [processingEndorsementId, setProcessingEndorsementId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'manual' | 'withdrawals' | 'endorsements'>('manual');
+
   useEffect(() => {
     if (status === 'loading') return;
     if (status === 'unauthenticated') router.push('/auth');
@@ -305,6 +310,7 @@ export default function CoinManagementPage() {
   useEffect(() => {
     if (viewer) {
       fetchWithdrawals();
+      fetchEndorsements();
     }
   }, [viewer]);
 
@@ -320,6 +326,19 @@ export default function CoinManagementPage() {
       console.error('Failed to fetch withdrawals', e);
     } finally {
       setLoadingWithdrawals(false);
+    }
+  };
+
+  const fetchEndorsements = async () => {
+    try {
+      setLoadingEndorsements(true);
+      const res = await fetch('/api/admin/coins/endorsements');
+      const data = await res.json();
+      if (res.ok) setEndorsements(data.endorsements || []);
+    } catch (e) {
+      console.error('Failed to fetch endorsements', e);
+    } finally {
+      setLoadingEndorsements(false);
     }
   };
 
@@ -417,20 +436,101 @@ export default function CoinManagementPage() {
   const pendingWithdrawals = withdrawals.filter(w => w.status === 'PENDING');
   const completedWithdrawals = withdrawals.filter(w => w.status !== 'PENDING');
 
+  const processEndorsement = async (endorsementId: string, status: 'APPROVED' | 'REJECTED') => {
+    const endorsement = endorsements.find(e => e.id === endorsementId);
+    if (!endorsement) return;
+
+    if (status === 'APPROVED') {
+      const coinsInput = await prompt(
+        `Approve endorsement of ৳${Number(endorsement.amount).toFixed(2)} from ${endorsement.user.fullName || endorsement.user.username}?\n\nEnter coins to grant (default: ${Math.round(endorsement.amount)}):`,
+        'Approve Endorsement',
+        'Coins to grant',
+        String(Math.round(endorsement.amount))
+      ).catch(() => null);
+      if (coinsInput === null) return;
+      const coinsToAdd = Number(coinsInput) || Math.round(endorsement.amount);
+
+      setProcessingEndorsementId(endorsementId);
+      try {
+        const res = await fetch(`/api/admin/coins/endorsements/${endorsementId}`, {
+          method: 'PATCH',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ status: 'APPROVED', coinsToAdd }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || 'Failed');
+        toast(`Endorsement approved. ${data.coinsGranted} coins added.`, { type: 'success' });
+        fetchEndorsements();
+      } catch (e: any) {
+        toast(e?.message || 'Failed', { type: 'error' });
+      } finally {
+        setProcessingEndorsementId(null);
+      }
+    } else {
+      const ok = await confirm(
+        `Reject endorsement from ${endorsement.user.fullName || endorsement.user.username}?`,
+        'Reject Endorsement',
+        'warning'
+      );
+      if (!ok) return;
+
+      let notes = '';
+      try {
+        const r = await prompt('Rejection reason (optional):', 'Reason', 'Enter reason', '');
+        notes = r || '';
+      } catch (e) { notes = ''; }
+
+      setProcessingEndorsementId(endorsementId);
+      try {
+        const res = await fetch(`/api/admin/coins/endorsements/${endorsementId}`, {
+          method: 'PATCH',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ status: 'REJECTED', notes }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || 'Failed');
+        toast('Endorsement rejected.', { type: 'success' });
+        fetchEndorsements();
+      } catch (e: any) {
+        toast(e?.message || 'Failed', { type: 'error' });
+      } finally {
+        setProcessingEndorsementId(null);
+      }
+    }
+  };
+
   return (
     <DashboardLayout userRole={displayRole} userName={displayName} userEmail={displayEmail} userId={viewer?.id || ""}>
       <div className="max-w-6xl mx-auto px-6 py-8">
-        <div className="mb-8">
+        <div className="mb-6">
           <div className="flex items-center gap-3 mb-2">
             <Image src="/icons/coin.svg" alt="coin" width={44} height={44} className="drop-shadow-md" />
             <div>
               <h1 className="text-2xl font-bold text-slate-900">Coin Management</h1>
-              <p className="text-sm text-slate-600">Manage user coins and withdrawal requests</p>
+              <p className="text-sm text-slate-600">Manage user coins, endorsements, and withdrawal requests</p>
             </div>
           </div>
         </div>
 
+        {/* Tab Navigation */}
+        <div className="flex gap-1 mb-6 bg-slate-100 p-1 rounded-xl w-fit">
+          {(['manual', 'endorsements', 'withdrawals'] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
+                activeTab === tab
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              {tab === 'manual' ? 'Manual Adjustment' : tab === 'endorsements' ? `Endorsements${endorsements.filter(e => e.status === 'PENDING').length > 0 ? ` (${endorsements.filter(e => e.status === 'PENDING').length})` : ''}` : `Withdrawals${pendingWithdrawals.length > 0 ? ` (${pendingWithdrawals.length})` : ''}`}
+            </button>
+          ))}
+        </div>
+
         {/* Manual Coin Update Section */}
+        {activeTab === 'manual' && (
         <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden mb-8">
           <div className="px-6 py-4 bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200">
             <div className="flex items-center gap-2">
@@ -504,8 +604,109 @@ export default function CoinManagementPage() {
             </div>
           </div>
         </div>
+        )}
+
+        {/* Endorsements Section */}
+        {activeTab === 'endorsements' && (
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden mb-8">
+          <div className="px-6 py-4 bg-gradient-to-r from-slate-50 to-indigo-50 border-b border-slate-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-600">
+                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                </svg>
+                <h2 className="font-semibold text-slate-800">Coin Endorsement Requests</h2>
+              </div>
+              <button onClick={fetchEndorsements} className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">Refresh</button>
+            </div>
+          </div>
+          <div className="p-6">
+            {loadingEndorsements ? (
+              <div className="text-center py-8 text-slate-500">Loading...</div>
+            ) : (
+              <>
+                <div className="mb-6">
+                  <h3 className="text-sm font-semibold text-slate-700 mb-3">Pending ({endorsements.filter(e => e.status === 'PENDING').length})</h3>
+                  {endorsements.filter(e => e.status === 'PENDING').length === 0 ? (
+                    <div className="text-center py-6 text-slate-500 bg-slate-50 rounded-lg">No pending endorsement requests</div>
+                  ) : (
+                    <div className="space-y-3">
+                      {endorsements.filter(e => e.status === 'PENDING').map((e) => (
+                        <div key={e.id} className="p-4 border border-indigo-200 bg-indigo-50 rounded-lg">
+                          <div className="flex items-start justify-between mb-2">
+                            <div>
+                              <div className="font-semibold text-slate-900">
+                                {e.user.fullName || e.user.username}
+                                {e.user.volunteerId && <span className="ml-2 text-xs font-mono text-slate-600">ID: {e.user.volunteerId}</span>}
+                              </div>
+                              <div className="text-xs text-slate-600 mt-0.5">{e.user.email}</div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-bold text-indigo-700 text-lg">৳{Number(e.amount).toFixed(2)}</div>
+                              <div className="text-xs text-slate-500">{e.method?.toUpperCase()}</div>
+                            </div>
+                          </div>
+                          <div className="text-xs text-slate-600 mb-3">
+                            <div>Sender: {e.accountNumber}</div>
+                            {e.transactionId && <div>TrxID: {e.transactionId}</div>}
+                            <div>Transfer time: {new Date(e.datetime).toLocaleString()}</div>
+                            <div>Submitted: {new Date(e.createdAt).toLocaleString()}</div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => processEndorsement(e.id, 'APPROVED')}
+                              disabled={processingEndorsementId === e.id}
+                              className="flex-1 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700 disabled:opacity-60 transition-colors"
+                            >
+                              {processingEndorsementId === e.id ? 'Processing...' : 'Approve'}
+                            </button>
+                            <button
+                              onClick={() => processEndorsement(e.id, 'REJECTED')}
+                              disabled={processingEndorsementId === e.id}
+                              className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700 disabled:opacity-60 transition-colors"
+                            >
+                              {processingEndorsementId === e.id ? 'Processing...' : 'Reject'}
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-700 mb-3">Processed ({endorsements.filter(e => e.status !== 'PENDING').length})</h3>
+                  {endorsements.filter(e => e.status !== 'PENDING').length === 0 ? (
+                    <div className="text-center py-6 text-slate-500 bg-slate-50 rounded-lg">No processed endorsements yet</div>
+                  ) : (
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {endorsements.filter(e => e.status !== 'PENDING').map((e) => (
+                        <div key={e.id} className={`p-3 border rounded-lg ${e.status === 'APPROVED' ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="font-semibold text-sm text-slate-900">
+                                {e.user.fullName || e.user.username}
+                                {e.user.volunteerId && <span className="ml-2 text-xs font-mono text-slate-600">ID: {e.user.volunteerId}</span>}
+                              </div>
+                              <div className="text-xs text-slate-600 mt-1">৳{Number(e.amount).toFixed(2)} · {e.method?.toUpperCase()} · {e.accountNumber}</div>
+                              <div className="text-xs text-slate-500 mt-1">Processed: {e.processedAt ? new Date(e.processedAt).toLocaleString() : 'N/A'}{e.processedBy && ` by ${e.processedBy.fullName || e.processedBy.username}`}</div>
+                              {e.notes && <div className="text-xs text-slate-600 mt-1 italic">Note: {e.notes}</div>}
+                            </div>
+                            <div className={`px-2 py-1 text-xs font-semibold rounded ${e.status === 'APPROVED' ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}>{e.status}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+        )}
 
         {/* Withdrawal Requests Section */}
+        {activeTab === 'withdrawals' && (
         <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
           <div className="px-6 py-4 bg-gradient-to-r from-slate-50 to-amber-50 border-b border-slate-200">
             <div className="flex items-center justify-between">
@@ -626,6 +827,8 @@ export default function CoinManagementPage() {
             )}
           </div>
         </div>
+        )}
+
       </div>
 
       {results && <ResultsModal results={results} onClose={() => setResults(null)} />}

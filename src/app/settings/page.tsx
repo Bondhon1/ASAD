@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
+import Image from "next/image";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { divisions, getDistricts, getUpazilas } from '@/lib/bdGeo';
 import { getServiceIdForInstitute } from '@/lib/serviceAssignment';
@@ -51,7 +52,15 @@ export default function SettingsPage() {
   const hideTimeoutRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const isLoading = loading || status === "loading";
-
+  // Sectors & Clubs state
+  const [orgsExpanded, setOrgsExpanded] = useState(false);
+  const [sectors, setSectors] = useState<Array<{ id: string; name: string; imageUrl?: string | null; description?: string | null; isOpen: boolean }>>([]);
+  const [clubs, setClubs] = useState<Array<{ id: string; name: string; imageUrl?: string | null; description?: string | null; isOpen: boolean }>>([]); 
+  const [joinRequests, setJoinRequests] = useState<Array<{ id: string; type: string; entityId: string; entityName: string | null; status: string }>>([]);
+  const [submittingJoin, setSubmittingJoin] = useState<string | null>(null); // entityId being joined
+  const [userSectors, setUserSectors] = useState<string[]>([]);
+  const [userClubs, setUserClubs] = useState<string[]>([]);
+  const [selectedOrg, setSelectedOrg] = useState<{ id: string; name: string; type: 'SECTOR' | 'CLUB'; imageUrl?: string | null; description?: string | null; isOpen: boolean } | null>(null);
   const skeleton = (
     <div className="max-w-4xl mx-auto px-6 py-8 animate-pulse space-y-4">
       <div className="h-8 w-40 bg-gray-200 rounded" />
@@ -101,6 +110,9 @@ export default function SettingsPage() {
               isCurrent: exp.isCurrent || false,
             }))
           );
+          // Sync sectors/clubs from volunteer profile
+          setUserSectors(data.user.volunteerProfile?.sectors || []);
+          setUserClubs(data.user.volunteerProfile?.clubs || []);
         }
       } catch (e) {
         console.error(e);
@@ -239,6 +251,88 @@ export default function SettingsPage() {
       if (res.ok) setPwMessage('Password reset email sent if account exists');
       else setPwMessage('Failed to send reset email');
     } catch (e) { setPwMessage('Network error'); }
+  };
+
+  // Sectors & Clubs handlers
+  const fetchOrgs = async () => {
+    try {
+      const [orgsRes, joinRes] = await Promise.all([
+        fetch('/api/orgs', { cache: 'no-store' }),
+        fetch('/api/user/org-join-requests'),
+      ]);
+      const orgsData = await orgsRes.json();
+      const joinData = await joinRes.json();
+      setSectors(orgsData.sectors || []);
+      setClubs(orgsData.clubs || []);
+      setJoinRequests(joinData.requests || []);
+    } catch (e) {
+      console.error('Failed to fetch orgs', e);
+    }
+  };
+
+  const handleJoinRequest = async (type: 'SECTOR' | 'CLUB', entityId: string) => {
+    setSubmittingJoin(entityId);
+    try {
+      const res = await fetch('/api/user/org-join-requests', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ type, entityId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Failed');
+      toast('Join request submitted!', { type: 'success' });
+      if (data?.request) {
+        setJoinRequests((prev) => {
+          const filtered = prev.filter(r => !(r.type === type && r.entityId === entityId));
+          return [data.request, ...filtered];
+        });
+      }
+    } catch (e: any) {
+      toast(e?.message || 'Failed to submit request', { type: 'error' });
+    } finally {
+      setSubmittingJoin(null);
+    }
+  };
+
+  // Static descriptions from the public sectors page
+  const getSectorDescription = (name: string, dbDescription?: string | null): string => {
+    if (dbDescription) return dbDescription;
+    const n = name.toLowerCase();
+    if (n.includes('cultural')) return 'Works to develop and showcase volunteers\' talents through regular creative activities, live shows, workshops, and interactive sessions, while recognizing outstanding contributions through monthly awards and an annual mega event.';
+    if (n.includes('photo')) return 'Enhances volunteers\' photography skills through regular photo posts, weekly features, tutorial sharing, workshops, and interactive sessions, while recognizing excellence and covering all organizational outdoor events.';
+    if (n.includes('blood')) return 'Promotes blood donation awareness through regular posts, monthly reports and donor lists. Strengthens volunteer engagement with adda sessions and appreciates donors through dedicated posts.';
+    if (n.includes('nature') || n.includes('environment')) return 'Raises awareness about environmental care through regular posts, tree planting drives, clean-up campaigns, and indoor activities like sapling distribution and workshops.';
+    if (n.includes('education')) return 'Supports learning through regular workshops, indoor classes, and distribution of educational materials, while promoting awareness in rural areas and recognizing top contributors each month.';
+    if (n.includes('charity')) return 'Supports the underprivileged through regular fundraising, relief distribution, special outdoor events during festivals, and essential services like healthcare, clothing, and food.';
+    if (n.includes('medical')) return 'Promotes health awareness through regular posts and seminars, organizes free health camps, distributes medical supplies, and offers special sessions with healthcare professionals.';
+    return '';
+  };
+
+  // Static feature tags from the public sectors page
+  const getSectorFeatures = (name: string): string[] => {
+    const n = name.toLowerCase();
+    if (n.includes('cultural')) return ['Artist of the Month', 'Monthly Live Show', 'Weekly Streaming', 'Best Contributor', 'Artistic Carnival'];
+    if (n.includes('photo')) return ['Photographer of the Month', 'Weekly Tutorial', 'Monthly Workshop', 'Outdoor Event Cover', 'Photo Exhibition'];
+    if (n.includes('blood')) return ['Monthly Report', 'Blood Donor List', 'Best Contributor', 'Outdoor Event', 'Blood Donor Appreciation'];
+    if (n.includes('nature') || n.includes('environment')) return ['Conservation Event', 'Clean-up Drive', 'Seminar', 'Indoor Activities', 'Best Contributor'];
+    if (n.includes('education')) return ['Regular Workshops', 'Resource Distribution', 'Class Sessions', 'Awareness Programs', 'Best Contributors'];
+    if (n.includes('charity')) return ['Fundraising Drives', 'Relief Distribution', 'Charity Activities', 'Special Events', 'Best Contributor'];
+    if (n.includes('medical')) return ['Health Awareness', 'Health Camps', 'Health Supplies', 'Medical Sessions', 'Best Contributor'];
+    return [];
+  };
+
+  // Map sector/club name keywords to public image paths
+  const getSectorImage = (name: string, imageUrl?: string | null): string => {
+    if (imageUrl) return imageUrl;
+    const n = name.toLowerCase();
+    if (n.includes('cultural')) return '/sectors/cultural.png';
+    if (n.includes('photo')) return '/sectors/photography.png';
+    if (n.includes('blood')) return '/sectors/blood.png';
+    if (n.includes('nature') || n.includes('environment')) return '/sectors/nature.png';
+    if (n.includes('education')) return '/sectors/education.png';
+    if (n.includes('charity')) return '/sectors/charity.png';
+    if (n.includes('medical')) return '/sectors/medical.png';
+    return '/sectors/cultural.png';
   };
 
   if (status === "unauthenticated") return null;
@@ -696,6 +790,296 @@ export default function SettingsPage() {
             </div>
           )}
         </div>
+
+        {/* Sectors & Clubs Section */}
+        <div className="bg-white border border-gray-200 rounded-md mt-4">
+          <button
+            className="w-full text-left px-4 py-3 flex items-center justify-between"
+            onClick={() => {
+              setOrgsExpanded(v => {
+                const next = !v;
+                if (next && sectors.length === 0) fetchOrgs();
+                return next;
+              });
+            }}
+            aria-expanded={orgsExpanded}
+          >
+            <div>
+              <div className="text-sm font-medium text-gray-900">Sectors &amp; Clubs</div>
+              <div className="text-xs text-gray-500">Browse and request to join sectors or clubs.</div>
+            </div>
+            <div className="text-gray-500">{orgsExpanded ? '−' : '+'}</div>
+          </button>
+
+          {orgsExpanded && (
+            <div className="p-4 border-t border-gray-100 space-y-6">
+
+              {/* Current memberships banner */}
+              {(userSectors.length > 0 || userClubs.length > 0) && (
+                <div className="flex flex-wrap gap-2 p-3 bg-[#0b2545]/5 rounded-lg border border-[#0b2545]/10">
+                  <span className="text-xs font-semibold text-[#0b2545] w-full mb-1">Your memberships</span>
+                  {userSectors.map(id => {
+                    const s = sectors.find(x => x.id === id);
+                    return (
+                      <span key={id} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#0b2545] text-white text-xs font-medium">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        {s?.name || id}
+                      </span>
+                    );
+                  })}
+                  {userClubs.map(id => {
+                    const c = clubs.find(x => x.id === id);
+                    return (
+                      <span key={id} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-600 text-white text-xs font-medium">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        {c?.name || id}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Sectors */}
+              {sectors.length > 0 && (
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Sectors</div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {sectors.map((sector) => {
+                      const isMember = userSectors.includes(sector.id);
+                      const request = joinRequests.find(r => r.type === 'SECTOR' && r.entityId === sector.id);
+                      const isPending = request?.status === 'PENDING';
+                      const isClosed = !sector.isOpen;
+                      return (
+                        <button
+                          key={sector.id}
+                          onClick={() => setSelectedOrg({ id: sector.id, name: sector.name, type: 'SECTOR', imageUrl: sector.imageUrl, description: sector.description, isOpen: sector.isOpen })}
+                          className="group relative flex flex-col rounded-xl border border-gray-100 bg-gray-50 hover:border-[#0b2545]/30 hover:bg-white hover:shadow-md transition-all text-left overflow-hidden"
+                        >
+                          <div className="w-full bg-white overflow-hidden">
+                            <Image
+                              src={getSectorImage(sector.name, sector.imageUrl)}
+                              alt={sector.name}
+                              width={400}
+                              height={300}
+                              className="w-full h-auto"
+                            />
+                          </div>
+                          {/* status badges */}
+                          <div className="absolute top-2 left-2 flex flex-col gap-1">
+                            {isClosed && (
+                              <span className="px-2 py-0.5 rounded-full bg-gray-800/80 text-white text-[10px] font-semibold backdrop-blur-sm">Closed</span>
+                            )}
+                            {isMember && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500 text-white text-[10px] font-semibold shadow">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                Member
+                              </span>
+                            )}
+                            {!isMember && isPending && (
+                              <span className="px-2 py-0.5 rounded-full bg-amber-400 text-white text-[10px] font-semibold shadow">Pending</span>
+                            )}
+                          </div>
+                          <div className="px-3 py-2.5">
+                            <div className="font-semibold text-sm text-gray-900 leading-tight">{sector.name}</div>
+                            <div className="text-xs text-gray-400 mt-0.5 line-clamp-2">{getSectorDescription(sector.name, sector.description)}</div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Clubs */}
+              {clubs.length > 0 && (
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Clubs</div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {clubs.map((club) => {
+                      const isMember = userClubs.includes(club.id);
+                      const request = joinRequests.find(r => r.type === 'CLUB' && r.entityId === club.id);
+                      const isPending = request?.status === 'PENDING';
+                      const isClosed = !club.isOpen;
+                      return (
+                        <button
+                          key={club.id}
+                          onClick={() => setSelectedOrg({ id: club.id, name: club.name, type: 'CLUB', imageUrl: club.imageUrl, description: club.description, isOpen: club.isOpen })}
+                          className="group relative flex flex-col rounded-xl border border-gray-100 bg-gray-50 hover:border-[#0b2545]/30 hover:bg-white hover:shadow-md transition-all text-left overflow-hidden"
+                        >
+                          <div className="w-full bg-gradient-to-br from-[#0b2545]/10 to-emerald-50 overflow-hidden">
+                            {club.imageUrl ? (
+                              <Image src={club.imageUrl} alt={club.name} width={400} height={300} className="w-full h-auto" />
+                            ) : (
+                              <div className="aspect-[4/3] flex items-center justify-center text-4xl">🏆</div>
+                            )}
+                          </div>
+                          <div className="absolute top-2 left-2 flex flex-col gap-1">
+                            {isClosed && (
+                              <span className="px-2 py-0.5 rounded-full bg-gray-800/80 text-white text-[10px] font-semibold backdrop-blur-sm">Closed</span>
+                            )}
+                            {isMember && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500 text-white text-[10px] font-semibold shadow">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                Member
+                              </span>
+                            )}
+                            {!isMember && isPending && (
+                              <span className="px-2 py-0.5 rounded-full bg-amber-400 text-white text-[10px] font-semibold shadow">Pending</span>
+                            )}
+                          </div>
+                          <div className="px-3 py-2.5">
+                            <div className="font-semibold text-sm text-gray-900 leading-tight">{club.name}</div>
+                            {club.description && (
+                              <div className="text-xs text-gray-400 mt-0.5 line-clamp-2">{club.description}</div>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {sectors.length === 0 && clubs.length === 0 && (
+                <div className="text-sm text-gray-500 text-center py-8">No sectors or clubs available.</div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Org Details Modal */}
+        {selectedOrg && (() => {
+          const isMember = selectedOrg.type === 'SECTOR' ? userSectors.includes(selectedOrg.id) : userClubs.includes(selectedOrg.id);
+          const request = joinRequests.find(r => r.type === selectedOrg.type && r.entityId === selectedOrg.id);
+          const isPending = request?.status === 'PENDING';
+          const isRejected = request?.status === 'REJECTED';
+          const isClosed = !selectedOrg.isOpen;
+          const canRequest = !isMember && !isPending;
+          const features = selectedOrg.type === 'SECTOR' ? getSectorFeatures(selectedOrg.name) : [];
+          const description = getSectorDescription(selectedOrg.name, selectedOrg.description);
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setSelectedOrg(null)}>
+              <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+              <div
+                className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden max-h-[90vh] flex flex-col"
+                onClick={e => e.stopPropagation()}
+              >
+                {/* Header image — natural aspect ratio, no cropping */}
+                <div className="relative w-full bg-gray-100 flex-shrink-0">
+                  {selectedOrg.type === 'SECTOR' ? (
+                    <Image
+                      src={getSectorImage(selectedOrg.name, selectedOrg.imageUrl)}
+                      alt={selectedOrg.name}
+                      width={800}
+                      height={600}
+                      className="w-full h-auto"
+                    />
+                  ) : selectedOrg.imageUrl ? (
+                    <Image src={selectedOrg.imageUrl} alt={selectedOrg.name} width={800} height={600} className="w-full h-auto" />
+                  ) : (
+                    <div className="aspect-[4/3] bg-gradient-to-br from-[#0b2545]/20 to-emerald-100 flex items-center justify-center text-6xl">🏆</div>
+                  )}
+                  {/* Close button */}
+                  <button
+                    onClick={() => setSelectedOrg(null)}
+                    className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition-colors"
+                    aria-label="Close"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                  {/* Closed overlay badge */}
+                  {isClosed && (
+                    <div className="absolute top-3 left-3">
+                      <span className="px-2.5 py-1 rounded-full bg-gray-900/80 text-white text-xs font-semibold backdrop-blur-sm">Not Accepting Applications</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Body — scrollable */}
+                <div className="p-5 space-y-4 overflow-y-auto">
+                  {/* Name + type */}
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">{selectedOrg.type === 'SECTOR' ? 'Sector' : 'Club'}</div>
+                    <div className="text-xl font-bold text-[#0b2545] leading-tight">{selectedOrg.name}</div>
+                  </div>
+
+                  {/* Current membership status */}
+                  <div className="flex flex-wrap gap-2">
+                    {isMember ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold border border-emerald-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        You are a member
+                      </span>
+                    ) : isPending ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold border border-amber-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        Request pending approval
+                      </span>
+                    ) : isRejected ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-semibold border border-red-200">
+                        Previous request rejected
+                      </span>
+                    ) : !isClosed ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-100 text-gray-500 text-xs font-medium border border-gray-200">
+                        Not a member
+                      </span>
+                    ) : null}
+                    {isClosed && (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-100 text-gray-500 text-xs font-medium border border-gray-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        Not accepting applications
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Description */}
+                  {description && (
+                    <p className="text-sm text-gray-600 leading-relaxed">{description}</p>
+                  )}
+
+                  {/* Feature tags */}
+                  {features.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {features.map(f => (
+                        <span key={f} className="px-2 py-0.5 rounded-md bg-[#0b2545]/8 text-[#0b2545] text-[11px] font-medium border border-[#0b2545]/10">{f}</span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Action */}
+                  {canRequest && !isClosed && (
+                    <button
+                      onClick={async () => {
+                        await handleJoinRequest(selectedOrg.type, selectedOrg.id);
+                        setSelectedOrg(null);
+                      }}
+                      disabled={submittingJoin === selectedOrg.id}
+                      className="w-full py-2.5 rounded-xl bg-[#0b2545] hover:bg-[#0d2d5a] text-white text-sm font-semibold disabled:opacity-60 transition-colors flex items-center justify-center gap-2"
+                    >
+                      {submittingJoin === selectedOrg.id ? (
+                        <svg className="animate-spin" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                      ) : null}
+                      {submittingJoin === selectedOrg.id ? 'Submitting…' : isRejected ? 'Re-apply to Join' : 'Request to Join'}
+                    </button>
+                  )}
+
+                  {isClosed && canRequest && (
+                    <div className="w-full py-2.5 rounded-xl bg-gray-100 text-gray-400 text-sm font-medium text-center cursor-not-allowed select-none">
+                      Applications currently closed
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => setSelectedOrg(null)}
+                    className="w-full py-2 rounded-xl border border-gray-200 text-gray-500 text-sm font-medium hover:bg-gray-50 transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </div>
       )}
 
