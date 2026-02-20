@@ -389,7 +389,8 @@ export default function SettingsPage() {
                           return await createImageBitmap(f);
                         }
                         return new Promise<ImageBitmap>((resolve, reject) => {
-                          const img = new Image();
+                          const ImgCtor = (globalThis as any).Image;
+                          const img = new ImgCtor();
                           img.onload = () => {
                             const canvas = document.createElement('canvas');
                             canvas.width = img.naturalWidth;
