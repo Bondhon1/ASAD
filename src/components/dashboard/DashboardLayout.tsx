@@ -261,7 +261,6 @@ export default function DashboardLayout({
       { label: "New Requests", href: "/dashboard/hr/requests" },
       { label: "Schedule Interview", href: "/dashboard/hr/interviews" },
       { label: "Approve Volunteers", href: "/dashboard/hr/approvals" },
-      { label: "Audit Logs", href: "/dashboard/admin/audit-logs" },
       { label: "Job Posts", href: "/dashboard/hr/jobs" },
       { label: "Leave Management", href: "/dashboard/hr/leaves" },
       { label: "User Management", href: "/dashboard/hr/users" },
