@@ -3,8 +3,15 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 
+// ═══════════════════════════════════════════════════════════════
+// COIN MANAGEMENT DISABLED — DO NOT DELETE — remove the early
+// return below (and the matching closing comment) to re-enable.
+// ═══════════════════════════════════════════════════════════════
+
 // GET  – list current user's endorsement requests
 export async function GET() {
+  return NextResponse.json({ error: 'Feature temporarily disabled' }, { status: 503 });
+  /* COIN MANAGEMENT DISABLED:
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -25,10 +32,13 @@ export async function GET() {
     console.error('GET /api/coins/endorse error:', err);
     return NextResponse.json({ error: err?.message || 'Server error' }, { status: 500 });
   }
+  */ // end COIN MANAGEMENT DISABLED GET
 }
 
 // POST – submit a new endorsement request
 export async function POST(req: Request) {
+  return NextResponse.json({ error: 'Feature temporarily disabled' }, { status: 503 });
+  /* COIN MANAGEMENT DISABLED:
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -97,4 +107,5 @@ export async function POST(req: Request) {
     console.error('POST /api/coins/endorse error:', err);
     return NextResponse.json({ error: err?.message || 'Server error' }, { status: 500 });
   }
+  */ // end COIN MANAGEMENT DISABLED POST
 }

@@ -1,9 +1,16 @@
+// ═════════════════════════════════════════════════════════
+// COIN MANAGEMENT DISABLED — DO NOT DELETE
+// Remove the early returns in each function below to re-enable.
+// ═════════════════════════════════════════════════════════
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 
 export async function GET() {
+  // COIN MANAGEMENT DISABLED — remove this line to re-enable
+  return NextResponse.json({ error: 'Feature temporarily disabled' }, { status: 503 });
+  // eslint-disable-next-line no-unreachable
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

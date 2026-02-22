@@ -26,6 +26,11 @@ import {
 import { signOut } from "next-auth/react";
 import NotificationDropdown from "@/components/dashboard/NotificationDropdown";
 
+// ═══════════════════════════════════════════════════════════════
+// COIN MANAGEMENT DISABLED - DO NOT DELETE
+// Uncomment the CoinIcon function and the coin nav entries below to re-enable.
+// ═══════════════════════════════════════════════════════════════
+/*
 // Inline SVG coin icon that inherits currentColor — matches the sidebar's color theme
 function CoinIcon({ size = 20, className = '', ...props }: any) {
   return (
@@ -49,6 +54,7 @@ function CoinIcon({ size = 20, className = '', ...props }: any) {
     </svg>
   );
 }
+*/
 
 // Fallback bell button when notifications are not available
 function FallbackNotificationButton() {
@@ -208,7 +214,7 @@ export default function DashboardLayout({
     '/dashboard/secretaries': ClipboardList,
     '/dashboard/donations/create': DollarSign,
     '/dashboard/admin/audit-logs': FileText,
-    '/dashboard/admin/coin-management': CoinIcon,
+    // '/dashboard/admin/coin-management': CoinIcon, // COIN MANAGEMENT DISABLED
     '/dashboard/admin/org-requests': Users,
   };
 
@@ -321,7 +327,7 @@ export default function DashboardLayout({
       { label: "User Management", href: "/dashboard/hr/users" },
       { label: "Services", href: "/dashboard/hr/services" },
       { label: "Manage Points / Ranks", href: "/dashboard/database" },
-      { label: "Coin Management", href: "/dashboard/admin/coin-management" },
+      // { label: "Coin Management", href: "/dashboard/admin/coin-management" }, // COIN MANAGEMENT DISABLED
       { label: "Org Requests", href: "/dashboard/admin/org-requests" },
       { label: "Tasks", href: "/dashboard/tasks" },
       { label: "Secretaries", href: "/dashboard/secretaries" },
@@ -337,10 +343,10 @@ export default function DashboardLayout({
       return mergeWithCommon(hrItems as any);
     }
     if (userRole === "ADMIN") {
-      // ADMIN sees the HR/admin menu plus Coin Management
+      // ADMIN sees the HR/admin menu plus Coin Management (currently disabled)
       const adminItemsWithCoins = [
         ...hrItems.slice(0, -1), // All items except Settings
-        { label: "Coin Management", href: "/dashboard/admin/coin-management" },
+        // { label: "Coin Management", href: "/dashboard/admin/coin-management" }, // COIN MANAGEMENT DISABLED
         { label: "Org Requests", href: "/dashboard/admin/org-requests" },
         hrItems[hrItems.length - 1], // Settings at the end
       ];

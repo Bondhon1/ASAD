@@ -15,6 +15,11 @@ export async function PATCH(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // Resolve actor for audit log
+  const actor = session?.user?.email
+    ? await prisma.user.findUnique({ where: { email: session.user.email }, select: { id: true } })
+    : null;
+
   const { id } = await params;
   const body = await req.json();
   const { type, isOpen } = body as { type: 'SECTOR' | 'CLUB'; isOpen: boolean };
@@ -27,10 +32,30 @@ export async function PATCH(
     if (type === 'SECTOR') {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const updated = await (prisma.sector.update as any)({ where: { id }, data: { isOpen } });
+      // Audit log
+      if (actor) {
+        await prisma.auditLog.create({
+          data: {
+            actorUserId: actor.id,
+            action: isOpen ? 'SECTOR_AVAILABILITY_OPENED' : 'SECTOR_AVAILABILITY_CLOSED',
+            meta: JSON.stringify({ sectorId: id, sectorName: updated.name, isOpen }),
+          },
+        }).catch(() => {}); // non-blocking
+      }
       return NextResponse.json({ sector: updated });
     } else {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const updated = await (prisma.club.update as any)({ where: { id }, data: { isOpen } });
+      // Audit log
+      if (actor) {
+        await prisma.auditLog.create({
+          data: {
+            actorUserId: actor.id,
+            action: isOpen ? 'CLUB_AVAILABILITY_OPENED' : 'CLUB_AVAILABILITY_CLOSED',
+            meta: JSON.stringify({ clubId: id, clubName: updated.name, isOpen }),
+          },
+        }).catch(() => {}); // non-blocking
+      }
       return NextResponse.json({ club: updated });
     }
   } catch (err: any) {

@@ -1,4 +1,10 @@
 "use client";
+/* eslint-disable react-hooks/rules-of-hooks */
+// ═══════════════════════════════════════════════════════════════
+// COIN MANAGEMENT DISABLED — DO NOT DELETE
+// To re-enable: remove the eslint-disable comment above and the
+// early return block inside CoinManagementPage below.
+// ═══════════════════════════════════════════════════════════════
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
@@ -281,7 +287,18 @@ type Withdrawal = {
   };
 };
 
+// ═══════════════════════════════════════════════════════════════
+// COIN MANAGEMENT DISABLED — DO NOT DELETE
+// Remove the early return inside the component below to re-enable.
+// ═══════════════════════════════════════════════════════════════
 export default function CoinManagementPage() {
+  // COIN MANAGEMENT DISABLED — remove this early return to re-enable
+  return (
+    <div className="flex items-center justify-center min-h-screen text-slate-500 text-sm">
+      Coin management is temporarily disabled.
+    </div>
+  );
+  // eslint-disable-next-line no-unreachable
   const router = useRouter();
   const { data: session, status } = useSession();
   const userEmail = session?.user?.email || (typeof window !== "undefined" ? localStorage.getItem("userEmail") : null);
@@ -831,7 +848,8 @@ export default function CoinManagementPage() {
 
       </div>
 
-      {results && <ResultsModal results={results} onClose={() => setResults(null)} />}
+      {/* eslint-disable-next-line @typescript-eslint/no-non-null-assertion */}
+      {results && <ResultsModal results={results!} onClose={() => setResults(null)} />}
     </DashboardLayout>
   );
 }

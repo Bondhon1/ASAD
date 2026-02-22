@@ -81,6 +81,11 @@ export default function DashboardPage() {
   const [campaignsLoading, setCampaignsLoading] = useState(true);
   const [taskSubmissionMap, setTaskSubmissionMap] = useState<Record<string, any>>({});
   const hasRefreshedForPayment = useRef(false);
+
+  // ═════════════════════════════════════════════════════════
+  // COIN MANAGEMENT DISABLED — set to true to re-enable coin UI
+  // ═════════════════════════════════════════════════════════
+  const COIN_MANAGEMENT_ENABLED = false;
   
   // Coin withdrawal states
   const [showCoinModal, setShowCoinModal] = useState(false);
@@ -292,6 +297,7 @@ export default function DashboardPage() {
 
   // Fetch endorsement history
   useEffect(() => {
+    if (!COIN_MANAGEMENT_ENABLED) return; // COIN MANAGEMENT DISABLED
     if (!userEmail) return;
     (async () => {
       try {
@@ -306,6 +312,7 @@ export default function DashboardPage() {
 
   // Fetch withdrawal history
   useEffect(() => {
+    if (!COIN_MANAGEMENT_ENABLED) return; // COIN MANAGEMENT DISABLED
     if (!userEmail) return;
     let cancelled = false;
     (async () => {
@@ -695,6 +702,7 @@ export default function DashboardPage() {
                 <button
                   onClick={() => setShowCoinModal(true)}
                   className="inline-flex items-center gap-2 px-3 h-9 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white text-sm font-medium hover:from-amber-600 hover:to-amber-700 transition-all shadow-md hover:shadow-lg transform hover:scale-105 whitespace-nowrap"
+                  style={{ display: COIN_MANAGEMENT_ENABLED ? undefined : 'none' }} // COIN MANAGEMENT DISABLED
                 >
                   <Image src="/icons/coin.svg" alt="coin" width={18} height={18} className="flex-shrink-0 drop-shadow-sm" />
                   <span className="leading-none">{user.coins ?? 0} Coins</span>
@@ -758,8 +766,8 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Coin Endorsement Modal */}
-      {showEndorseModal && (
+      {/* Coin Endorsement Modal - COIN MANAGEMENT DISABLED */}
+      {COIN_MANAGEMENT_ENABLED && showEndorseModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
             <div className="px-6 py-4 bg-gradient-to-r from-[#0b2545]/10 to-[#0b2545]/5 border-b border-[#0b2545]/20">
@@ -853,8 +861,8 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Withdrawal Request Modal */}
-      {showWithdrawModal && (
+      {/* Withdrawal Request Modal - COIN MANAGEMENT DISABLED */}
+      {COIN_MANAGEMENT_ENABLED && showWithdrawModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
             <div className="px-6 py-4 bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-200">
@@ -934,8 +942,8 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Coin Details Modal */}
-      {showCoinModal && (
+      {/* Coin Details Modal - COIN MANAGEMENT DISABLED */}
+      {COIN_MANAGEMENT_ENABLED && showCoinModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[600px] overflow-auto">
             <div className="px-6 py-4 bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-200">
