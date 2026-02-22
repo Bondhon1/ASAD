@@ -15,7 +15,8 @@ export async function GET() {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const requester = await prisma.user.findUnique({ where: { email: session.user.email } });
+    const email = session.user.email as string;
+    const requester = await prisma.user.findUnique({ where: { email } });
     if (!requester) return NextResponse.json({ error: 'User not found' }, { status: 404 });
     const role = String(requester.role || '').toUpperCase();
     if (role !== 'MASTER' && role !== 'ADMIN')
