@@ -269,7 +269,7 @@ export default function FinalPaymentPage({ userEmail: propEmail }: Props) {
               <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-sm text-blue-800 font-semibold">Send payment to</div>
+                    <div className="text-sm text-blue-800 font-semibold">Send money to</div>
                     <div className="text-lg font-mono text-blue-900 mt-1">{currentMethod.dummy}</div>
                   </div>
                   <div>
