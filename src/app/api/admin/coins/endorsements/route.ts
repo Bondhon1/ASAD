@@ -13,12 +13,11 @@ export async function GET() {
   // eslint-disable-next-line no-unreachable
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const email = session.user.email as string;
-    const requester = await prisma.user.findUnique({ where: { email } });
+    const email = session?.user?.email;
+    if (!email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const requester = await prisma.user.findUnique({ where: { email: email! } });
     if (!requester) return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    const role = String(requester.role || '').toUpperCase();
+    const role = String(requester!.role || '').toUpperCase();
     if (role !== 'MASTER' && role !== 'ADMIN')
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
