@@ -189,7 +189,35 @@ export async function POST(req: Request) {
           continue;
         }
 
-        console.log(`[ProcessExpired] Processing user: ${user.fullName} (${targetUserId}) | Current points: ${user.volunteerProfile?.points || 0}`);
+        // Check if user is on approved leave during the task's deadline
+        const activeLeave = await prisma.leave.findFirst({
+          where: {
+            userId: targetUserId,
+            status: 'APPROVED',
+            startDate: { lte: task.endDate },
+            endDate: { gte: task.endDate },
+          },
+        });
+
+        if (activeLeave) {
+          console.log(`[ProcessExpired] Skipping deduction for ${user.fullName} (${targetUserId}) - on approved leave during task deadline`);
+          // Still mark as processed to avoid re-processing, but without deduction
+          try {
+            await prisma.taskSubmission.create({
+              data: {
+                taskId: task.id,
+                userId: targetUserId,
+                submissionData: '__LEAVE_EXEMPTION__',
+                status: 'REJECTED',
+              },
+            });
+          } catch (e: any) {
+            if (e?.code !== 'P2002') {
+              console.error(`[ProcessExpired] Error creating leave exemption record for ${targetUserId}:`, e);
+            }
+          }
+          continue;
+        }
 
         try {
           // Create a deduction submission record to prevent duplicate deductions
@@ -392,6 +420,34 @@ export async function GET(req: Request) {
             continue;
           }
 
+          // Check if user is on approved leave during the task's deadline
+          const activeLeave = await prisma.leave.findFirst({
+            where: {
+              userId: targetUserId,
+              status: 'APPROVED',
+              startDate: { lte: task.endDate },
+              endDate: { gte: task.endDate },
+            },
+          });
+
+          if (activeLeave) {
+            console.log(`[GET/ProcessExpired] Skipping deduction for ${user.fullName} - on approved leave during task deadline`);
+            try {
+              await prisma.taskSubmission.create({
+                data: {
+                  taskId: task.id,
+                  userId: targetUserId,
+                  submissionData: '__LEAVE_EXEMPTION__',
+                  status: 'REJECTED',
+                },
+              });
+            } catch (e: any) {
+              if (e?.code !== 'P2002') {
+                console.error(`[GET/ProcessExpired] Error creating leave exemption for ${targetUserId}:`, e);
+              }
+            }
+            continue;
+          }
           try {
             await prisma.taskSubmission.create({
               data: {

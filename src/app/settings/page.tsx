@@ -62,6 +62,14 @@ export default function SettingsPage() {
   const [userSectors, setUserSectors] = useState<string[]>([]);
   const [userClubs, setUserClubs] = useState<string[]>([]);
   const [selectedOrg, setSelectedOrg] = useState<{ id: string; name: string; type: 'SECTOR' | 'CLUB'; imageUrl?: string | null; description?: string | null; isOpen: boolean } | null>(null);
+  // Leave management state
+  const [leaveExpanded, setLeaveExpanded] = useState(false);
+  const [leaves, setLeaves] = useState<any[]>([]);
+  const [leaveReason, setLeaveReason] = useState('');
+  const [leaveStartDate, setLeaveStartDate] = useState('');
+  const [leaveEndDate, setLeaveEndDate] = useState('');
+  const [leaveSubmitting, setLeaveSubmitting] = useState(false);
+  const [leavesLoading, setLeavesLoading] = useState(false);
   const skeleton = (
     <div className="max-w-4xl mx-auto px-6 py-8 animate-pulse space-y-4">
       <div className="h-8 w-40 bg-gray-200 rounded" />
@@ -1089,6 +1097,152 @@ export default function SettingsPage() {
             </div>
           );
         })()}
+
+        {/* Apply for Leave Section */}
+        {(user?.role === 'VOLUNTEER' || user?.role === 'HR' || user?.role === 'MASTER' || user?.role === 'ADMIN' || user?.role === 'DIRECTOR' || user?.role === 'DATABASE_DEPT' || user?.role === 'SECRETARIES') && user?.status === 'OFFICIAL' && (
+        <div className="bg-white border border-gray-200 rounded-md mt-4">
+          <button
+            className="w-full text-left px-4 py-3 flex items-center justify-between"
+            onClick={async () => {
+              const next = !leaveExpanded;
+              setLeaveExpanded(next);
+              if (next && leaves.length === 0) {
+                setLeavesLoading(true);
+                try {
+                  const res = await fetch('/api/user/leave');
+                  const data = await res.json();
+                  setLeaves(data.leaves || []);
+                } catch (e) {
+                  console.error('Failed to fetch leaves', e);
+                } finally {
+                  setLeavesLoading(false);
+                }
+              }
+            }}
+            aria-expanded={leaveExpanded}
+          >
+            <div>
+              <div className="text-sm font-medium text-gray-900">Apply for Leave</div>
+              <div className="text-xs text-gray-500">Submit a leave request and track your leave history.</div>
+            </div>
+            <div className="text-gray-500">{leaveExpanded ? '−' : '+'}</div>
+          </button>
+
+          {leaveExpanded && (
+            <div className="p-4 border-t border-gray-100 space-y-6">
+              {/* Leave Application Form */}
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">New Leave Request</div>
+                <div className="space-y-3 max-w-xl">
+                  <div>
+                    <label className="text-xs font-medium text-gray-700">Reason for Leave <span className="text-red-500">*</span></label>
+                    <textarea
+                      value={leaveReason}
+                      onChange={e => setLeaveReason(e.target.value)}
+                      rows={3}
+                      placeholder="Describe the reason for your leave request..."
+                      className="w-full mt-1 p-2 border border-gray-200 rounded-md text-sm resize-none focus:outline-none focus:border-[#0b2545]/40"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-medium text-gray-700">From Date <span className="text-red-500">*</span></label>
+                      <input
+                        type="date"
+                        value={leaveStartDate}
+                        onChange={e => setLeaveStartDate(e.target.value)}
+                        min={new Date().toISOString().slice(0, 10)}
+                        className="w-full mt-1 p-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-[#0b2545]/40"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-700">To Date <span className="text-red-500">*</span></label>
+                      <input
+                        type="date"
+                        value={leaveEndDate}
+                        onChange={e => setLeaveEndDate(e.target.value)}
+                        min={leaveStartDate || new Date().toISOString().slice(0, 10)}
+                        className="w-full mt-1 p-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-[#0b2545]/40"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if (!leaveReason.trim()) { toast('Please enter a reason for leave', { type: 'error' }); return; }
+                      if (!leaveStartDate) { toast('Please select a start date', { type: 'error' }); return; }
+                      if (!leaveEndDate) { toast('Please select an end date', { type: 'error' }); return; }
+                      setLeaveSubmitting(true);
+                      try {
+                        const res = await fetch('/api/user/leave', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ reason: leaveReason, startDate: leaveStartDate, endDate: leaveEndDate }),
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                          toast('Leave request submitted successfully', { type: 'success' });
+                          setLeaveReason('');
+                          setLeaveStartDate('');
+                          setLeaveEndDate('');
+                          setLeaves(prev => [data.leave, ...prev]);
+                        } else {
+                          toast(data.error || 'Failed to submit leave request', { type: 'error' });
+                        }
+                      } catch (e) {
+                        toast('Network error. Please try again.', { type: 'error' });
+                      } finally {
+                        setLeaveSubmitting(false);
+                      }
+                    }}
+                    disabled={leaveSubmitting}
+                    className="px-4 py-2 bg-[#07223f] text-white rounded-md text-sm font-medium disabled:opacity-60 hover:bg-[#0d2d5a] transition-colors"
+                  >
+                    {leaveSubmitting ? 'Submitting...' : 'Submit Leave Request'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Leave History */}
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Leave History</div>
+                {leavesLoading ? (
+                  <div className="text-sm text-gray-500 py-4 text-center">Loading leave history...</div>
+                ) : leaves.length === 0 ? (
+                  <div className="text-sm text-gray-500 py-4 text-center">No leave requests found.</div>
+                ) : (
+                  <div className="space-y-3">
+                    {leaves.map((leave: any) => (
+                      <div key={leave.id} className="border border-gray-100 rounded-lg p-3 bg-gray-50">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-gray-900 truncate">{leave.reason}</div>
+                            <div className="text-xs text-gray-500 mt-0.5">
+                              {new Date(leave.startDate).toLocaleDateString()} &ndash; {new Date(leave.endDate).toLocaleDateString()}
+                            </div>
+                            {leave.feedback && (
+                              <div className="mt-1.5 p-2 bg-blue-50 border border-blue-100 rounded text-xs text-blue-800">
+                                <span className="font-semibold">HR Feedback:</span> {leave.feedback}
+                              </div>
+                            )}
+                          </div>
+                          <span className={`flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
+                            leave.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
+                            leave.status === 'DECLINED' ? 'bg-red-100 text-red-700' :
+                            'bg-amber-100 text-amber-700'
+                          }`}>
+                            {leave.status === 'APPROVED' ? '✓ Approved' : leave.status === 'DECLINED' ? '✗ Declined' : '⏳ Pending'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+        )}
+
       </div>
       )}
 

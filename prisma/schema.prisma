@@ -85,6 +85,7 @@ model User {
   initialPaymentsApproved InitialPayment[]    @relation("InitialPaymentApprovedBy")
   finalPaymentsApproved   FinalPayment[]      @relation("FinalPaymentApprovedBy")
   leaves                Leave[]
+  reviewedLeaves        Leave[]          @relation("LeaveReviewedBy")
   
   // Notifications
   notifications         Notification[]
@@ -666,13 +667,17 @@ model Leave {
   reason                String
   leaveType             LeaveType        @default(CASUAL)
   status                LeaveStatus      @default(PENDING)
-  approvedBy            String?
-  approvedAt            DateTime?
+  feedback              String?          // HR feedback/comment visible to volunteer
+  reviewedBy            User?            @relation("LeaveReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedById          String?
+  reviewedAt            DateTime?
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
   
   @@index([userId])
   @@index([status])
+  @@index([startDate])
+  @@index([endDate])
 }
 
 enum LeaveType {
@@ -685,6 +690,7 @@ enum LeaveType {
 enum LeaveStatus {
   PENDING
   APPROVED
+  DECLINED
   REJECTED
 }
 
@@ -792,6 +798,11 @@ enum NotificationType {
   APC_PAYOUT_REQUESTED
   APC_PAYOUT_COMPLETED
   APC_PAYOUT_REJECTED
+
+  // Leave
+  LEAVE_APPROVED
+  LEAVE_DECLINED
+  LEAVE_SUBMITTED
 
   // Legacy (retained for existing DB rows — no longer issued by new code)
   COIN_ENDORSED

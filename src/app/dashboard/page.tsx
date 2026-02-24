@@ -82,6 +82,8 @@ export default function DashboardPage() {
   const [campaignsLoading, setCampaignsLoading] = useState(true);
   const [taskSubmissionMap, setTaskSubmissionMap] = useState<Record<string, any>>({});
   const hasRefreshedForPayment = useRef(false);
+  // Active leave state (for "On Leave" badge)
+  const [activeLeave, setActiveLeave] = useState<{ startDate: string; endDate: string } | null>(null);
 
   // ═══════════════════════════════════════════════════════════════════════════
   // APC (ASADIAN PERFORMANCE CREDIT) — enabled
@@ -111,6 +113,25 @@ export default function DashboardPage() {
   } | null>(null);
   const [pointsDataLoading, setPointsDataLoading] = useState(false);
   const pointsDataFetched = useRef(false);
+
+  // Fetch active leave for On Leave badge
+  useEffect(() => {
+    if (!user || user.status !== 'OFFICIAL') return;
+    fetch('/api/user/leave')
+      .then(r => r.json())
+      .then(data => {
+        const now = new Date();
+        const active = (data.leaves || []).find((l: any) => {
+          if (l.status !== 'APPROVED') return false;
+          const start = new Date(l.startDate);
+          const end = new Date(l.endDate);
+          end.setHours(23, 59, 59, 999);
+          return now >= start && now <= end;
+        });
+        setActiveLeave(active || null);
+      })
+      .catch(() => {});
+  }, [user?.id, user?.status]);
 
   useEffect(() => {
     if (status !== "unauthenticated") return;
@@ -604,8 +625,14 @@ export default function DashboardPage() {
                   )}
                 </div>
                 <div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <div className="text-lg font-semibold text-gray-900">{user.fullName || user.username || "Volunteer"}</div>
+                    {activeLeave && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 text-xs font-semibold border border-orange-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                        On Leave
+                      </span>
+                    )}
                   </div>
                   <div className="text-sm text-gray-600">{user.institute?.name || "Independent"}</div>
                   <div className="text-xs text-gray-500">ID: {user.volunteerId || "—"}</div>
