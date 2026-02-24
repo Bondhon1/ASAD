@@ -442,7 +442,7 @@ export default function InitialPaymentPage() {
                         if (suggestTimerRef.current) clearTimeout(suggestTimerRef.current);
                         if (val.length >= 2) {
                           suggestTimerRef.current = setTimeout(() => {
-                            fetch(`/api/institutes/suggestions?q=${encodeURIComponent(val)}`)
+                            fetch(`/api/institutes/suggestions?q=${encodeURIComponent(val)}`, { cache: 'no-store' })
                               .then(res => res.json())
                               .then(data => setSuggestions(data.suggestions || []))
                               .catch(() => setSuggestions([]));
@@ -453,16 +453,9 @@ export default function InitialPaymentPage() {
                       }}
                       onFocus={() => {
                         setShowSuggestions(true);
-                        if (instituteName.length >= 2) {
-                          // Only fetch on focus if suggestions aren't already loaded
-                          if (suggestTimerRef.current) clearTimeout(suggestTimerRef.current);
-                          suggestTimerRef.current = setTimeout(() => {
-                            fetch(`/api/institutes/suggestions?q=${encodeURIComponent(instituteName)}`)
-                              .then(res => res.json())
-                              .then(data => setSuggestions(data.suggestions || []))
-                              .catch(() => setSuggestions([]));
-                          }, 100);
-                        }
+                        // Don't fetch here — onChange handles debounced fetching.
+                        // Fetching on focus with a stale instituteName closure would
+                        // cancel the in-flight onChange timer and show stale results.
                       }}
                       placeholder="Type to search your school/institute"
                       className="w-full pr-10 px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/50 focus:border-[#1E3A5F] transition-all"
