@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { NotificationType } from "@prisma/client";
+import { publishNotification } from "@/lib/ably";
 
 export const dynamic = "force-dynamic";
 
@@ -126,23 +127,43 @@ export async function POST(req: Request) {
       },
     });
 
-    // Notify HR members about new leave request
+    // Notify HR/Admin/Master members about new leave request via DB + Ably
     const hrUsers = await prisma.user.findMany({
       where: { role: { in: ["HR", "MASTER", "ADMIN"] }, status: "OFFICIAL" },
       select: { id: true },
     });
 
     if (hrUsers.length > 0) {
-      await prisma.notification.createMany({
-        data: hrUsers.map((hr) => ({
-          userId: hr.id,
-          broadcast: false,
-          type: NotificationType.LEAVE_SUBMITTED,
-          title: "📋 New Leave Request",
-          message: `${user.fullName || "A volunteer"} (${user.volunteerId || user.id}) has submitted a leave request from ${start.toLocaleDateString()} to ${end.toLocaleDateString()}.`,
-          link: "/dashboard/hr/leaves",
-        })),
-      });
+      const notifTitle = "📋 New Leave Request";
+      const notifMessage = `${user.fullName || "A volunteer"} (${user.volunteerId || user.id}) has submitted a leave request from ${start.toLocaleDateString()} to ${end.toLocaleDateString()}.`;
+      const notifLink = "/dashboard/hr/leaves";
+
+      await Promise.all(
+        hrUsers.map(async (hr) => {
+          try {
+            const notification = await prisma.notification.create({
+              data: {
+                userId: hr.id,
+                broadcast: false,
+                type: NotificationType.LEAVE_SUBMITTED,
+                title: notifTitle,
+                message: notifMessage,
+                link: notifLink,
+              },
+            });
+            await publishNotification(hr.id, {
+              id: notification.id,
+              type: notification.type,
+              title: notification.title,
+              message: notification.message,
+              link: notification.link,
+              createdAt: notification.createdAt,
+            });
+          } catch (e) {
+            console.error("Failed to notify HR user", hr.id, e);
+          }
+        })
+      );
     }
 
     return NextResponse.json({ leave }, { status: 201 });

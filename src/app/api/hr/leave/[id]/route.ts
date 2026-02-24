@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { NotificationType } from "@prisma/client";
+import { publishNotification } from "@/lib/ably";
 
 export const dynamic = "force-dynamic";
 
@@ -120,7 +121,7 @@ export async function PATCH(
           ? `Your leave request (${dateRange}) has been approved.${feedback ? ` HR feedback: "${feedback}"` : ""}`
           : `Your leave request (${dateRange}) has been declined.${feedback ? ` HR feedback: "${feedback}"` : ""}`;
 
-      await prisma.notification.create({
+      const notification = await prisma.notification.create({
         data: {
           userId: leave.userId,
           broadcast: false,
@@ -129,6 +130,14 @@ export async function PATCH(
           message,
           link: "/settings",
         },
+      });
+      await publishNotification(leave.userId, {
+        id: notification.id,
+        type: notification.type,
+        title: notification.title,
+        message: notification.message,
+        link: notification.link,
+        createdAt: notification.createdAt,
       });
     }
 
