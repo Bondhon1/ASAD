@@ -111,8 +111,9 @@ export async function resolveAudienceUserIds(audience: AudienceSpec, opts?: { in
   return Array.from(ids);
 }
 
-export function isUserInAudience(audience: AudienceSpec, user: { id: string; volunteerProfile?: { serviceId?: string | null; service?: { name?: string | null } | null; sectors?: string[]; clubs?: string[] } | null; committeeMemberships?: { committeeId: string }[] | null }, fallbackTargetIds?: string[]) {
-  if (audience.all) return true;
+export function isUserInAudience(audience: AudienceSpec, user: { id: string; status?: string | null; volunteerProfile?: { serviceId?: string | null; service?: { name?: string | null } | null; sectors?: string[]; clubs?: string[] } | null; committeeMemberships?: { committeeId: string }[] | null }, fallbackTargetIds?: string[]) {
+  // "all" targets only OFFICIAL members — always false for non-OFFICIAL users
+  if (audience.all) return user.status === 'OFFICIAL';
 
   if (fallbackTargetIds && fallbackTargetIds.includes(user.id)) return true;
 

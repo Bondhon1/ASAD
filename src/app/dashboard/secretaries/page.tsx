@@ -489,7 +489,7 @@ export default function SecretariesPage() {
     <div className="min-h-[calc(100vh-140px)] bg-transparent py-10 px-4">
       <div className="max-w-5xl mx-auto">
         <div className="flex flex-col gap-3 mb-6">
-          <p className="text-sm uppercase tracking-[0.2em] text-[#0b1c33]">Secretaries Console</p>
+          <p className="text-sm uppercase tracking-[0.2em] text-[#0b1c33]">Task Management Console</p>
           <h1 className="text-3xl md:text-4xl font-semibold leading-tight text-[#0b1c33]">Create & Manage Tasks</h1>
           <p className="text-[#0b1c33] text-sm md:text-base">Target services, sectors, or clubs with one action. Everyone selected receives a notification.</p>
         </div>
@@ -550,13 +550,13 @@ export default function SecretariesPage() {
                 <p className="text-sm font-semibold text-[#07223f]">Target Audience</p>
                 <p className="text-xs text-slate-500">Pick one or many groups. Everyone selected gets notified.</p>
               </div>
-              <div className="text-xs text-slate-500">{targetAll ? 'All volunteers' : `${selectedServices.length + selectedSectors.length + selectedClubs.length} selected`}</div>
+              <div className="text-xs text-slate-500">{targetAll ? 'All official members (OFFICIAL)' : `${selectedServices.length + selectedSectors.length + selectedClubs.length} selected`}</div>
             </div>
 
             <div className="flex items-center gap-2 mb-4">
               <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-slate-200 shadow-sm">
                 <input type="checkbox" checked={targetAll} onChange={(e)=>{ setTargetAll(e.target.checked); if (e.target.checked) { setSelectedServices([]); setSelectedSectors([]); setSelectedClubs([]); } }} className="h-4 w-4" />
-                <span className="text-sm text-[#07223f]">Notify all volunteers</span>
+                <span className="text-sm text-[#07223f]">All official members (status: OFFICIAL)</span>
               </label>
             </div>
 
@@ -678,7 +678,7 @@ export default function SecretariesPage() {
                                 setEditTargetAll(e.target.checked);
                                 if (e.target.checked) { setEditSelectedServices([]); setEditSelectedSectors([]); setEditSelectedClubs([]); }
                               }} />
-                              <span className="text-xs text-slate-600">All Volunteers</span>
+                              <span className="text-xs text-slate-600">All official members (status: OFFICIAL)</span>
                             </label>
                             {!editTargetAll && (
                               <div className="space-y-4">

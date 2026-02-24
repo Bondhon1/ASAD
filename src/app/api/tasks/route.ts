@@ -31,6 +31,7 @@ export async function GET(req: Request) {
     const visible = tasks.filter((t) =>
       isUserInAudience(parseAudience(t.assignedGroup), {
         id: requester.id,
+        status: requester.status,
         volunteerProfile: requester.volunteerProfile as any,
       }, t.targetUserIds)
     );

@@ -62,7 +62,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const audienceSpec = parseAudience(task.assignedGroup);
     const computedAudience = await resolveAudienceUserIds(audienceSpec, { fallbackTargetIds: task.targetUserIds });
     // Check if user is in target audience or is admin/creator
-    const isTargetUser = isUserInAudience(audienceSpec, { id: requester.id, volunteerProfile: requester.volunteerProfile as any }, task.targetUserIds);
+    const isTargetUser = isUserInAudience(audienceSpec, { id: requester.id, status: requester.status, volunteerProfile: requester.volunteerProfile as any }, task.targetUserIds);
     const isCreator = task.createdByUserId === requester.id;
     const isAdmin = ['MASTER', 'ADMIN', 'SECRETARIES', 'HR', 'DIRECTOR'].includes(requester.role);
 
@@ -98,14 +98,15 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     let submissionStats = null;
     if (isAdmin || isCreator) {
       const totalTarget = computedAudience.length;
+      const deductionFilter = { NOT: { submissionData: '__DEADLINE_MISSED_DEDUCTION__' } };
       const submissionCount = await prisma.taskSubmission.count({
-        where: { taskId },
+        where: { taskId, ...deductionFilter },
       });
       const approvedCount = await prisma.taskSubmission.count({
-        where: { taskId, status: 'APPROVED' },
+        where: { taskId, status: 'APPROVED', ...deductionFilter },
       });
       const pendingCount = await prisma.taskSubmission.count({
-        where: { taskId, status: 'PENDING' },
+        where: { taskId, status: 'PENDING', ...deductionFilter },
       });
 
       submissionStats = {

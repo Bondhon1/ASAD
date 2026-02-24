@@ -633,7 +633,7 @@ export default function TasksPage() {
                               setEditTargetAll(e.target.checked);
                               if (e.target.checked) { setEditSelectedServices([]); setEditSelectedSectors([]); setEditSelectedClubs([]); }
                             }} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-                            <span className="text-sm font-medium text-slate-600">Notify All Volunteers</span>
+                            <span className="text-sm font-medium text-slate-600">All official members (status: OFFICIAL)</span>
                           </label>
                           {!editTargetAll && (
                             <div className="space-y-4">
@@ -781,7 +781,7 @@ export default function TasksPage() {
                                       setEditTargetAll(e.target.checked);
                                       if (e.target.checked) { setEditSelectedServices([]); setEditSelectedSectors([]); setEditSelectedClubs([]); }
                                     }} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-                                    <span className="text-sm font-medium text-slate-600">Notify All Volunteers</span>
+                                    <span className="text-sm font-medium text-slate-600">All official members (status: OFFICIAL)</span>
                                   </label>
                                   {!editTargetAll && (
                                     <div className="space-y-4">
@@ -914,7 +914,7 @@ export default function TasksPage() {
                                   setEditTargetAll(e.target.checked);
                                   if (e.target.checked) { setEditSelectedServices([]); setEditSelectedSectors([]); setEditSelectedClubs([]); }
                                 }} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-                                <span className="text-sm font-medium text-slate-600">Notify All Volunteers</span>
+                                <span className="text-sm font-medium text-slate-600">All official members (status: OFFICIAL)</span>
                               </label>
                               {!editTargetAll && (
                                 <div className="space-y-4">

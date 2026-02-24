@@ -84,7 +84,7 @@ export async function POST(req: Request) {
 
     // Check if user is in target audience (computed dynamically)
     const audienceSpec = parseAudience(task.assignedGroup);
-    const isAllowed = isUserInAudience(audienceSpec, { id: requester.id, volunteerProfile: requester.volunteerProfile as any }, task.targetUserIds);
+    const isAllowed = isUserInAudience(audienceSpec, { id: requester.id, status: requester.status, volunteerProfile: requester.volunteerProfile as any }, task.targetUserIds);
     if (!isAllowed) {
       return NextResponse.json({ 
         error: 'You are not in the target audience for this task' 
@@ -151,9 +151,10 @@ export async function POST(req: Request) {
         const merged = {
           ...(base || {}),
           ...(body.donation || {}),
-          donationId: createdDonation?.id || undefined,
+          ...(createdDonation?.id ? { donationId: createdDonation.id } : {}),
         } as any;
-        submissionDataToStore = Object.keys(merged).length ? JSON.stringify(merged) : null;
+        // If merged is empty and we have a raw string (e.g. COMMENT type), store the raw string directly
+        submissionDataToStore = Object.keys(merged).length ? JSON.stringify(merged) : (body.submissionData || null);
       } catch (e) {
         submissionDataToStore = body.submissionData || null;
       }

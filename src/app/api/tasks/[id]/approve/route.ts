@@ -185,7 +185,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const { id: taskId } = await params;
 
     const submissions = await prisma.taskSubmission.findMany({
-      where: { taskId },
+      where: {
+        taskId,
+        // Exclude auto-created deadline-miss deduction markers
+        NOT: { submissionData: '__DEADLINE_MISSED_DEDUCTION__' },
+      },
       include: {
         user: {
           select: {

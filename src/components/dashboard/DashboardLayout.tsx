@@ -303,7 +303,7 @@ export default function DashboardLayout({
     const directorItems = [
       { label: "Dashboard", href: "/dashboard" },
       { label: "User Management", href: "/dashboard/hr/users" },
-      { label: "Org Requests", href: "/dashboard/admin/org-requests" },
+      { label: "Sector/club management", href: "/dashboard/admin/org-requests" },
       { label: "Settings", href: "/dashboard/settings" },
     ];
 
@@ -330,7 +330,7 @@ export default function DashboardLayout({
 
     const secretariesItems = [
       { label: "Dashboard", href: "/dashboard" },
-      { label: "Secretaries", href: "/dashboard/secretaries" },
+      { label: "Task management", href: "/dashboard/secretaries" },
       { label: "Tasks", href: "/dashboard/tasks" },
       { label: "Community", href: "/dashboard/community" },
       { label: "Settings", href: "/dashboard/settings" },
@@ -348,9 +348,9 @@ export default function DashboardLayout({
       { label: "Services", href: "/dashboard/hr/services" },
       { label: "Manage Points / Ranks", href: "/dashboard/database" },
       { label: "Credit Management", href: "/dashboard/admin/credit-management" },
-      { label: "Org Requests", href: "/dashboard/admin/org-requests" },
+      { label: "Sector/club management", href: "/dashboard/admin/org-requests" },
       { label: "Tasks", href: "/dashboard/tasks" },
-      { label: "Secretaries", href: "/dashboard/secretaries" },
+      { label: "Task management", href: "/dashboard/secretaries" },
       { label: "Community", href: "/dashboard/community" },
       { label: "Settings", href: "/dashboard/settings" },
       { label: "Create Donation", href: "/dashboard/donations/create" },
@@ -365,7 +365,7 @@ export default function DashboardLayout({
       const adminItems = [
         ...hrItems.slice(0, -1), // All items except Settings
         { label: "Credit Management", href: "/dashboard/admin/credit-management" },
-        { label: "Org Requests", href: "/dashboard/admin/org-requests" },
+        { label: "Sector/club management", href: "/dashboard/admin/org-requests" },
         hrItems[hrItems.length - 1], // Settings at the end
       ];
       return mergeWithCommon(adminItems as any);

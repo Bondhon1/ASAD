@@ -220,7 +220,7 @@ export default function OrgRequestsPage() {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-slate-900">
-                Org Join Requests
+                Sector/Club Management
               </h1>
               <p className="text-sm text-slate-600">
                 Manage sector &amp; club membership requests
