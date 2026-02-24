@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { getInstituteSuggestions } from '../../../../lib/institutes-data';
 
-// Static data — no auth, no DB. Allow CDN/edge to cache per unique query string.
-export const dynamic = "force-static";
-export const revalidate = 3600; // Edge cache for 1 hour
+// Dynamic so Next.js forwards the ?q= search param on every request.
+// Caching is handled by Cache-Control headers returned below.
+export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
