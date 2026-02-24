@@ -146,12 +146,17 @@ export default function UsersManagementPage() {
     };
 
     const fetchStats = async () => {
+      const statsUrl = buildStatsUrl();
       try {
-        const res = await fetch(buildStatsUrl(), { signal: controller.signal });
+        const res = await fetch(statsUrl, { signal: controller.signal });
         if (!res.ok) throw new Error(`Status ${res.status}`);
         const data = await res.json();
         if (!active) return;
         setStats({ total: data.total, officialCount: data.officialCount, rankCounts: data.rankCounts });
+        // If no filters are active the filtered URL IS the overall URL — reuse it, skip 2nd call
+        if (statsUrl === '/api/hr/users/stats') {
+          setOverallTotal(typeof data.total === 'number' ? data.total : null);
+        }
       } catch (err: any) {
         if (err.name === 'AbortError') return;
         console.error('Failed to load stats', err);
@@ -159,6 +164,8 @@ export default function UsersManagementPage() {
     };
 
     const fetchOverallStats = async () => {
+      // Skip if no filters — fetchStats already fetched overall
+      if (buildStatsUrl() === '/api/hr/users/stats') return;
       try {
         const res = await fetch('/api/hr/users/stats', { signal: controller.signal });
         if (!res.ok) return;

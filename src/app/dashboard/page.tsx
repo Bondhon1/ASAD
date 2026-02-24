@@ -24,6 +24,7 @@ interface User {
   upazila?: string | null;
   addressLine?: string | null;
   coins?: number;
+  credits?: number;
   experiences?: Array<{
     id: string;
     title: string;
@@ -82,30 +83,17 @@ export default function DashboardPage() {
   const [taskSubmissionMap, setTaskSubmissionMap] = useState<Record<string, any>>({});
   const hasRefreshedForPayment = useRef(false);
 
-  // ═════════════════════════════════════════════════════════
-  // COIN MANAGEMENT DISABLED — set to true to re-enable coin UI
-  // ═════════════════════════════════════════════════════════
-  const COIN_MANAGEMENT_ENABLED = false;
-  
-  // Coin withdrawal states
-  const [showCoinModal, setShowCoinModal] = useState(false);
-  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
-  const [withdrawCoins, setWithdrawCoins] = useState<number | ''>('');
-  const [withdrawMethod, setWithdrawMethod] = useState('bkash');
-  const [withdrawAccount, setWithdrawAccount] = useState('');
-  const [withdrawSubmitting, setWithdrawSubmitting] = useState(false);
-  const [withdrawals, setWithdrawals] = useState<any[]>([]);
-  const [withdrawalsLoading, setWithdrawalsLoading] = useState(false);
+  // ═══════════════════════════════════════════════════════════════════════════
+  // APC (ASADIAN PERFORMANCE CREDIT) — enabled
+  // ═══════════════════════════════════════════════════════════════════════════
 
-  // Coin endorsement states
-  const [showEndorseModal, setShowEndorseModal] = useState(false);
-  const [endorseAmount, setEndorseAmount] = useState<number | ''>('');
-  const [endorseMethod, setEndorseMethod] = useState('bkash');
-  const [endorseAccount, setEndorseAccount] = useState('');
-  const [endorseTxId, setEndorseTxId] = useState('');
-  const [endorseDatetime, setEndorseDatetime] = useState('');
-  const [endorseSubmitting, setEndorseSubmitting] = useState(false);
-  const [endorsements, setEndorsements] = useState<any[]>([]);
+  // APC Payout states
+  const [showCreditModal, setShowCreditModal] = useState(false);
+  const [showPayoutModal, setShowPayoutModal] = useState(false);
+  const [payoutBkash, setPayoutBkash] = useState('');
+  const [payoutTermsAccepted, setPayoutTermsAccepted] = useState(false);
+  const [payoutSubmitting, setPayoutSubmitting] = useState(false);
+  const [payouts, setPayouts] = useState<any[]>([]);
 
   // Points history modal state
   const [showPointsModal, setShowPointsModal] = useState(false);
@@ -263,10 +251,26 @@ export default function DashboardPage() {
     return () => { mounted = false; };
   }, [userEmail]);
 
-  // Compute pending and available coins from withdrawals
-  const totalCoins = Number(user?.coins ?? 0);
-  const pendingCoins = (withdrawals || []).filter((w: any) => w.status === 'PENDING').reduce((s: number, w: any) => s + (w?.coins || 0), 0);
-  const availableCoins = Math.max(0, totalCoins - pendingCoins);
+  // Compute pending and available credits from payouts
+  const totalCredits = Number(user?.credits ?? user?.coins ?? 0);
+  const pendingCredits = (payouts || []).filter((w: any) => w.status === 'PENDING').reduce((s: number, w: any) => s + (w?.credits || w?.coins || 0), 0);
+  const availableCredits = Math.max(0, totalCredits - pendingCredits);
+
+  // APC payout eligibility calculation
+  const APC_BASE_CREDITS = 10000;
+  const APC_BASE_BDT = 2000;
+  const APC_STEP_CREDITS = 5000;
+  const APC_STEP_BDT = 1000;
+  function calcPayout(credits: number) {
+    if (credits < APC_BASE_CREDITS) return { eligibleBDT: 0, creditsToDeduct: 0, remaining: credits };
+    const steps = Math.floor((credits - APC_BASE_CREDITS) / APC_STEP_CREDITS);
+    return {
+      eligibleBDT: APC_BASE_BDT + steps * APC_STEP_BDT,
+      creditsToDeduct: APC_BASE_CREDITS + steps * APC_STEP_CREDITS,
+      remaining: credits - (APC_BASE_CREDITS + steps * APC_STEP_CREDITS),
+    };
+  }
+  const payoutCalc = calcPayout(availableCredits);
 
   // Keep submission status in sync for the tasks shown on the dashboard
   useEffect(() => {
@@ -295,40 +299,18 @@ export default function DashboardPage() {
     return () => { cancelled = true; };
   }, [pendingTasks]);
 
-  // Fetch endorsement history
+  // Fetch payout history
   useEffect(() => {
-    if (!COIN_MANAGEMENT_ENABLED) return; // COIN MANAGEMENT DISABLED
-    if (!userEmail) return;
-    (async () => {
-      try {
-        const res = await fetch('/api/coins/endorse');
-        if (res.ok) {
-          const data = await res.json();
-          setEndorsements(data.endorsements || []);
-        }
-      } catch (e) { /* ignore */ }
-    })();
-  }, [userEmail]);
-
-  // Fetch withdrawal history
-  useEffect(() => {
-    if (!COIN_MANAGEMENT_ENABLED) return; // COIN MANAGEMENT DISABLED
     if (!userEmail) return;
     let cancelled = false;
     (async () => {
-      setWithdrawalsLoading(true);
       try {
-        const res = await fetch('/api/coins/request-withdrawal');
-        if (!res.ok) {
-          if (!cancelled) setWithdrawals([]);
-          return;
-        }
+        const res = await fetch('/api/credits/request-payout');
+        if (!res.ok) return;
         const data = await res.json();
-        if (!cancelled) setWithdrawals(data.withdrawals || []);
+        if (!cancelled) setPayouts(data.payouts || []);
       } catch (e) {
-        if (!cancelled) setWithdrawals([]);
-      } finally {
-        if (!cancelled) setWithdrawalsLoading(false);
+        if (!cancelled) setPayouts([]);
       }
     })();
     return () => { cancelled = true; };
@@ -354,94 +336,45 @@ export default function DashboardPage() {
   const openPointsModal = () => { fetchPointsData(); setShowPointsModal(true); };
   const openRankModal  = () => { fetchPointsData(); setShowRankModal(true);  };
 
-  const handleEndorseSubmit = async () => {
-    if (!endorseAmount || Number(endorseAmount) <= 0) { alert('Enter a valid amount'); return; }
-    if (!endorseAccount) { alert('Enter your account / sender number'); return; }
-    if (!endorseDatetime) { alert('Select the transfer date & time'); return; }
-    setEndorseSubmitting(true);
-    try {
-      const res = await fetch('/api/coins/endorse', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          amount: Number(endorseAmount),
-          method: endorseMethod,
-          accountNumber: endorseAccount,
-          transactionId: endorseTxId || undefined,
-          datetime: endorseDatetime,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'Failed');
-      alert('Endorsement request submitted! Admins will review it soon.');
-      setShowEndorseModal(false);
-      setShowCoinModal(true);
-      setEndorseAmount('');
-      setEndorseAccount('');
-      setEndorseTxId('');
-      setEndorseDatetime('');
-      if (data?.endorsement) setEndorsements((prev) => [data.endorsement, ...prev]);
-    } catch (e: any) {
-      alert(e?.message || 'Failed to submit endorsement');
-    } finally {
-      setEndorseSubmitting(false);
-    }
-  };
-
   const handleWithdrawRequest = async () => {
-    if (!withdrawCoins || withdrawCoins <= 0) {
-      alert('Please enter a valid coin amount');
+    if (!payoutBkash.trim()) {
+      alert('Please enter your bKash number');
       return;
     }
-    if (withdrawCoins < 15000) {
-      alert('Minimum 15000 coins required for withdrawal');
+    if (!payoutTermsAccepted) {
+      alert('Please accept the APC Terms & Policy to proceed');
       return;
     }
-    if (!withdrawAccount) {
-      alert('Please enter your payment account number');
+    if (payoutCalc.eligibleBDT === 0) {
+      alert(`Insufficient credits. Minimum ${APC_BASE_CREDITS.toLocaleString()} credits required.`);
       return;
     }
 
-    setWithdrawSubmitting(true);
+    setPayoutSubmitting(true);
     try {
-      const res = await fetch('/api/coins/request-withdrawal', {
+      const res = await fetch('/api/credits/request-payout', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          coins: Number(withdrawCoins),
-          paymentMethod: withdrawMethod,
-          accountNumber: withdrawAccount,
+          bkashNumber: payoutBkash,
+          termsAccepted: payoutTermsAccepted,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || 'Failed');
       
-      alert('Withdrawal request submitted successfully!');
-      setShowWithdrawModal(false);
-      setShowCoinModal(true); // Reopen coin modal to show updated status
-      setWithdrawCoins('');
-      setWithdrawAccount('');
+      alert('Payout request submitted successfully!');
+      setShowPayoutModal(false);
+      setShowCreditModal(true);
+      setPayoutBkash('');
+      setPayoutTermsAccepted(false);
 
-      // Optimistically add the new pending withdrawal so UI updates immediately
-      if (data?.withdrawal) {
-        setWithdrawals((prev) => [data.withdrawal, ...(prev || [])]);
-      }
-
-      // Refresh server state in background
-      try {
-        const refreshRes = await fetch('/api/coins/request-withdrawal');
-        if (refreshRes.ok) {
-          const refreshData = await refreshRes.json();
-          setWithdrawals(refreshData.withdrawals || []);
-        }
-      } catch (e) {
-        // ignore
-      }
+      if (data?.payout) setPayouts((prev) => [data.payout, ...(prev || [])]);
       refresh();
     } catch (e: any) {
-      alert(e?.message || 'Failed to submit withdrawal request');
+      alert(e?.message || 'Failed to submit payout request');
     } finally {
-      setWithdrawSubmitting(false);
+      setPayoutSubmitting(false);
     }
   };
 
@@ -700,12 +633,13 @@ export default function DashboardPage() {
                   {user.volunteerProfile?.points ?? 0} Points
                 </button>
                 <button
-                  onClick={() => setShowCoinModal(true)}
-                  className="inline-flex items-center gap-2 px-3 h-9 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white text-sm font-medium hover:from-amber-600 hover:to-amber-700 transition-all shadow-md hover:shadow-lg transform hover:scale-105 whitespace-nowrap"
-                  style={{ display: COIN_MANAGEMENT_ENABLED ? undefined : 'none' }} // COIN MANAGEMENT DISABLED
+                  onClick={() => setShowCreditModal(true)}
+                  className="inline-flex items-center gap-2 px-3 h-9 rounded-full bg-gradient-to-r from-[#0b2545] to-[#0d2d5a] text-white text-sm font-medium hover:opacity-90 transition-all shadow-md hover:shadow-lg transform hover:scale-105 whitespace-nowrap"
                 >
-                  <Image src="/icons/coin.svg" alt="coin" width={18} height={18} className="flex-shrink-0 drop-shadow-sm" />
-                  <span className="leading-none">{user.coins ?? 0} Coins</span>
+                  {/* APC logo on dark pill — drop-shadow so it pops */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/icons/creditlogo.svg" alt="APC" className="flex-shrink-0" style={{ width: 20, height: 20, display: 'block', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))' }} />
+                  <span className="leading-none">{(user.credits ?? user.coins) ?? 0} Credits</span>
                 </button>
               </div>
             </div>
@@ -766,172 +700,97 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Coin Endorsement Modal - COIN MANAGEMENT DISABLED */}
-      {COIN_MANAGEMENT_ENABLED && showEndorseModal && (
+      {/* APC Payout Request Modal */}
+      {showPayoutModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
-            <div className="px-6 py-4 bg-gradient-to-r from-[#0b2545]/10 to-[#0b2545]/5 border-b border-[#0b2545]/20">
+            <div className="px-6 py-4 bg-gradient-to-r from-[#0b2545] to-[#0d2d5a] border-b border-[#0b2545]/20">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-gray-900">Endorse Coins</h2>
-                <button onClick={() => { setShowEndorseModal(false); setShowCoinModal(true); }} className="p-2 hover:bg-white rounded-lg transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-                </button>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">Submit payment details to top up your coin balance.</p>
-            </div>
-
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Amount (BDT)</label>
-                <input
-                  type="number"
-                  value={endorseAmount}
-                  onChange={(e) => setEndorseAmount(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-[#0b2545] focus:border-transparent"
-                  placeholder="e.g. 200"
-                  min="1"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Payment Method</label>
-                <select
-                  value={endorseMethod}
-                  onChange={(e) => setEndorseMethod(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-[#0b2545] focus:border-transparent"
-                >
-                  <option value="bkash">bKash</option>
-                  <option value="nagad">Nagad</option>
-                  <option value="bank">Bank Transfer</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Sender Number / Account</label>
-                <input
-                  type="text"
-                  value={endorseAccount}
-                  onChange={(e) => setEndorseAccount(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-[#0b2545] focus:border-transparent"
-                  placeholder="Your account number"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Transaction ID <span className="font-normal text-gray-400">(optional)</span></label>
-                <input
-                  type="text"
-                  value={endorseTxId}
-                  onChange={(e) => setEndorseTxId(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-[#0b2545] focus:border-transparent"
-                  placeholder="TrxID or ref"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Transfer Date &amp; Time</label>
-                <input
-                  type="datetime-local"
-                  value={endorseDatetime}
-                  onChange={(e) => setEndorseDatetime(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-[#0b2545] focus:border-transparent"
-                />
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={handleEndorseSubmit}
-                  disabled={endorseSubmitting}
-                  className="flex-1 px-4 py-2.5 bg-[#0b2545] text-white font-medium rounded-lg hover:bg-[#0d2d5a] disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-                >
-                  {endorseSubmitting ? 'Submitting...' : 'Submit Request'}
-                </button>
-                <button
-                  onClick={() => { setShowEndorseModal(false); setShowCoinModal(true); }}
-                  disabled={endorseSubmitting}
-                  className="px-4 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
+                <div className="flex items-center gap-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/icons/creditlogo.svg" alt="APC" className="flex-shrink-0"
+                    style={{ width: 42, height: 42, display: 'block', filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.5))', animation: 'apc-entry 0.5s cubic-bezier(0.34,1.56,0.64,1) both, apc-coin-float 3s ease-in-out 0.5s infinite' }} />
+                  <h2 className="text-xl font-bold text-white">Request APC Payout</h2>
+                </div>
+                <button onClick={() => { setShowPayoutModal(false); setShowCreditModal(true); }} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                 </button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
 
-      {/* Withdrawal Request Modal - COIN MANAGEMENT DISABLED */}
-      {COIN_MANAGEMENT_ENABLED && showWithdrawModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
-            <div className="px-6 py-4 bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-200">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-gray-900">Request Withdrawal</h2>
-                <button onClick={() => setShowWithdrawModal(false)} className="p-2 hover:bg-white rounded-lg transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
-                  </svg>
-                </button>
+            <div className="p-6 space-y-5">
+              {/* APC auto-calculated summary */}
+              <div className="bg-[#0b2545]/5 border border-[#0b2545]/20 rounded-xl p-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Available Credits</span>
+                  <span className="font-semibold text-[#0b2545]">{availableCredits.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Credits to Deduct</span>
+                  <span className="font-semibold text-red-600">{payoutCalc.creditsToDeduct.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Remaining After Payout</span>
+                  <span className="font-semibold text-gray-700">{payoutCalc.remaining.toLocaleString()}</span>
+                </div>
+                <div className="border-t border-[#0b2545]/10 pt-2 flex justify-between">
+                  <span className="font-semibold text-gray-700">You Will Receive</span>
+                  <span className="text-lg font-bold text-green-600">৳{payoutCalc.eligibleBDT.toLocaleString()}</span>
+                </div>
               </div>
-            </div>
-            
-            <div className="p-6 space-y-4">
+
+              {payoutCalc.eligibleBDT === 0 && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-sm text-yellow-800">
+                  You need at least <strong>10,000 credits</strong> to request a payout. You currently have <strong>{availableCredits.toLocaleString()}</strong> available.
+                </div>
+              )}
+
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Coins to Withdraw
-                  <span className="ml-2 text-xs font-normal text-gray-500">(min: 15000 coins)</span>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">bKash Number</label>
+                <input
+                  type="tel"
+                  value={payoutBkash}
+                  onChange={(e) => setPayoutBkash(e.target.value)}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-[#0b2545] focus:border-transparent"
+                  placeholder="e.g. 01XXXXXXXXX"
+                />
+              </div>
+
+              {/* T&C checkbox */}
+              <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200">
+                <input
+                  id="apc-terms"
+                  type="checkbox"
+                  checked={payoutTermsAccepted}
+                  onChange={(e) => setPayoutTermsAccepted(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-[#0b2545] cursor-pointer"
+                />
+                <label htmlFor="apc-terms" className="text-sm text-gray-700 cursor-pointer leading-relaxed">
+                  I have read and accept the{' '}
+                  <a
+                    href="/apc-terms"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#0b2545] font-semibold underline hover:text-[#0d2d5a]"
+                  >
+                    APC Terms &amp; Policy
+                  </a>
+                  .
                 </label>
-                <input
-                  type="number"
-                  value={withdrawCoins}
-                  onChange={(e) => setWithdrawCoins(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                  placeholder="Enter amount"
-                  min="15000"
-                  max={user?.coins ?? 0}
-                />
-                {withdrawCoins && (
-                  <div className="mt-1 text-sm text-gray-600">Get an amount</div>
-                )}
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Payment Method</label>
-                <select
-                  value={withdrawMethod}
-                  onChange={(e) => setWithdrawMethod(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                >
-                  <option value="bkash">bKash</option>
-                  <option value="nagad">Nagad</option>
-                  <option value="bank">Bank Transfer</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Account Number</label>
-                <input
-                  type="text"
-                  value={withdrawAccount}
-                  onChange={(e) => setWithdrawAccount(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                  placeholder="Enter your account number"
-                />
-              </div>
-
-              <div className="flex gap-3 pt-4">
+              <div className="flex gap-3 pt-1">
                 <button
                   type="button"
                   onClick={handleWithdrawRequest}
-                  disabled={withdrawSubmitting}
-                  className="flex-1 px-4 py-2.5 bg-amber-600 text-white font-medium rounded-lg hover:bg-amber-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                  disabled={payoutSubmitting || payoutCalc.eligibleBDT === 0 || !payoutTermsAccepted || !payoutBkash.trim()}
+                  className="flex-1 px-4 py-2.5 bg-[#0b2545] text-white font-medium rounded-lg hover:bg-[#0d2d5a] disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
                 >
-                  {withdrawSubmitting ? 'Submitting...' : 'Submit Request'}
+                  {payoutSubmitting ? 'Submitting...' : 'Submit Payout Request'}
                 </button>
                 <button
-                  onClick={() => setShowWithdrawModal(false)}
-                  disabled={withdrawSubmitting}
+                  onClick={() => { setShowPayoutModal(false); setShowCreditModal(true); }}
+                  disabled={payoutSubmitting}
                   className="px-4 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   Cancel
@@ -942,18 +801,20 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Coin Details Modal - COIN MANAGEMENT DISABLED */}
-      {COIN_MANAGEMENT_ENABLED && showCoinModal && (
+      {/* APC Credit Details Modal */}
+      {showCreditModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[600px] overflow-auto">
-            <div className="px-6 py-4 bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-200">
+            <div className="px-6 py-4 bg-gradient-to-r from-[#0b2545] to-[#0d2d5a] border-b border-[#0b2545]/30">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Image src="/icons/coin.svg" alt="coin" width={36} height={36} className="drop-shadow-md" />
-                  <h2 className="text-xl font-bold text-gray-900">Your Coins</h2>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/icons/creditlogo.svg" alt="APC" className="flex-shrink-0"
+                    style={{ width: 42, height: 42, display: 'block', filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.5))', animation: 'apc-entry 0.5s cubic-bezier(0.34,1.56,0.64,1) both, apc-coin-float 3s ease-in-out 0.5s infinite' }} />
+                  <h2 className="text-xl font-bold text-white">Your APC Credits</h2>
                 </div>
-                <button onClick={() => setShowCoinModal(false)} className="p-2 hover:bg-white rounded-lg transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <button onClick={() => setShowCreditModal(false)} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
                   </svg>
                 </button>
@@ -961,94 +822,65 @@ export default function DashboardPage() {
             </div>
 
             <div className="p-6 space-y-6">
-              {/* Coin Balance Display */}
-              <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-6 text-center">
-                <div className="text-sm text-gray-600 mb-2">Current Balance</div>
-                <div className="text-4xl font-bold text-amber-600 mb-2">{totalCoins} Coins</div>
-                <div className="mt-1 text-sm text-gray-600">Pending: {pendingCoins} • Available: {availableCoins}</div>
-                <div className="mt-2 text-xs text-gray-500">Minimum 15000 coins to withdraw</div>
+              {/* Credit Balance Display */}
+              <div className="bg-gradient-to-r from-[#0b2545]/5 to-[#0b2545]/10 border border-[#0b2545]/20 rounded-xl p-6 text-center">
+                <div className="text-sm text-gray-600 mb-2">Total Credits</div>
+                <div className="text-4xl font-bold text-[#0b2545] mb-2">{totalCredits.toLocaleString()}</div>
+                <div className="mt-1 text-sm text-gray-600">
+                  Pending: {pendingCredits.toLocaleString()} &nbsp;•&nbsp; Available: {availableCredits.toLocaleString()}
+                </div>
+                {payoutCalc.eligibleBDT > 0 ? (
+                  <div className="mt-2 text-sm font-semibold text-green-700">
+                    Eligible for ৳{payoutCalc.eligibleBDT.toLocaleString()} payout
+                  </div>
+                ) : (
+                  <div className="mt-2 text-xs text-gray-500">
+                    Need {(10000 - availableCredits).toLocaleString()} more credits for first payout
+                  </div>
+                )}
               </div>
 
-              {/* Action Buttons */}
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => { setShowCoinModal(false); setShowEndorseModal(true); }}
-                  className="w-full px-4 py-3 bg-[#0b2545] text-white text-sm font-medium rounded-lg hover:bg-[#0d2d5a] transition-colors shadow-md hover:shadow-lg"
-                >
-                  + Endorse Coins
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowCoinModal(false);
-                    setShowWithdrawModal(true);
-                  }}
-                  disabled={(user?.coins ?? 0) < 15000}
-                  className="w-full px-4 py-3 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md hover:shadow-lg"
-                >
-                  {(user?.coins ?? 0) < 15000 ? 'Need 15000+ to Withdraw' : 'Request Withdrawal'}
-                </button>
-              </div>
+              {/* Action Button */}
               <div>
-                {withdrawals.filter(w => w.status === 'PENDING').length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => { setShowCreditModal(false); setShowPayoutModal(true); }}
+                  disabled={payoutCalc.eligibleBDT === 0}
+                  className="w-full px-4 py-3 bg-[#0b2545] text-white text-sm font-medium rounded-lg hover:bg-[#0d2d5a] disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md hover:shadow-lg"
+                >
+                  {payoutCalc.eligibleBDT === 0
+                    ? `Need ${(10000 - availableCredits).toLocaleString()} more to Request Payout`
+                    : `Request Payout — ৳${payoutCalc.eligibleBDT.toLocaleString()}`}
+                </button>
+                {payouts.filter((w: any) => w.status === 'PENDING').length > 0 && (
                   <div className="mt-3 px-4 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
                     <span className="text-sm text-yellow-800 font-medium">
-                      {withdrawals.filter(w => w.status === 'PENDING').length} Pending Withdrawal(s)
+                      {payouts.filter((w: any) => w.status === 'PENDING').length} Pending Payout Request(s)
                     </span>
                   </div>
                 )}
               </div>
 
-              {/* Endorsement History */}
-              {endorsements.length > 0 && (
+              {/* Payout History */}
+              {payouts.length > 0 && (
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Endorsement History</h4>
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {endorsements.map((e: any) => (
-                      <div key={e.id} className={`p-3 rounded-lg border ${
-                        e.status === 'PENDING' ? 'bg-yellow-50 border-yellow-200' :
-                        e.status === 'APPROVED' ? 'bg-green-50 border-green-200' :
-                        'bg-red-50 border-red-200'
-                      }`}>
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-semibold text-sm">৳{Number(e.amount).toFixed(2)}</span>
-                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                            e.status === 'PENDING' ? 'bg-yellow-200 text-yellow-800' :
-                            e.status === 'APPROVED' ? 'bg-green-200 text-green-800' :
-                            'bg-red-200 text-red-800'
-                          }`}>{e.status}</span>
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {new Date(e.createdAt).toLocaleDateString()} · {e.method?.toUpperCase()}
-                        </div>
-                        {e.notes && e.status !== 'APPROVED' && (
-                          <div className="text-xs text-red-600 mt-1 italic">Note: {e.notes}</div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Recent Withdrawals */}
-              {withdrawals.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Withdrawal History</h4>
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Payout History</h4>
                   <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {withdrawals.map((w: any) => (
+                    {payouts.map((w: any) => (
                       <div key={w.id} className={`p-3 rounded-lg border ${w.status === 'PENDING' ? 'bg-yellow-50 border-yellow-200' : w.status === 'COMPLETED' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
                         <div className="flex items-center justify-between mb-1">
                           <div>
-                            <span className="font-semibold text-sm">{w.coins} coins</span>
-                            
+                            <span className="font-semibold text-sm">{(w.credits || w.coins || 0).toLocaleString()} credits</span>
+                            {w.bdtAmount && (
+                              <span className="ml-2 text-sm text-green-700">→ ৳{Number(w.bdtAmount).toLocaleString()}</span>
+                            )}
                           </div>
                           <span className={`px-2 py-0.5 rounded text-xs font-medium ${w.status === 'PENDING' ? 'bg-yellow-200 text-yellow-800' : w.status === 'COMPLETED' ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}>
                             {w.status}
                           </span>
                         </div>
                         <div className="text-xs text-gray-500">
-                          {new Date(w.createdAt).toLocaleDateString()} • {w.paymentMethod?.toUpperCase()}
+                          {new Date(w.createdAt).toLocaleDateString()} · bKash: {w.bkashNumber || '—'}
                         </div>
                         {w.notes && w.status === 'REJECTED' && (
                           <div className="text-xs text-red-600 mt-1 italic">Reason: {w.notes}</div>

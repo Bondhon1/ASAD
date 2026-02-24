@@ -3,6 +3,13 @@
 import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
+
+// Module-level TTL cache for scheduled interview data.
+// DashboardLayout is used directly inside every dashboard page (not as a Next.js
+// layout.tsx), so it re-mounts on every client-side navigation.  Without this
+// cache each navigation triggers a fresh /api/user/interview request.
+const _interviewCache = new Map<string, { data: any; ts: number }>();
+const INTERVIEW_CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes
 import Link from "next/link";
 import Image from "next/image";
 import { 
@@ -26,13 +33,8 @@ import {
 import { signOut } from "next-auth/react";
 import NotificationDropdown from "@/components/dashboard/NotificationDropdown";
 
-// ═══════════════════════════════════════════════════════════════
-// COIN MANAGEMENT DISABLED - DO NOT DELETE
-// Uncomment the CoinIcon function and the coin nav entries below to re-enable.
-// ═══════════════════════════════════════════════════════════════
-/*
-// Inline SVG coin icon that inherits currentColor — matches the sidebar's color theme
-function CoinIcon({ size = 20, className = '', ...props }: any) {
+// Credit / APC icon — inline SVG that inherits currentColor
+function CreditIcon({ size = 20, className = '', ...props }: any) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -48,13 +50,12 @@ function CoinIcon({ size = 20, className = '', ...props }: any) {
       aria-hidden="true"
       {...props}
     >
+      {/* Stylized "C" with stars — APC token */}
       <circle cx="12" cy="12" r="9" />
-      <path d="M14.8 9A2 2 0 0 0 13 8h-2a2 2 0 0 0 0 4h2a2 2 0 0 1 0 4h-2a2 2 0 0 1-1.8-1" />
-      <path d="M12 6v2m0 8v2" />
+      <path d="M15 9.354A5 5 0 1 0 15 14.646" />
     </svg>
   );
 }
-*/
 
 // Fallback bell button when notifications are not available
 function FallbackNotificationButton() {
@@ -167,26 +168,45 @@ export default function DashboardLayout({
     }
   }, [initialInitialPaymentStatus]);
 
-  // Fetch scheduled interview (if any) for display on user dashboard
-  // Skip for OFFICIAL users - they don't need interview checks
+  // Fetch scheduled interview (if any) for display on user dashboard.
+  // Guards (in order):
+  //  1. No email yet — nothing to look up.
+  //  2. initialUserStatus is undefined — user profile hasn't loaded yet; the
+  //     effect will re-run once it resolves via the userStatus dependency.
+  //     Without this guard the fetch fires with userStatus=null on first render
+  //     even for OFFICIAL users, because `user` is still null while loading.
+  //  3. Staff roles never go through the interview pipeline.
+  //  4. user is already OFFICIAL — interview banners are irrelevant.
+  //  5. Module-level TTL cache — avoids re-fetching on every page navigation
+  //     since DashboardLayout remounts on each client-side route change.
   useEffect(() => {
     if (!userEmail) return;
-    // Skip if user is already OFFICIAL - no need for interview checks
-    if (userStatus === 'OFFICIAL') {
-      setScheduledInterview(null);
+    if (initialUserStatus === undefined) return; // still loading — wait
+    const staffRoles = ['HR', 'MASTER', 'ADMIN', 'DIRECTOR', 'DATABASE_DEPT', 'SECRETARIES'];
+    if (staffRoles.includes(userRole)) { setScheduledInterview(null); return; }
+    if (userStatus === 'OFFICIAL') { setScheduledInterview(null); return; }
+
+    const cached = _interviewCache.get(userEmail);
+    if (cached && Date.now() - cached.ts < INTERVIEW_CACHE_TTL_MS) {
+      setScheduledInterview(cached.data);
       return;
     }
     (async () => {
       try {
         const res = await fetch(`/api/user/interview?email=${encodeURIComponent(userEmail)}`);
-        if (!res.ok) return setScheduledInterview(null);
+        if (!res.ok) {
+          setScheduledInterview(null);
+          return;
+        }
         const data = await res.json();
-        setScheduledInterview(data?.interview || null);
+        const interview = data?.interview || null;
+        _interviewCache.set(userEmail, { data: interview, ts: Date.now() });
+        setScheduledInterview(interview);
       } catch (e) {
         setScheduledInterview(null);
       }
     })();
-  }, [userEmail, userStatus]);
+  }, [userEmail, userStatus, initialUserStatus, userRole]);
 
   const isStaff = userRole === "HR" || userRole === "MASTER" || userRole === "ADMIN" || userRole === "DIRECTOR" || userRole === "DATABASE_DEPT" || userRole === "SECRETARIES";
   const displayTopbarName = topbarName ?? userName;
@@ -214,7 +234,7 @@ export default function DashboardLayout({
     '/dashboard/secretaries': ClipboardList,
     '/dashboard/donations/create': DollarSign,
     '/dashboard/admin/audit-logs': FileText,
-    // '/dashboard/admin/coin-management': CoinIcon, // COIN MANAGEMENT DISABLED
+    '/dashboard/admin/credit-management': CreditIcon,
     '/dashboard/admin/org-requests': Users,
   };
 
@@ -327,7 +347,7 @@ export default function DashboardLayout({
       { label: "User Management", href: "/dashboard/hr/users" },
       { label: "Services", href: "/dashboard/hr/services" },
       { label: "Manage Points / Ranks", href: "/dashboard/database" },
-      // { label: "Coin Management", href: "/dashboard/admin/coin-management" }, // COIN MANAGEMENT DISABLED
+      { label: "Credit Management", href: "/dashboard/admin/credit-management" },
       { label: "Org Requests", href: "/dashboard/admin/org-requests" },
       { label: "Tasks", href: "/dashboard/tasks" },
       { label: "Secretaries", href: "/dashboard/secretaries" },
@@ -339,18 +359,16 @@ export default function DashboardLayout({
     if (userRole === "MASTER") return mergeWithCommon(masterItems as any);
     if (userRole === "DIRECTOR") return mergeWithCommon(directorItems as any);
     if (userRole === "HR") {
-      // HR should not see coin management
       return mergeWithCommon(hrItems as any);
     }
     if (userRole === "ADMIN") {
-      // ADMIN sees the HR/admin menu plus Coin Management (currently disabled)
-      const adminItemsWithCoins = [
+      const adminItems = [
         ...hrItems.slice(0, -1), // All items except Settings
-        // { label: "Coin Management", href: "/dashboard/admin/coin-management" }, // COIN MANAGEMENT DISABLED
+        { label: "Credit Management", href: "/dashboard/admin/credit-management" },
         { label: "Org Requests", href: "/dashboard/admin/org-requests" },
         hrItems[hrItems.length - 1], // Settings at the end
       ];
-      return mergeWithCommon(adminItemsWithCoins as any);
+      return mergeWithCommon(adminItems as any);
     }
     if (userRole === "DATABASE_DEPT") return mergeWithCommon(databaseItems as any);
     if (userRole === "SECRETARIES") return mergeWithCommon(secretariesItems as any);

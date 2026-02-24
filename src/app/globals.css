@@ -99,6 +99,17 @@ body {
   }
 }
 
+/* APC Credit Logo animations */
+@keyframes apc-coin-float {
+  0%, 100% { transform: translateY(0px) scale(1); }
+  50%       { transform: translateY(-6px) scale(1.04); }
+}
+
+@keyframes apc-entry {
+  from { opacity: 0; transform: scale(0.6) rotate(-20deg); }
+  to   { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
 @layer utilities {
   .content-width {
     width: min(1200px, 100%);

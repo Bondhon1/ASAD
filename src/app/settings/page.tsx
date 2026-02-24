@@ -51,6 +51,7 @@ export default function SettingsPage() {
   const [showOtherInstitute, setShowOtherInstitute] = useState(false);
   const hideTimeoutRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const suggestTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLoading = loading || status === "loading";
   // Sectors & Clubs state
   const [orgsExpanded, setOrgsExpanded] = useState(false);
@@ -501,15 +502,18 @@ export default function SettingsPage() {
                                 setShowSuggestions(false); 
                                 return; 
                               }
-                              try {
-                                const res = await fetch(`/api/institutes/suggestions?q=${encodeURIComponent(v)}`);
-                                const data = await res.json();
-                                setSuggestions(data.suggestions || []);
-                                setShowSuggestions(true);
-                              } catch (err) {
-                                setSuggestions([]);
-                                setShowSuggestions(false);
-                              }
+                              if (suggestTimerRef.current) clearTimeout(suggestTimerRef.current);
+                              suggestTimerRef.current = setTimeout(async () => {
+                                try {
+                                  const res = await fetch(`/api/institutes/suggestions?q=${encodeURIComponent(v)}`);
+                                  const data = await res.json();
+                                  setSuggestions(data.suggestions || []);
+                                  setShowSuggestions(true);
+                                } catch (err) {
+                                  setSuggestions([]);
+                                  setShowSuggestions(false);
+                                }
+                              }, 400);
                             }} 
                             onFocus={async (e) => {
                               // clear pending hide timeout when focusing
@@ -518,14 +522,18 @@ export default function SettingsPage() {
                                 hideTimeoutRef.current = null; 
                               }
                               const v = e.currentTarget.value || '';
-                              try {
-                                const res = await fetch(`/api/institutes/suggestions?q=${encodeURIComponent(v)}`);
-                                const data = await res.json();
-                                setSuggestions(data.suggestions || []);
-                                setShowSuggestions(true);
-                              } catch (err) { 
-                                setSuggestions([]); 
-                              }
+                              if (v.length < 2) return;
+                              if (suggestTimerRef.current) clearTimeout(suggestTimerRef.current);
+                              suggestTimerRef.current = setTimeout(async () => {
+                                try {
+                                  const res = await fetch(`/api/institutes/suggestions?q=${encodeURIComponent(v)}`);
+                                  const data = await res.json();
+                                  setSuggestions(data.suggestions || []);
+                                  setShowSuggestions(true);
+                                } catch (err) { 
+                                  setSuggestions([]); 
+                                }
+                              }, 200);
                             }} 
                             onBlur={() => { 
                               hideTimeoutRef.current = window.setTimeout(() => { 

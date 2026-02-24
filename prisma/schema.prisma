@@ -94,12 +94,10 @@ model User {
   interviewApprovedUsers User[]            @relation("InterviewApprovedBy")
   createdServices        Service[]
   
-  // Coins system
-  coins                 Int                   @default(0)
-  coinWithdrawals       CoinWithdrawal[]      @relation("UserWithdrawals")
-  processedWithdrawals  CoinWithdrawal[]      @relation("ProcessedBy")
-  coinEndorsements      CoinEndorsement[]     @relation("UserEndorsements")
-  processedEndorsements CoinEndorsement[]     @relation("ProcessedEndorsements")
+  // APC (Asadian Performance Credit) system
+  credits               Int                   @default(0) @map("coins")
+  creditWithdrawals     CreditWithdrawal[]    @relation("UserWithdrawals")
+  processedWithdrawals  CreditWithdrawal[]    @relation("ProcessedBy")
   orgJoinRequests       OrgJoinRequest[]      @relation("UserOrgJoinRequests")
   processedOrgJoinRequests OrgJoinRequest[]   @relation("ProcessedOrgJoinRequests")
   
@@ -786,13 +784,18 @@ enum NotificationType {
   SYSTEM_ANNOUNCEMENT
   APPLICATION_UPDATE
 
-  // Coins
-  COIN_ENDORSED
-  COIN_ENDORSEMENT_REJECTED
-
   // Org membership
   ORG_JOIN_APPROVED
   ORG_JOIN_REJECTED
+
+  // APC Credits
+  APC_PAYOUT_REQUESTED
+  APC_PAYOUT_COMPLETED
+  APC_PAYOUT_REJECTED
+
+  // Legacy (retained for existing DB rows — no longer issued by new code)
+  COIN_ENDORSED
+  COIN_ENDORSEMENT_REJECTED
 }
 
 model AuditLog {
@@ -827,18 +830,22 @@ model CAReference {
 }
 
 // ============================================================================
-// COINS & WITHDRAWAL SYSTEM
+// APC (ASADIAN PERFORMANCE CREDIT) PAYOUT SYSTEM
 // ============================================================================
 
-model CoinWithdrawal {
+// Eligibility rule: 10,000 credits = 2,000 BDT; each additional 5,000 = 1,000 BDT
+// Payout is discretionary – approved by admin; deduction only after "Paid" confirmation.
+
+model CreditWithdrawal {
   id                    String           @id @default(cuid())
   user                  User             @relation("UserWithdrawals", fields: [userId], references: [id], onDelete: Cascade)
   userId                String
-  coins                 Int              // Number of coins withdrawn
-  takaAmount            Float            // Calculated taka (coins / 5)
-  paymentMethod         String?          // bkash, nagad, bank
-  accountNumber         String?          // User's payment account
+  credits               Int              @map("coins")  // Credits to be deducted on approval
+  bdtAmount             Float            @map("takaAmount")  // Calculated BDT (auto from eligibility rule)
+  bkashNumber           String?          @map("accountNumber")  // User's bKash number
+  paymentMethod         String?          // bkash, nagad, bank (kept for admin flexibility)
   status                WithdrawalStatus @default(PENDING)
+  termsAccepted         Boolean          @default(false)  // User accepted APC T&C at time of request
   processedBy           User?            @relation("ProcessedBy", fields: [processedById], references: [id], onDelete: SetNull)
   processedById         String?
   processedAt           DateTime?
@@ -846,6 +853,7 @@ model CoinWithdrawal {
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
   
+  @@map("CoinWithdrawal")
   @@index([userId])
   @@index([status])
   @@index([createdAt])
@@ -854,38 +862,6 @@ model CoinWithdrawal {
 enum WithdrawalStatus {
   PENDING
   COMPLETED
-  REJECTED
-}
-
-// ============================================================================
-// COIN ENDORSEMENT (user deposits / tops-up coins)
-// ============================================================================
-
-model CoinEndorsement {
-  id             String            @id @default(cuid())
-  user           User              @relation("UserEndorsements", fields: [userId], references: [id], onDelete: Cascade)
-  userId         String
-  amount         Float
-  method         String            // bkash, nagad, bank, etc.
-  accountNumber  String            // sender number / account
-  transactionId  String?           // optional trx / reference ID
-  datetime       DateTime          // reported transfer datetime
-  status         EndorsementStatus @default(PENDING)
-  notes          String?           // admin notes
-  processedBy    User?             @relation("ProcessedEndorsements", fields: [processedById], references: [id], onDelete: SetNull)
-  processedById  String?
-  processedAt    DateTime?
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
-
-  @@index([userId])
-  @@index([status])
-  @@index([createdAt])
-}
-
-enum EndorsementStatus {
-  PENDING
-  APPROVED
   REJECTED
 }
 

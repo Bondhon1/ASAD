@@ -112,6 +112,7 @@ export default function InitialPaymentPage() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const instituteInputRef = useRef<HTMLInputElement | null>(null);
   const caInputRef = useRef<HTMLInputElement | null>(null);
+  const suggestTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Get user email from URL params or localStorage and check if previous payment was rejected
   const { data: session, status, update: updateSession } = useSession();
@@ -437,11 +438,15 @@ export default function InitialPaymentPage() {
                         setInstituteSearchQuery(e.target.value);
                         setShowSuggestions(true);
                         
-                        if (e.target.value.length >= 2) {
-                          fetch(`/api/institutes/suggestions?q=${encodeURIComponent(e.target.value)}`)
-                            .then(res => res.json())
-                            .then(data => setSuggestions(data.suggestions || []))
-                            .catch(() => setSuggestions([]));
+                        const val = e.target.value;
+                        if (suggestTimerRef.current) clearTimeout(suggestTimerRef.current);
+                        if (val.length >= 2) {
+                          suggestTimerRef.current = setTimeout(() => {
+                            fetch(`/api/institutes/suggestions?q=${encodeURIComponent(val)}`)
+                              .then(res => res.json())
+                              .then(data => setSuggestions(data.suggestions || []))
+                              .catch(() => setSuggestions([]));
+                          }, 400);
                         } else {
                           setSuggestions([]);
                         }
@@ -449,10 +454,14 @@ export default function InitialPaymentPage() {
                       onFocus={() => {
                         setShowSuggestions(true);
                         if (instituteName.length >= 2) {
-                          fetch(`/api/institutes/suggestions?q=${encodeURIComponent(instituteName)}`)
-                            .then(res => res.json())
-                            .then(data => setSuggestions(data.suggestions || []))
-                            .catch(() => setSuggestions([]));
+                          // Only fetch on focus if suggestions aren't already loaded
+                          if (suggestTimerRef.current) clearTimeout(suggestTimerRef.current);
+                          suggestTimerRef.current = setTimeout(() => {
+                            fetch(`/api/institutes/suggestions?q=${encodeURIComponent(instituteName)}`)
+                              .then(res => res.json())
+                              .then(data => setSuggestions(data.suggestions || []))
+                              .catch(() => setSuggestions([]));
+                          }, 100);
                         }
                       }}
                       placeholder="Type to search your school/institute"
