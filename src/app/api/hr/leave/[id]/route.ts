@@ -21,9 +21,10 @@ const HR_ROLES = ["HR", "MASTER", "ADMIN", "DIRECTOR"];
  */
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -39,7 +40,7 @@ export async function PATCH(
     }
 
     const leave = await prisma.leave.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         user: { select: { id: true, fullName: true, volunteerId: true } },
       },
@@ -88,7 +89,7 @@ export async function PATCH(
     // EDIT keeps existing status but can update dates and feedback
 
     const updated = await prisma.leave.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         status: newStatus,
         feedback: feedback !== undefined ? feedback?.trim() || null : leave.feedback,
@@ -143,7 +144,7 @@ export async function PATCH(
 
     return NextResponse.json({ leave: updated });
   } catch (err: any) {
-    console.error(`PATCH /api/hr/leave/${params.id} error:`, err);
+    console.error(`PATCH /api/hr/leave/${id} error:`, err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
