@@ -531,9 +531,9 @@ export default function TasksPage() {
                         </div>
                       </div>
 
-                      <div className="flex flex-row md:flex-col items-center md:items-end gap-3 shrink-0">
+                      <div className="flex flex-col items-stretch md:items-end gap-3 shrink-0">
                         {userSubmissions[t.id] ? (
-                          <div className={`w-full md:w-40 px-4 py-2 text-center font-semibold rounded-xl ${
+                          <div className={`w-full px-4 py-2 text-center font-semibold rounded-xl ${
                             userSubmissions[t.id].status === 'APPROVED' 
                               ? 'bg-green-100 text-green-700 border border-green-200' 
                               : userSubmissions[t.id].status === 'REJECTED'
@@ -546,11 +546,11 @@ export default function TasksPage() {
                           </div>
                         ) : null}
                         {userSubmissions[t.id] ? (
-                          <button onClick={() => openViewSubmission(userSubmissions[t.id])} className="w-full md:w-32 px-4 py-2 bg-white text-slate-700 border border-slate-200 rounded-xl hover:bg-slate-50 transition">View Submission</button>
+                          <button onClick={() => openViewSubmission(userSubmissions[t.id])} className="w-full px-4 py-2 bg-white text-slate-700 border border-slate-200 rounded-xl hover:bg-slate-50 transition">View Submission</button>
                         ) : (
                           <button 
                             onClick={() => openSubmissionModal(t)}
-                            className="w-full md:w-32 px-4 py-2 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors shadow-sm shadow-blue-100"
+                            className="w-full px-4 py-2 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors shadow-sm shadow-blue-100"
                           >
                             Open Task
                           </button>
@@ -680,13 +680,13 @@ export default function TasksPage() {
               </div>
               <div className="grid grid-cols-1 gap-4">
                 {((user as any)?.taskSubmissions || []).filter((s: any) => (s?.submissionData || '') !== '__DEADLINE_MISSED_DEDUCTION__').map((s: any) => (
-                  <div key={s.id} className="bg-white border border-slate-100 rounded-2xl p-6 hover:border-indigo-200 transition-colors shadow-sm flex items-center justify-between">
-                    <div>
+                  <div key={s.id} className="bg-white border border-slate-100 rounded-2xl p-6 hover:border-indigo-200 transition-colors shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="min-w-0">
                       <div className="text-lg font-bold text-slate-800">{s.task?.title || 'Task'}</div>
-                      <div className="text-sm text-slate-500 truncate max-w-xl">{s.task?.description}</div>
+                      <div className="text-sm text-slate-500 truncate">{s.task?.description}</div>
                       <div className="text-xs text-slate-400 mt-2">Submitted: {formatDhakaDate(s.submittedAt)}</div>
                     </div>
-                    <div className="flex flex-col items-end gap-2">
+                    <div className="flex flex-col sm:items-end gap-2 shrink-0">
                       <div className={`px-4 py-2 rounded-xl font-semibold ${
                         s.status === 'APPROVED' ? 'bg-green-100 text-green-700 border border-green-200' :
                         s.status === 'REJECTED' ? 'bg-red-100 text-red-700 border border-red-200' :
@@ -822,7 +822,7 @@ export default function TasksPage() {
 
           {/* Admin - View/Edit All Tasks (MASTER and ADMIN only) */}
           {isSuperAdmin && (
-            <div className="mt-16 bg-white border border-slate-200 rounded-3xl p-8 shadow-sm">
+            <div className="mt-16 bg-white border border-slate-200 rounded-3xl p-4 sm:p-8 shadow-sm">
               <div className="flex items-center justify-between mb-8">
                 <div>
                   <h3 className="text-2xl font-bold text-[#07223f]">System Administration</h3>
@@ -846,16 +846,16 @@ export default function TasksPage() {
                   ) : (
                     createdTasks.filter(t => t.createdByUserId !== user?.id).map(t => (
                       <div key={t.id} className="group bg-white border border-slate-100 rounded-2xl p-6 hover:border-blue-200 hover:shadow-md transition-all duration-300">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1 pr-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                          <div className="flex-1 min-w-0">
                             <div className="text-lg font-bold text-[#07223f] group-hover:text-blue-700 transition-colors">{t.title}</div>
-                            <div className="text-sm text-slate-500 line-clamp-1">{t.description}</div>
-                            <div className="flex items-center gap-3 mt-2">
+                            <div className="text-sm text-slate-500 line-clamp-2">{t.description}</div>
+                            <div className="flex flex-wrap items-center gap-2 mt-2">
                               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter bg-slate-50 px-2 py-0.5 rounded border">ID: {t.id.slice(-6)}</span>
                               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter bg-slate-50 px-2 py-0.5 rounded border">Created By: {t.createdByUserId === user?.id ? 'You' : 'Another Admin'}</span>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 shrink-0">
                             <button 
                               onClick={() => startEdit(t, 'admin')} 
                               className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm"
@@ -959,7 +959,7 @@ export default function TasksPage() {
       {/* Task Submission Modal */}
       {submittingTask && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto mx-0">
             <div className="p-6 border-b border-slate-200">
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-bold text-slate-800">Submit Task</h3>
@@ -998,7 +998,7 @@ export default function TasksPage() {
                 <div className="mb-6">
                   <h4 className="font-semibold text-slate-800 mb-1">{submittingTask.title}</h4>
                   <p className="text-sm text-slate-500">{submittingTask.description}</p>
-                  <div className="flex items-center gap-4 mt-3 text-xs">
+                  <div className="flex flex-wrap items-center gap-2 mt-3 text-xs">
                     <span className="bg-amber-50 text-amber-700 px-2 py-1 rounded-lg font-semibold">
                       +{submittingTask.pointsPositive ?? 0} Points
                     </span>
@@ -1198,7 +1198,7 @@ export default function TasksPage() {
     </DashboardLayout>
       {viewSubmission && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-2xl p-6 max-w-3xl w-full mx-4">
+          <div className="bg-white rounded-2xl p-4 sm:p-6 max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-start justify-between gap-4">
               <h3 className="text-lg font-semibold">Submission Details</h3>
               <button onClick={closeViewSubmission} className="text-slate-500 hover:text-slate-800">Close</button>

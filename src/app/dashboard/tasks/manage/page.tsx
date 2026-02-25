@@ -47,12 +47,12 @@ export default function ManageTasksPage() {
               <div className="p-6 bg-white border border-slate-200 rounded-lg text-sm text-slate-600">No tasks found. This is a placeholder — add tasks elsewhere or create new ones.</div>
             ) : (
               tasks.map((t:any) => (
-                <div key={t.id || t.title} className="bg-white border border-slate-200 rounded-lg p-4 flex items-start justify-between">
-                  <div>
+                <div key={t.id || t.title} className="bg-white border border-slate-200 rounded-lg p-4 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                  <div className="min-w-0">
                     <h3 className="font-semibold text-slate-900">{t.title}</h3>
                     <p className="text-sm text-slate-600">{t.description || ''}</p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 shrink-0">
                     <button className="px-3 py-1.5 bg-white border border-slate-200 rounded-md text-sm">Details</button>
                     <button className="px-3 py-1.5 bg-[#2b6cb0] text-white rounded-md text-sm">Edit</button>
                   </div>

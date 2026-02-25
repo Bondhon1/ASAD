@@ -34,9 +34,9 @@ export default async function TaskDetailPage({ params }: Props) {
   return (
     <DashboardLayout userRole={(task?.createdBy?.role as any) || 'VOLUNTEER'} userName={task?.createdBy?.fullName || 'User'} userEmail={task?.createdBy?.email || ''} userId={task?.createdBy?.id || ''}>
       <div className="min-h-[60vh] py-10 px-4">
-        <div className="max-w-3xl mx-auto bg-white border border-slate-100 rounded-2xl p-8">
+        <div className="max-w-3xl mx-auto bg-white border border-slate-100 rounded-2xl p-4 sm:p-8">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-slate-800">{task.title}</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 break-words">{task.title}</h1>
           <div className="text-sm text-slate-500 mt-2">{task.description}</div>
         </div>
 
@@ -55,7 +55,7 @@ export default async function TaskDetailPage({ params }: Props) {
           </div>
         </div>
 
-        <div className="mt-8 flex gap-3">
+        <div className="mt-8 flex flex-wrap gap-3">
           <Link href="/dashboard/tasks" className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm">Back to Tasks</Link>
         </div>
       </div>
