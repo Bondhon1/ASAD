@@ -112,8 +112,8 @@ export async function GET(request: NextRequest) {
     
     if (!lite) {
       [followersCount, followingCount] = await Promise.all([
-        prisma.friendList.count({ where: { friendId: user.id } }),
-        prisma.friendList.count({ where: { userId: user.id } }),
+        prisma.follow.count({ where: { followingId: user.id } }),
+        prisma.follow.count({ where: { followerId: user.id } }),
       ]);
     }
 
