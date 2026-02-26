@@ -2,8 +2,10 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
+import { useSearchParams, useRouter } from "next/navigation";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { useCachedUserProfile } from "@/hooks/useCachedUserProfile";
+import { MentionTextarea } from "@/components/community/MentionTextarea";
 import {
   Avatar,
   PostCard,
@@ -17,6 +19,9 @@ export default function CommunityPage() {
   const { data: session } = useSession();
   const userEmail = session?.user?.email || "";
   const { user } = useCachedUserProfile<any>(userEmail);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const highlightPostId = searchParams.get("post");
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,6 +76,23 @@ export default function CommunityPage() {
     setHasMore(true);
     loadPosts(undefined, true);
   }, [view, loadPosts]);
+
+  // Scroll to highlighted post after it loads
+  useEffect(() => {
+    if (!highlightPostId || loading) return;
+    const el = document.getElementById(`post-${highlightPostId}`);
+    if (el) {
+      setTimeout(() => {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.classList.add("ring-2", "ring-[#1E3A5F]", "ring-offset-2");
+        setTimeout(() => el.classList.remove("ring-2", "ring-[#1E3A5F]", "ring-offset-2"), 2500);
+        // Clean URL
+        const url = new URL(window.location.href);
+        url.searchParams.delete("post");
+        router.replace(url.pathname + (url.search || ""), { scroll: false });
+      }, 400);
+    }
+  }, [highlightPostId, loading, posts]);
 
   // Infinite scroll
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -232,9 +254,9 @@ export default function CommunityPage() {
                 />
               </div>
               <div className="flex-1">
-                <textarea
+                <MentionTextarea
                   value={newPostContent}
-                  onChange={(e) => setNewPostContent(e.target.value)}
+                  onChange={setNewPostContent}
                   placeholder="What's on your mind?"
                   className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#1E3A5F] focus:bg-white transition-all"
                   rows={3}

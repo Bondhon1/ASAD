@@ -873,6 +873,9 @@ enum NotificationType {
   LEAVE_DECLINED
   LEAVE_SUBMITTED
 
+  // Mentions
+  MENTION
+
   // Legacy (retained for existing DB rows — no longer issued by new code)
   COIN_ENDORSED
   COIN_ENDORSEMENT_REJECTED

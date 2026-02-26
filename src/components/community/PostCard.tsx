@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { MentionTextarea, renderMentionContent } from "./MentionTextarea";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -174,9 +175,9 @@ export function CommentItem({
           </div>
           {editing ? (
             <div className="mt-1">
-              <textarea
+              <MentionTextarea
                 value={editContent}
-                onChange={(e) => setEditContent(e.target.value)}
+                onChange={setEditContent}
                 className="w-full text-sm p-2 border border-slate-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]"
                 rows={2}
                 maxLength={1000}
@@ -197,7 +198,7 @@ export function CommentItem({
               </div>
             </div>
           ) : (
-            <p className="text-sm text-slate-700 mt-0.5 break-words">{comment.content}</p>
+            <p className="text-sm text-slate-700 mt-0.5 break-words">{renderMentionContent(comment.content)}</p>
           )}
         </div>
 
@@ -241,9 +242,9 @@ export function CommentItem({
         {replying && (
           <div className="mt-2 flex gap-2 items-start">
             <div className="flex-1">
-              <textarea
+              <MentionTextarea
                 value={replyContent}
-                onChange={(e) => setReplyContent(e.target.value)}
+                onChange={setReplyContent}
                 placeholder="Write a reply…"
                 className="w-full text-sm p-2 border border-slate-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]"
                 rows={2}
@@ -423,7 +424,7 @@ export function PostCard({
   const isAuthor = post.authorId === currentUserId;
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-200">
+    <div id={`post-${post.id}`} className="bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-200">
       {/* Post Header */}
       <div className="p-4 pb-3 flex items-start justify-between gap-3">
         <div className="flex items-start gap-3 min-w-0">
@@ -468,9 +469,9 @@ export function PostCard({
       <div className="px-4 pb-3">
         {editing ? (
           <div>
-            <textarea
+            <MentionTextarea
               value={editContent}
-              onChange={(e) => setEditContent(e.target.value)}
+              onChange={setEditContent}
               className="w-full p-3 border border-slate-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]"
               rows={4}
               maxLength={2000}
@@ -493,7 +494,7 @@ export function PostCard({
           </div>
         ) : (
           <p className="text-slate-700 leading-relaxed whitespace-pre-wrap break-words text-sm sm:text-base">
-            {post.content}
+            {renderMentionContent(post.content)}
           </p>
         )}
       </div>
@@ -526,10 +527,10 @@ export function PostCard({
         <div className="px-4 pb-4 border-t border-slate-100">
           <div className="flex gap-2 mt-3">
             <div className="flex-1">
-              <textarea
-                ref={commentInputRef}
+              <MentionTextarea
+                textareaRef={commentInputRef}
                 value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
+                onChange={setNewComment}
                 placeholder="Write a comment…"
                 className="w-full p-2.5 border border-slate-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]"
                 rows={2}

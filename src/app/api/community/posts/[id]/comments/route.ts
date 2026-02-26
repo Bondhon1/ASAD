@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { publishNotification } from "@/lib/ably";
+import { notifyMentions } from "@/lib/mentionUtils";
 
 export const dynamic = "force-dynamic";
 
@@ -121,9 +122,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           data: {
             userId: post.authorId,
             type: "POST_COMMENT",
-            title: "New comment on your post",
+            title: `${user.fullName || "A volunteer"} commented on your post`,
             message: `${user.fullName || "A volunteer"} commented on your post.`,
-            link: `/dashboard/community`,
+            link: `/dashboard/community?post=${id}`,
           },
         });
         await publishNotification(post.authorId, {
@@ -132,6 +133,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         });
       } catch {}
     }
+
+    // Notify mentioned users
+    await notifyMentions({
+      content: comment.content,
+      actorId: user.id,
+      actorName: user.fullName,
+      postId: id,
+      excludeIds: [post.authorId],
+    });
 
     return NextResponse.json({
       comment: {

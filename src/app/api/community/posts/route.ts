@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import { notifyMentions } from "@/lib/mentionUtils";
 
 export const dynamic = "force-dynamic";
 
@@ -86,7 +87,7 @@ export async function POST(request: NextRequest) {
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
-      select: { id: true, status: true },
+      select: { id: true, fullName: true, status: true },
     });
 
     if (!user || user.status !== "OFFICIAL") {
@@ -129,6 +130,14 @@ export async function POST(request: NextRequest) {
           select: { comments: { where: { isDeleted: false, parentCommentId: null } } },
         },
       },
+    });
+
+    // Notify mentioned users
+    await notifyMentions({
+      content,
+      actorId: user.id,
+      actorName: user.fullName,
+      postId: post.id,
     });
 
     return NextResponse.json({

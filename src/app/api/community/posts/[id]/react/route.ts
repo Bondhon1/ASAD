@@ -51,9 +51,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             data: {
               userId: post.authorId,
               type: "POST_REACTION",
-              title: "Someone loved your post",
+              title: `${user.fullName || "A volunteer"} loved your post`,
               message: `${user.fullName || "A volunteer"} reacted to your post.`,
-              link: `/dashboard/community`,
+              link: `/dashboard/community?post=${id}`,
             },
           });
           await publishNotification(post.authorId, {
