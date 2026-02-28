@@ -30,6 +30,7 @@ export default function SecretariesPage() {
   const [editDescription, setEditDescription] = useState('');
   const [editPoint, setEditPoint] = useState<number | ''>('');
   const [editPointsToDeduct, setEditPointsToDeduct] = useState<number | ''>('');
+  const [editCredit, setEditCredit] = useState<number | ''>('');
   const [editExpire, setEditExpire] = useState('');
   const [editMandatory, setEditMandatory] = useState(false);
   const [editInputType, setEditInputType] = useState<'YESNO'|'COMMENT'|'IMAGE'|'DONATION'>('YESNO');
@@ -45,6 +46,7 @@ export default function SecretariesPage() {
   const [taskPoint, setTaskPoint] = useState<number | ''>('');
   const [taskMandatory, setTaskMandatory] = useState(false);
   const [taskPointsToDeduct, setTaskPointsToDeduct] = useState<number | ''>('');
+  const [taskCredit, setTaskCredit] = useState<number | ''>('');
   const [taskInputType, setTaskInputType] = useState<'YESNO'|'COMMENT'|'IMAGE'>('YESNO');
   const [taskRestriction, setTaskRestriction] = useState<'ALL'|'SERVICE'|'SECTOR'>('ALL');
   const [taskStatus, setTaskStatus] = useState<string | null>(null);
@@ -97,6 +99,7 @@ export default function SecretariesPage() {
         points: Number(taskPoint || 0),
         mandatory: taskMandatory,
         pointsToDeduct: taskMandatory ? Number(taskPointsToDeduct || 0) : undefined,
+        credit: displayRole === 'MASTER' ? Number(taskCredit || 0) : undefined,
         inputType: taskInputType,
         assigned,
       };
@@ -168,6 +171,7 @@ export default function SecretariesPage() {
     setEditPoint(t.pointsPositive ?? '');
     setEditPointsToDeduct(t.pointsNegative ?? '');
     setEditExpire(t.endDate ? toDhakaInputFormat(t.endDate) : '');
+    setEditCredit(t.credit ?? '');
     setEditMandatory(!!t.mandatory);
     setEditInputType(t.taskType || 'YESNO');
     
@@ -191,6 +195,7 @@ export default function SecretariesPage() {
     setEditDescription('');
     setEditPoint('');
     setEditPointsToDeduct('');
+    setEditCredit('');
     setEditExpire('');
     setEditMandatory(false);
     setEditInputType('YESNO');
@@ -218,6 +223,7 @@ export default function SecretariesPage() {
         description: editDescription,
         points: editPoint === '' ? 0 : Number(editPoint),
         pointsToDeduct: editPointsToDeduct === '' ? 0 : Number(editPointsToDeduct),
+        credit: displayRole === 'MASTER' ? (editCredit === '' ? 0 : Number(editCredit)) : undefined,
         expireAt: editExpire,
         mandatory: editMandatory,
         inputType: editInputType,
@@ -398,6 +404,7 @@ export default function SecretariesPage() {
         setTaskPoint('');
         setTaskMandatory(false);
         setTaskPointsToDeduct('');
+        setTaskCredit('');
         setTaskInputType('YESNO');
         setTaskRestriction('ALL');
         setSelectedServices([]);
@@ -520,6 +527,13 @@ export default function SecretariesPage() {
               <label className="block text-sm font-medium text-[#07223f] mb-1">Points</label>
               <input value={taskPoint as any} onChange={(e)=>setTaskPoint(e.target.value==='' ? '' : Number(e.target.value))} type="number" className={inputCls} />
             </div>
+            {displayRole === 'MASTER' && (
+              <div>
+                <label className="block text-sm font-medium text-[#07223f] mb-1">APC Credit</label>
+                <input value={taskCredit as any} onChange={(e)=>setTaskCredit(e.target.value==='' ? '' : Number(e.target.value))} type="number" min="0" placeholder="0" className={inputCls} />
+                <p className="text-xs text-slate-400 mt-1">Asadian Performance Credit awarded on completion. Leave 0 for no credit.</p>
+              </div>
+            )}
             <div className="flex items-center gap-3 mt-1">
               <input type="checkbox" checked={taskMandatory} onChange={(e)=>setTaskMandatory(e.target.checked)} className="h-4 w-4" />
               <div>
@@ -648,6 +662,12 @@ export default function SecretariesPage() {
                               <label className="block text-xs font-semibold text-slate-500 mb-1">Points</label>
                               <input className={inputCls} type="number" value={editPoint as any} onChange={e=>setEditPoint(e.target.value==='' ? '' : Number(e.target.value))} />
                             </div>
+                            {displayRole === 'MASTER' && (
+                              <div>
+                                <label className="block text-xs font-semibold text-slate-500 mb-1">APC Credit</label>
+                                <input className={inputCls} type="number" min="0" placeholder="0" value={editCredit as any} onChange={e=>setEditCredit(e.target.value==='' ? '' : Number(e.target.value))} />
+                              </div>
+                            )}
                             <div>
                               <label className="block text-xs font-semibold text-slate-500 mb-1">Task Type</label>
                               <select value={editInputType} onChange={(e)=>setEditInputType(e.target.value as any)} className={inputCls}>

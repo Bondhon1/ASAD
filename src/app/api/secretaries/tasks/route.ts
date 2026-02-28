@@ -13,6 +13,7 @@ type Body = {
   mandatory?: boolean;
   points?: number;
   pointsToDeduct?: number;
+  credit?: number;
   expireAt?: string;
   assigned?: {
     services?: string[]; // service ids
@@ -80,7 +81,9 @@ export async function POST(req: Request) {
     const assigned = await enrichAssignedWithNames(body.assigned);
     let targetUsers: string[] = [];
     try {
-      targetUsers = await resolveAudienceUserIds(assigned || {}, { includeRequesterId: requester.id });
+      targetUsers = await resolveAudienceUserIds(assigned || {});
+      // Never notify the creator — they are creating the task, not assigned to it
+      targetUsers = targetUsers.filter(id => id !== requester.id);
     } catch (e) {
       console.error('Failed to compute target users', e);
     }
@@ -99,6 +102,8 @@ export async function POST(req: Request) {
         mandatory: !!body.mandatory,
         pointsPositive: typeof body.points === 'number' ? Math.max(0, Math.floor(body.points)) : 0,
         pointsNegative: (body.mandatory && typeof body.pointsToDeduct === 'number') ? Math.max(0, Math.floor(body.pointsToDeduct)) : 0,
+        // Only MASTER can set APC credit on a task
+        credit: (requester.role === 'MASTER' && typeof body.credit === 'number') ? Math.max(0, Math.floor(body.credit)) : 0,
         startDate,
         endDate,
       },

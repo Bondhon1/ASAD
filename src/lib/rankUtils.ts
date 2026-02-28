@@ -657,3 +657,33 @@ export async function applyPointsChange(
     };
   }
 }
+
+/**
+ * Add APC credits to a user's credit balance.
+ * Credits are stored in User.credits (mapped to 'coins' column).
+ * Only tasks created by MASTER can carry a credit value.
+ *
+ * @param userId       - ID of the user to receive credits
+ * @param creditAmount - Positive integer of credits to add
+ * @returns Object with success flag and new credit total
+ */
+export async function applyCredit(
+  userId: string,
+  creditAmount: number,
+): Promise<{ success: boolean; newCredits: number; error?: string }> {
+  try {
+    if (creditAmount <= 0) {
+      const current = await prisma.user.findUnique({ where: { id: userId }, select: { credits: true } });
+      return { success: true, newCredits: current?.credits ?? 0 };
+    }
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data: { credits: { increment: creditAmount } },
+      select: { credits: true },
+    });
+    return { success: true, newCredits: updated.credits };
+  } catch (error: any) {
+    console.error('Error applying credit:', error);
+    return { success: false, newCredits: 0, error: error?.message || 'Unknown error' };
+  }
+}

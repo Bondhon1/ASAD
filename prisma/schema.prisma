@@ -345,6 +345,7 @@ model Task {
   mandatory             Boolean          @default(false)
   pointsPositive        Int              @default(0)
   pointsNegative        Int              @default(0)
+  credit                Int              @default(0)  // APC credit awarded on task completion (MASTER only)
   startDate             DateTime
   endDate               DateTime
   attachments           String[]

@@ -16,7 +16,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
-import { applyPointsChange } from '@/lib/rankUtils';
+import { applyPointsChange, applyCredit } from '@/lib/rankUtils';
 import { NotificationType } from '@prisma/client';
 
 type ApprovalBody = {
@@ -108,6 +108,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     let pointsAwarded = 0;
     let rankResult = null;
+    let creditAwarded = 0;
 
     // Award points on approval if submitted on time
     if (body.action === 'APPROVE' && isOnTime && submission.task.pointsPositive > 0) {
@@ -118,6 +119,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         `Task approved: ${submission.task.title}`,
         submission.taskId
       );
+    }
+
+    // Award APC credit on approval if task has credit > 0 (only MASTER-created tasks)
+    if (body.action === 'APPROVE' && isOnTime && (submission.task as any).credit > 0) {
+      creditAwarded = (submission.task as any).credit;
+      await applyCredit(submission.userId, creditAwarded);
     }
 
     // Notify the volunteer (not broadcast)
@@ -134,7 +141,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           ? '✅ Task Approved!' 
           : '❌ Task Submission Rejected',
         message: body.action === 'APPROVE'
-          ? `Your submission for "${submission.task.title}" has been approved.${pointsAwarded > 0 ? ` You earned ${pointsAwarded} points!` : ''}`
+          ? `Your submission for "${submission.task.title}" has been approved.${pointsAwarded > 0 ? ` You earned ${pointsAwarded} points!` : ''}${creditAwarded > 0 ? ` You also earned ${creditAwarded} APC credit!` : ''}`
           : `Your submission for "${submission.task.title}" was rejected.${body.reason ? ` Reason: ${body.reason}` : ''}`,
         link: '/dashboard/tasks',
       },
@@ -144,6 +151,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       ok: true,
       submission: fullSubmission || updatedSubmission,
       pointsAwarded,
+      creditAwarded,
       rankUpdate: rankResult ? {
         newPoints: rankResult.newPoints,
         newRank: rankResult.newRankName,

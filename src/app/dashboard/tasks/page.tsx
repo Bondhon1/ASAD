@@ -21,6 +21,7 @@ export default function TasksPage() {
   const [editDescription, setEditDescription] = useState('');
   const [editPoint, setEditPoint] = useState<number | ''>('');
   const [editPointsToDeduct, setEditPointsToDeduct] = useState<number | ''>('');
+  const [editCredit, setEditCredit] = useState<number | ''>('');
   const [editExpire, setEditExpire] = useState('');
   const [editMandatory, setEditMandatory] = useState(false);
   const [editInputType, setEditInputType] = useState<'YESNO'|'COMMENT'|'IMAGE'|'DONATION'>('YESNO');
@@ -371,6 +372,7 @@ export default function TasksPage() {
     setEditDescription(t.description || '');
     setEditPoint(t.pointsPositive ?? '');
     setEditPointsToDeduct(t.pointsNegative ?? '');
+    setEditCredit(t.credit ?? '');
     setEditExpire(t.endDate ? toDhakaInputFormat(t.endDate) : '');
     setEditMandatory(!!t.mandatory);
     setEditInputType(t.taskType || 'YESNO');
@@ -408,6 +410,7 @@ export default function TasksPage() {
         description: editDescription,
         points: editPoint === '' ? 0 : Number(editPoint),
         pointsToDeduct: editPointsToDeduct === '' ? 0 : Number(editPointsToDeduct),
+        credit: role === 'MASTER' ? (editCredit === '' ? 0 : Number(editCredit)) : undefined,
         expireAt: editExpire,
         mandatory: editMandatory,
         inputType: editInputType,
@@ -528,6 +531,12 @@ export default function TasksPage() {
                             <svg className="text-amber-500" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
                             <span className="text-amber-700 font-bold">+{t.pointsPositive ?? 0} Points</span>
                           </div>
+                          {(t.credit ?? 0) > 0 && (
+                            <div className="flex items-center gap-1.5 bg-purple-50 px-3 py-1.5 rounded-lg border border-purple-100">
+                              <svg className="text-purple-500" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                              <span className="text-purple-700 font-bold">+{t.credit} APC</span>
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -604,6 +613,12 @@ export default function TasksPage() {
                             <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 px-1">Points</label>
                             <input type="number" value={editPoint as any} onChange={e=>setEditPoint(e.target.value==='' ? '' : Number(e.target.value))} className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-sm" />
                           </div>
+                          {role === 'MASTER' && (
+                            <div>
+                              <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 px-1">APC Credit</label>
+                              <input type="number" min="0" placeholder="0" value={editCredit as any} onChange={e=>setEditCredit(e.target.value==='' ? '' : Number(e.target.value))} className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-sm" />
+                            </div>
+                          )}
                           <div>
                             <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 px-1">Task Type</label>
                             <select value={editInputType} onChange={e=>setEditInputType(e.target.value as any)} className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-sm">
@@ -757,6 +772,12 @@ export default function TasksPage() {
                                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 px-1">Points</label>
                                     <input type="number" value={editPoint as any} onChange={e=>setEditPoint(e.target.value==='' ? '' : Number(e.target.value))} className="w-full p-2.5 border rounded-xl bg-white text-sm" />
                                   </div>
+                                  {role === 'MASTER' && (
+                                    <div>
+                                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 px-1">APC Credit</label>
+                                      <input type="number" min="0" placeholder="0" value={editCredit as any} onChange={e=>setEditCredit(e.target.value==='' ? '' : Number(e.target.value))} className="w-full p-2.5 border rounded-xl bg-white text-sm" />
+                                    </div>
+                                  )}
                                   <div>
                                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 px-1">Type</label>
                                     <select value={editInputType} onChange={e=>setEditInputType(e.target.value as any)} className="w-full p-2.5 border rounded-xl bg-white text-sm">
@@ -889,6 +910,12 @@ export default function TasksPage() {
                                 <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1 px-1">Points</label>
                                 <input type="number" value={editPoint as any} onChange={e=>setEditPoint(e.target.value==='' ? '' : Number(e.target.value))} className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-sm" />
                               </div>
+                              {role === 'MASTER' && (
+                                <div>
+                                  <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1 px-1">APC Credit</label>
+                                  <input type="number" min="0" placeholder="0" value={editCredit as any} onChange={e=>setEditCredit(e.target.value==='' ? '' : Number(e.target.value))} className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-sm" />
+                                </div>
+                              )}
                               <div>
                                 <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1 px-1">Type</label>
                                 <select value={editInputType} onChange={e=>setEditInputType(e.target.value as any)} className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-sm">

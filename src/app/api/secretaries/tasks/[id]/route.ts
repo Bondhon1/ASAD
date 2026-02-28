@@ -109,7 +109,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     
     if (typeof body.pointsToDeduct === 'number') data.pointsNegative = Math.max(0, Math.floor(body.pointsToDeduct));
     if (typeof body.pointsNegative === 'number') data.pointsNegative = Math.max(0, Math.floor(body.pointsNegative)); // handle both
-    
+
+    // Only MASTER can update APC credit
+    if (requester.role === 'MASTER' && typeof body.credit === 'number') {
+      data.credit = Math.max(0, Math.floor(body.credit));
+    }
+
     if (typeof body.mandatory === 'boolean') data.mandatory = body.mandatory;
     
     if (typeof body.taskType === 'string') data.taskType = body.taskType;
