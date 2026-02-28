@@ -72,7 +72,7 @@ export async function publishChatMessage(params: {
 // Token request endpoint helper for client-side authentication
 export async function generateTokenRequest(
   userId: string,
-  extraCapabilities?: Record<string, string[]>
+  extraCapabilities?: Record<string, Ably.capabilityOp[] | ["*"]>
 ): Promise<Ably.TokenRequest> {
   const client = getServerAblyClient();
   if (!client) {
