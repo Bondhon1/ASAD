@@ -32,6 +32,9 @@ import {
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import NotificationDropdown from "@/components/dashboard/NotificationDropdown";
+import { ChatProvider, useChatContext } from "@/components/chat/ChatProvider";
+import { ChatList } from "@/components/chat/ChatList";
+import { ChatModal } from "@/components/chat/ChatModal";
 
 // Credit / APC icon — inline SVG that inherits currentColor
 function CreditIcon({ size = 20, className = '', ...props }: any) {
@@ -62,6 +65,26 @@ function FallbackNotificationButton() {
   return (
     <button className="p-2 rounded-lg hover:bg-gray-100 relative" disabled>
       <Bell size={20} className="text-gray-400" />
+    </button>
+  );
+}
+
+function ChatTopbarButton() {
+  const { toggleList, unreadCount, isOfficialUser } = useChatContext();
+  if (!isOfficialUser) return null;
+  return (
+    <button
+      data-chat-trigger
+      onClick={toggleList}
+      className="p-2 rounded-lg hover:bg-gray-100 relative"
+      title="Messages"
+    >
+      <MessageSquare size={20} className="text-gray-600" />
+      {unreadCount > 0 && (
+        <span className="absolute top-1 right-1 min-w-[16px] h-4 flex items-center justify-center bg-blue-500 text-white text-[9px] font-bold rounded-full px-0.5 leading-none">
+          {unreadCount > 99 ? "99+" : unreadCount}
+        </span>
+      )}
     </button>
   );
 }
@@ -422,15 +445,12 @@ export default function DashboardLayout({
           {/* Right: Notifications, Chat, User */}
           <div className="flex items-center gap-2">
             {hasValidUserId ? <NotificationDropdown /> : <FallbackNotificationButton />}
-              <button className="p-2 rounded-lg hover:bg-gray-100 relative">
-                <MessageSquare size={20} />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-green-500 rounded-full"></span>
-              </button>
-              <div className="ml-2 px-3 py-2 bg-gray-100 rounded-lg hidden sm:block">
-                <p className="text-sm font-semibold text-gray-900">{displayTopbarName}</p>
-                <p className="text-xs text-gray-500">{displayTopbarLabel}</p>
-              </div>
+            <ChatTopbarButton />
+            <div className="ml-2 px-3 py-2 bg-gray-100 rounded-lg hidden sm:block">
+              <p className="text-sm font-semibold text-gray-900">{displayTopbarName}</p>
+              <p className="text-xs text-gray-500">{displayTopbarLabel}</p>
             </div>
+          </div>
         </div>
       </div>
 
@@ -583,5 +603,11 @@ export default function DashboardLayout({
     </div>
   );
 
-  return dashboardContent;
+  return (
+    <ChatProvider userStatus={userStatus ?? undefined} userId={userId}>
+      {dashboardContent}
+      <ChatList />
+      <ChatModal />
+    </ChatProvider>
+  );
 }

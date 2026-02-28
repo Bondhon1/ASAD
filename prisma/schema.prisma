@@ -76,6 +76,8 @@ model User {
   followers             Follow[]              @relation("Following")
   sentMessages          Message[]             @relation("FromUser")
   receivedMessages      Message[]             @relation("ToUser")
+  conversationsAsUser1  Conversation[]        @relation("ConversationUser1")
+  conversationsAsUser2  Conversation[]        @relation("ConversationUser2")
   sentFriendRequests    FriendRequest[]       @relation("Sender")
   receivedFriendRequests FriendRequest[]      @relation("Receiver")
   friends               FriendList[]          @relation("User")
@@ -644,9 +646,17 @@ model FriendList {
 
 model Conversation {
   id                    String           @id @default(cuid())
+  user1                 User             @relation("ConversationUser1", fields: [user1Id], references: [id], onDelete: Cascade)
+  user1Id               String
+  user2                 User             @relation("ConversationUser2", fields: [user2Id], references: [id], onDelete: Cascade)
+  user2Id               String
   messages              Message[]
   lastMessageAt         DateTime?
   createdAt             DateTime         @default(now())
+
+  @@unique([user1Id, user2Id])
+  @@index([user1Id])
+  @@index([user2Id])
 }
 
 model Message {

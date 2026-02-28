@@ -8,6 +8,7 @@ import { useCachedUserProfile } from "@/hooks/useCachedUserProfile";
 import { SERVICES, autoAssignServiceFromInstitute } from '@/lib/organizations';
 import { formatShortDhakaDateTime } from '@/lib/dateUtils';
 import { useModal } from '@/components/ui/ModalProvider';
+import { ChatWithButton } from '@/components/chat/ChatWithButton';
 
 interface User {
   id: string;
@@ -1128,9 +1129,34 @@ export default function UsersManagementPage() {
                                   )}
                                 </div>
                               </div>
+                            {/* Profile & Chat quick actions */}
+                            <div className="mt-3 pt-3 border-t border-gray-100 flex flex-wrap gap-2 items-center">
+                              <a
+                                href={`/dashboard/community/profile/${u.id}`}
+                                className="px-3 py-1.5 text-xs bg-[#1E3A5F] text-white rounded hover:bg-[#0d2d5a] transition-colors"
+                              >
+                                View Profile
+                              </a>
+                              {u.status === 'OFFICIAL' && (
+                                <ChatWithButton
+                                  targetUserId={u.id}
+                                  targetUser={{
+                                    id: u.id,
+                                    fullName: u.fullName,
+                                    volunteerId: u.volunteerId,
+                                    profilePicUrl: null,
+                                    role: u.role,
+                                    status: u.status,
+                                  }}
+                                  label="Chat"
+                                  size="sm"
+                                  variant="secondary"
+                                />
+                              )}
                             </div>
-                          )}
-                        </div>
+                          </div>
+                        )}
+                      </div>
                         );
                       })}
                     </div>

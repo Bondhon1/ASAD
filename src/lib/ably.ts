@@ -36,19 +36,57 @@ export async function publishNotification(userId: string, notification: {
   }
 }
 
+// Publish a chat message event to both participants
+export async function publishChatMessage(params: {
+  conversationId: string;
+  senderId: string;
+  recipientId: string;
+  message: {
+    id: string;
+    body: string;
+    fromUserId: string;
+    toUserId: string;
+    readAt: Date | null;
+    createdAt: Date;
+  };
+}) {
+  try {
+    const client = getServerAblyClient();
+    if (!client) return;
+    const payload = {
+      ...params.message,
+      conversationId: params.conversationId,
+      readAt: params.message.readAt?.toISOString() ?? null,
+      createdAt: params.message.createdAt.toISOString(),
+    };
+    // Publish to both participants' personal chat channels simultaneously
+    await Promise.all([
+      client.channels.get(`user-${params.recipientId}-chat`).publish("new-message", payload),
+      client.channels.get(`user-${params.senderId}-chat`).publish("new-message", payload),
+    ]);
+  } catch (error) {
+    console.error("Failed to publish Ably chat message:", error);
+  }
+}
+
 // Token request endpoint helper for client-side authentication
-export async function generateTokenRequest(userId: string): Promise<Ably.TokenRequest> {
+export async function generateTokenRequest(
+  userId: string,
+  extraCapabilities?: Record<string, string[]>
+): Promise<Ably.TokenRequest> {
   const client = getServerAblyClient();
   if (!client) {
     throw new Error("Ably is not configured");
   }
-  
+
   const tokenRequest = await client.auth.createTokenRequest({
     clientId: userId,
     capability: {
       [`user-${userId}-notifications`]: ["subscribe"],
+      [`user-${userId}-chat`]: ["subscribe"],
+      ...extraCapabilities,
     },
   });
-  
+
   return tokenRequest;
 }

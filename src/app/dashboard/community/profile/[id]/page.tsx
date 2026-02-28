@@ -8,6 +8,7 @@ import Image from "next/image";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { useCachedUserProfile } from "@/hooks/useCachedUserProfile";
 import { PostCard, type Post } from "@/components/community/PostCard";
+import { ChatWithButton } from "@/components/chat/ChatWithButton";
 
 interface UserProfile {
   id: string;
@@ -201,10 +202,11 @@ export default function UserProfilePage() {
   const currentUserName = (user as any)?.fullName || (session as any)?.user?.name || "User";
   const currentUserEmail = (user as any)?.email || (session as any)?.user?.email || "";
   const currentUserId = (user as any)?.id || (session as any)?.user?.id || "";
+  const currentUserStatus = (user as any)?.status ?? undefined;
 
   if (profileLoading) {
     return (
-      <DashboardLayout userRole={currentUserRole} userName={currentUserName} userEmail={currentUserEmail} userId={currentUserId}>
+      <DashboardLayout userRole={currentUserRole} userName={currentUserName} userEmail={currentUserEmail} userId={currentUserId} initialUserStatus={currentUserStatus}>
         <div className="min-h-[calc(100vh-140px)] py-10 px-4">
           <div className="max-w-2xl mx-auto space-y-4">
             <div className="bg-white border border-slate-200 rounded-2xl p-6 animate-pulse">
@@ -230,7 +232,7 @@ export default function UserProfilePage() {
     : null;
 
   return (
-    <DashboardLayout userRole={currentUserRole} userName={currentUserName} userEmail={currentUserEmail} userId={currentUserId}>
+    <DashboardLayout userRole={currentUserRole} userName={currentUserName} userEmail={currentUserEmail} userId={currentUserId} initialUserStatus={currentUserStatus}>
       <div className="min-h-[calc(100vh-140px)] bg-slate-50/30 py-6 px-3 sm:px-4">
         <div className="max-w-2xl mx-auto space-y-4">
           {/* Back */}
@@ -269,17 +271,34 @@ export default function UserProfilePage() {
 
                 {/* Follow button */}
                 {!profile.isMe && (
-                  <button
-                    onClick={toggleFollow}
-                    disabled={followLoading}
-                    className={`px-5 py-2 text-sm font-semibold rounded-full transition-all disabled:opacity-60 shadow-sm ${
-                      profile.isFollowing
-                        ? "bg-white border border-slate-200 text-slate-700 hover:border-red-300 hover:text-red-600"
-                        : "bg-[#1E3A5F] text-white hover:bg-[#0d2d5a]"
-                    }`}
-                  >
-                    {followLoading ? "…" : profile.isFollowing ? "Following" : "Follow"}
-                  </button>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      onClick={toggleFollow}
+                      disabled={followLoading}
+                      className={`px-5 py-2 text-sm font-semibold rounded-full transition-all disabled:opacity-60 shadow-sm ${
+                        profile.isFollowing
+                          ? "bg-white border border-slate-200 text-slate-700 hover:border-red-300 hover:text-red-600"
+                          : "bg-[#1E3A5F] text-white hover:bg-[#0d2d5a]"
+                      }`}
+                    >
+                      {followLoading ? "…" : profile.isFollowing ? "Following" : "Follow"}
+                    </button>
+                    {profile.status === "OFFICIAL" && (
+                      <ChatWithButton
+                        targetUserId={profile.id}
+                        targetUser={{
+                          id: profile.id,
+                          fullName: profile.fullName,
+                          volunteerId: profile.volunteerId,
+                          profilePicUrl: profile.profilePicUrl,
+                          role: profile.role,
+                          status: profile.status,
+                        }}
+                        label="Chat"
+                        variant="secondary"
+                      />
+                    )}
+                  </div>
                 )}
                 {profile.isMe && (
                   <Link
