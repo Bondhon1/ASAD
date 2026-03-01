@@ -197,6 +197,7 @@ export default function CommunityPage() {
   const userName = (user as any)?.fullName || (session as any)?.user?.name || "User";
   const userEmailVal = (user as any)?.email || (session as any)?.user?.email || "";
   const userIdVal = (user as any)?.id || (session as any)?.user?.id || "";
+  const userStatusVal = (user as any)?.status || (session as any)?.user?.status || null;
 
   return (
     <DashboardLayout
@@ -204,6 +205,7 @@ export default function CommunityPage() {
       userName={userName}
       userEmail={userEmailVal}
       userId={userIdVal}
+      initialUserStatus={userStatusVal}
     >
       <div className="min-h-[calc(100vh-140px)] bg-slate-50/30 py-6 px-3 sm:px-4">
         <div className="max-w-2xl mx-auto">
