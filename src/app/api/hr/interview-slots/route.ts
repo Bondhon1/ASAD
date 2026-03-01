@@ -32,6 +32,7 @@ export async function GET() {
 
     const user = await prisma.user.findUnique({
       where: { email: userEmail },
+      select: { id: true, role: true, email: true, fullName: true, username: true, googleRefreshToken: true },
     });
 
     if (!user || (user.role !== "HR" && user.role !== "MASTER" && user.role !== "ADMIN")) {

@@ -382,7 +382,7 @@ export default function NewRequestsPage() {
                         </td>
                         <td className="px-4 py-4 text-sm text-gray-600">
                           <div>
-                            <p className="font-medium">{app.paymentMethod.toUpperCase()}</p>
+                            <p className="font-medium">{app.paymentMethod?.toUpperCase() ?? '—'}</p>
                             <p className="text-xs text-gray-500">TRX: {app.trxId}</p>
                             {/* Reference removed from initial payment */}
                           </div>
@@ -455,7 +455,7 @@ export default function NewRequestsPage() {
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-600">Payment Method</label>
-                <p className="text-gray-900">{selectedApp.paymentMethod.toUpperCase()}</p>
+                <p className="text-gray-900">{selectedApp.paymentMethod?.toUpperCase() ?? '—'}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-600">Transaction ID</label>

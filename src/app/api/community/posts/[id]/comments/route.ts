@@ -36,16 +36,23 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     if (!post || post.isDeleted)
       return NextResponse.json({ error: "Post not found" }, { status: 404 });
 
-    // Top-level comments with their replies
+    // Top-level comments with their replies — paginated
+    const url = new URL(req.url);
+    const cursor = url.searchParams.get('cursor') ?? undefined;
+    const limit = Math.min(50, parseInt(url.searchParams.get('limit') ?? '20', 10));
+
     const comments = await prisma.postComment.findMany({
       where: { postId: id, parentCommentId: null, isDeleted: false },
       orderBy: { createdAt: "asc" },
+      take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       include: {
         author: { select: AUTHOR_SELECT },
         reactions: { select: { userId: true } },
         replies: {
           where: { isDeleted: false },
           orderBy: { createdAt: "asc" },
+          take: 20,
           include: {
             author: { select: AUTHOR_SELECT },
             reactions: { select: { userId: true } },
@@ -54,7 +61,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       },
     });
 
-    const enriched = comments.map((c) => ({
+    const hasMore = comments.length > limit;
+    const items = hasMore ? comments.slice(0, limit) : comments;
+    const nextCursor = hasMore ? items[items.length - 1].id : null;
+
+    const enriched = items.map((c) => ({
       ...c,
       reactionCount: c.reactions.length,
       userReacted: c.reactions.some((r) => r.userId === user.id),
@@ -65,7 +76,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       })),
     }));
 
-    return NextResponse.json({ comments: enriched });
+    return NextResponse.json({ comments: enriched, nextCursor });
   } catch (err) {
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }

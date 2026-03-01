@@ -35,7 +35,7 @@ export default function HRLeavePage() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const userEmail = session?.user?.email || "";
-  const { user: cachedUser, loading: userLoading } = useCachedUserProfile<any>(userEmail);
+  const { user: cachedUser, loading: userLoading, error: userError, refresh } = useCachedUserProfile<any>(userEmail);
   const { toast } = useModal();
 
   const [viewer, setViewer] = useState<any>(null);
@@ -55,31 +55,41 @@ export default function HRLeavePage() {
 
   // Auth
   useEffect(() => {
-    if (status === "loading" || userLoading) return;
-    if (status === "unauthenticated") { router.push("/auth/login"); return; }
+    if (status === "loading") return;
 
-    if (cachedUser) {
-      setViewer(cachedUser);
-      if (!HR_ROLES.includes(cachedUser.role)) {
-        router.push("/dashboard");
-        return;
-      }
+    if (status === "unauthenticated") {
+      router.replace("/auth");
       setAuthChecked(true);
-    } else if (session?.user?.email) {
-      fetch(`/api/user/profile?email=${encodeURIComponent(session.user.email)}`)
-        .then(r => r.json())
-        .then(d => {
-          if (d.user) {
-            setViewer(d.user);
-            if (!HR_ROLES.includes(d.user.role)) {
-              router.push("/dashboard");
-              return;
-            }
-            setAuthChecked(true);
-          }
-        });
+      return;
     }
-  }, [status, session, cachedUser, userLoading, router]);
+
+    if (!userEmail) {
+      router.replace("/auth");
+      setAuthChecked(true);
+      return;
+    }
+
+    if (userError) {
+      router.replace("/auth");
+      setAuthChecked(true);
+      return;
+    }
+
+    if (userLoading) return;
+
+    if (!cachedUser) {
+      refresh();
+      return;
+    }
+
+    if (!HR_ROLES.includes(cachedUser.role)) {
+      router.replace("/dashboard");
+      return;
+    }
+
+    setViewer(cachedUser);
+    setAuthChecked(true);
+  }, [status, router, userEmail, cachedUser, userLoading, userError, refresh]);
 
   // Fetch leaves
   const fetchLeaves = async () => {
@@ -150,10 +160,47 @@ export default function HRLeavePage() {
     return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">⏳ Pending</span>;
   };
 
-  if (!authChecked) {
+  const skeletonPage = (
+    <div className="max-w-5xl mx-auto px-4 py-6">
+      <div className="h-7 w-48 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg mb-2 animate-pulse" />
+      <div className="h-4 w-72 bg-gray-200 rounded mb-6 animate-pulse" />
+      {/* Filter bar skeleton */}
+      <div className="flex gap-2 mb-4 animate-pulse">
+        <div className="h-9 w-64 bg-gray-200 rounded-lg" />
+        <div className="h-9 w-36 bg-gray-200 rounded-lg ml-auto" />
+      </div>
+      {/* Leave card skeletons */}
+      <div className="space-y-3">
+        {[1, 2, 3, 4, 5].map(i => (
+          <div key={i} className="bg-white border border-gray-200 rounded-lg p-4 animate-pulse">
+            <div className="flex gap-3">
+              <div className="w-10 h-10 bg-gray-200 rounded-full flex-shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="flex gap-2">
+                  <div className="h-4 w-36 bg-gray-300 rounded" />
+                  <div className="h-4 w-20 bg-gray-200 rounded" />
+                  <div className="h-4 w-16 bg-gray-200 rounded-full" />
+                </div>
+                <div className="h-3 w-56 bg-gray-200 rounded" />
+                <div className="h-3 w-80 bg-gray-200 rounded" />
+              </div>
+              <div className="h-8 w-16 bg-gray-200 rounded-md flex-shrink-0" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  if (status === "loading" || !authChecked) {
     return (
-      <DashboardLayout userRole="HR" userName="" userEmail="" userId="">
-        <div className="flex items-center justify-center h-64 text-gray-400 text-sm">Loading...</div>
+      <DashboardLayout
+        userRole="HR"
+        userName={viewer?.fullName || viewer?.username || session?.user?.name || "HR"}
+        userEmail={viewer?.email || session?.user?.email || ""}
+        userId={viewer?.id || ""}
+      >
+        {skeletonPage}
       </DashboardLayout>
     );
   }

@@ -47,7 +47,9 @@ export async function PATCH(req: Request) {
 export async function GET() {
   try {
     // fetch ranks without explicit ordering so the database's natural/storage order is preserved
-    const ranks = await prisma.rank.findMany();
+    const ranks = await prisma.rank.findMany({
+      select: { id: true, name: true, thresholdPoints: true, description: true, parentId: true },
+    });
 
     // Build a canonical ordering based on business rules (hardcoded sequence)
     const desiredOrder = [

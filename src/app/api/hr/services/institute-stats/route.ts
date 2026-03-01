@@ -18,10 +18,22 @@ export async function GET(req: Request) {
     const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
     const pageSize = Math.min(200, Math.max(1, parseInt(url.searchParams.get('pageSize') || '20', 10)));
 
-    const institutes = await prisma.institute.findMany({ select: { id: true, name: true } });
-    const resultsAll = await Promise.all(institutes.map(async (inst) => {
-      const count = await prisma.user.count({ where: { instituteId: inst.id, status: 'OFFICIAL' } });
-      return { instituteId: inst.id, name: inst.name, volunteersCount: count };
+    // Use groupBy + a single join to avoid N+1 count queries
+    const [institutes, groupedCounts] = await Promise.all([
+      prisma.institute.findMany({ select: { id: true, name: true } }),
+      prisma.user.groupBy({
+        by: ['instituteId'],
+        where: { status: 'OFFICIAL', instituteId: { not: null } },
+        _count: { id: true },
+      }),
+    ]);
+    const countByInstitute = new Map(
+      groupedCounts.map((g) => [g.instituteId!, g._count.id])
+    );
+    const resultsAll = institutes.map((inst) => ({
+      instituteId: inst.id,
+      name: inst.name,
+      volunteersCount: countByInstitute.get(inst.id) ?? 0,
     }));
 
     // filter out zero counts

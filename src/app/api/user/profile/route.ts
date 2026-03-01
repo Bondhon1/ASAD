@@ -76,22 +76,46 @@ export async function GET(request: NextRequest) {
       // Full mode: all data including submissions and donations
       user = await prisma.user.findUnique({
         where: { email },
-        include: {
-          accounts: true,
-          institute: true,
-          volunteerProfile: { include: { rank: true, service: true } },
-          initialPayment: true,
-          finalPayment: true,
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
+          username: true,
+          phone: true,
+          status: true,
+          role: true,
+          volunteerId: true,
+          profilePicUrl: true,
+          emailVerified: true,
+          createdAt: true,
+          password: true,
+          accounts: { select: { provider: true } },
+          institute: { select: { id: true, name: true } },
+          volunteerProfile: {
+            select: {
+              userId: true, points: true, isOfficial: true,
+              sectors: true, clubs: true, serviceId: true,
+              rank: { select: { id: true, name: true, thresholdPoints: true } },
+              service: { select: { id: true, name: true } },
+            },
+          },
+          initialPayment: { select: { id: true, status: true, createdAt: true, amount: true } },
+          finalPayment: { select: { id: true, status: true, createdAt: true, amount: true } },
           experiences: {
+            select: { id: true, title: true, organization: true, startDate: true, endDate: true, isCurrent: true },
             orderBy: { startDate: 'desc' },
           },
           taskSubmissions: {
             where: { NOT: { submissionData: '__DEADLINE_MISSED_DEDUCTION__' } },
-            include: { task: true },
+            select: {
+              id: true, taskId: true, status: true, submittedAt: true, approvedAt: true,
+              task: { select: { id: true, title: true, pointsPositive: true, mandatory: true } },
+            },
             orderBy: { submittedAt: 'desc' },
             take: 20,
           },
           donations: {
+            select: { id: true, amount: true, donatedAt: true, campaignId: true },
             orderBy: { donatedAt: 'desc' },
             take: 20,
           },
@@ -161,9 +185,10 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Do not expose password hash to clients; provide helper flags for frontend
+    // Do not expose password hash or raw OAuth account records to clients
     const safeUser: any = { ...user };
     if (safeUser.password) delete safeUser.password;
+    if (safeUser.accounts) delete safeUser.accounts;
     
     // In lite mode, we don't include accounts, so we skip OAuth detection
     const authProviders = lite ? [] : ((user as any).accounts || []).map((a: any) => a.provider).filter(Boolean);

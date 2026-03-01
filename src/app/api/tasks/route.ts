@@ -27,7 +27,28 @@ export async function GET(req: Request) {
     if (!requester || requester.status === 'BANNED') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     // Return tasks where the requester matches the audience (computed at runtime) and task is active.
     const now = new Date();
-    const tasks = await prisma.task.findMany({ where: { startDate: { lte: now }, endDate: { gte: now } }, orderBy: { createdAt: 'desc' } });
+    const tasks = await prisma.task.findMany({
+      where: { startDate: { lte: now }, endDate: { gte: now } },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        taskType: true,
+        mandatory: true,
+        pointsPositive: true,
+        pointsNegative: true,
+        credit: true,
+        startDate: true,
+        endDate: true,
+        assignedGroupType: true,
+        assignedGroup: true,
+        targetUserIds: true,
+        attachments: true,
+        createdAt: true,
+      },
+    });
     const visible = tasks.filter((t) =>
       isUserInAudience(parseAudience(t.assignedGroup), {
         id: requester.id,

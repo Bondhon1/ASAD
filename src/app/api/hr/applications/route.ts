@@ -27,22 +27,43 @@ export async function GET(request: NextRequest) {
       where.interviewSlotId = slotId;
     }
 
-    const applications = await prisma.application.findMany({
-      where,
-      include: {
-        user: {
-          include: {
-            institute: true,
-            initialPayment: true,
+    const url = new URL(request.url);
+    const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
+    const pageSize = Math.min(100, parseInt(url.searchParams.get('pageSize') || '50', 10));
+    const skip = (page - 1) * pageSize;
+
+    const [applications, total] = await Promise.all([
+      prisma.application.findMany({
+        where,
+        select: {
+          id: true,
+          status: true,
+          appliedAt: true,
+          trxId: true,
+          paymentMethod: true,
+          interviewSlotId: true,
+          user: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              phone: true,
+              volunteerId: true,
+              status: true,
+              profilePicUrl: true,
+              institute: { select: { id: true, name: true } },
+              initialPayment: { select: { id: true, status: true, amount: true, createdAt: true } },
+            },
           },
         },
-      },
-      orderBy: {
-        appliedAt: "desc",
-      },
-    });
+        orderBy: { appliedAt: "desc" },
+        skip,
+        take: pageSize,
+      }),
+      prisma.application.count({ where }),
+    ]);
 
-    return NextResponse.json({ applications }, { status: 200 });
+    return NextResponse.json({ applications, total, page, pageSize }, { status: 200 });
   } catch (error) {
     console.error("Error fetching applications:", error);
     return NextResponse.json(

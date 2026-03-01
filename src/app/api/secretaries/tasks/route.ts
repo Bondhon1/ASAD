@@ -189,13 +189,26 @@ export async function GET(req: Request) {
 
     const url = new URL(req.url);
     const all = url.searchParams.get('all');
+    const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
+    const pageSize = Math.min(100, parseInt(url.searchParams.get('pageSize') || '50', 10));
+    const skip = (page - 1) * pageSize;
+
+    const TASK_SELECT = {
+      id: true, title: true, description: true, taskType: true, mandatory: true,
+      pointsPositive: true, pointsNegative: true, credit: true,
+      startDate: true, endDate: true, assignedGroupType: true, assignedGroup: true,
+      targetUserIds: true, attachments: true, createdAt: true, createdByUserId: true,
+    } as const;
 
     // If ?all=1 is requested, only allow SECRETARIES or MASTER to fetch all tasks
     if (all === '1') {
       if (!['SECRETARIES', 'MASTER'].includes(requester.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-      const tasks = await prisma.task.findMany({ orderBy: { createdAt: 'desc' } });
+      const [tasks, total] = await Promise.all([
+        prisma.task.findMany({ orderBy: { createdAt: 'desc' }, select: TASK_SELECT, skip, take: pageSize }),
+        prisma.task.count(),
+      ]);
       return NextResponse.json(
-        { tasks },
+        { tasks, total, page, pageSize },
         {
           headers: {
             'Cache-Control': 'private, max-age=30, stale-while-revalidate=60',
@@ -205,9 +218,12 @@ export async function GET(req: Request) {
     }
 
     // Otherwise return tasks created by the requester
-    const tasks = await prisma.task.findMany({ where: { createdByUserId: requester.id }, orderBy: { createdAt: 'desc' } });
+    const [tasks, total] = await Promise.all([
+      prisma.task.findMany({ where: { createdByUserId: requester.id }, orderBy: { createdAt: 'desc' }, select: TASK_SELECT, skip, take: pageSize }),
+      prisma.task.count({ where: { createdByUserId: requester.id } }),
+    ]);
     return NextResponse.json(
-      { tasks },
+      { tasks, total, page, pageSize },
       {
         headers: {
           'Cache-Control': 'private, max-age=30, stale-while-revalidate=60',

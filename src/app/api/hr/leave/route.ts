@@ -27,6 +27,9 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status"); // PENDING | APPROVED | DECLINED
     const sortBy = searchParams.get("sortBy") || "createdAt"; // createdAt | startDate | volunteerId
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
+    const pageSize = Math.min(100, parseInt(searchParams.get('pageSize') || '50', 10));
+    const skip = (page - 1) * pageSize;
 
     const whereClause: any = {};
     if (status && ["PENDING", "APPROVED", "DECLINED"].includes(status)) {
@@ -39,24 +42,29 @@ export async function GET(req: Request) {
         ? { startDate: "asc" }
         : { createdAt: "desc" };
 
-    const leaves = await prisma.leave.findMany({
-      where: whereClause,
-      orderBy: orderByField,
-      include: {
-        user: {
-          select: {
-            id: true,
-            fullName: true,
-            volunteerId: true,
-            email: true,
-            profilePicUrl: true,
+    const [leaves, total] = await Promise.all([
+      prisma.leave.findMany({
+        where: whereClause,
+        orderBy: sortBy === "volunteerId" ? { createdAt: "desc" } : orderByField,
+        include: {
+          user: {
+            select: {
+              id: true,
+              fullName: true,
+              volunteerId: true,
+              email: true,
+              profilePicUrl: true,
+            },
+          },
+          reviewedBy: {
+            select: { fullName: true, volunteerId: true },
           },
         },
-        reviewedBy: {
-          select: { fullName: true, volunteerId: true },
-        },
-      },
-    });
+        skip,
+        take: pageSize,
+      }),
+      prisma.leave.count({ where: whereClause }),
+    ]);
 
     // If sorting by volunteerId, do it in-memory since it's on a related model
     let sorted = leaves;
@@ -66,7 +74,7 @@ export async function GET(req: Request) {
       );
     }
 
-    return NextResponse.json({ leaves: sorted });
+    return NextResponse.json({ leaves: sorted, total, page, pageSize });
   } catch (err: any) {
     console.error("GET /api/hr/leave error:", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
