@@ -133,6 +133,16 @@ export default function TasksPage() {
   }, []);
 
   useEffect(() => {
+    // Skip all task-related API calls for non-official, non-staff users
+    const _sessStatus = (session as any)?.user?.status;
+    const _sessRole = (session as any)?.user?.role || '';
+    const _STAFF = ['HR', 'MASTER', 'ADMIN', 'DIRECTOR', 'DATABASE_DEPT', 'SECRETARIES'];
+    if (!session) return; // still loading
+    if (!_STAFF.includes(_sessRole) && _sessStatus !== 'OFFICIAL') {
+      setLoading(false);
+      setCreatedLoading(false);
+      return;
+    }
     (async () => {
       try {
         const res = await fetch('/api/tasks');
@@ -170,7 +180,7 @@ export default function TasksPage() {
         // ignore
       } finally { setCreatedLoading(false); }
     })();
-  }, [isSuperAdmin, userEmail]);
+  }, [isSuperAdmin, userEmail, session]);
 
   // Keep a ref to latest userSubmissions so interval callback can read current value
   const userSubRef = useRef<Record<string, any>>(userSubmissions);
@@ -455,9 +465,32 @@ export default function TasksPage() {
     </div>
   );
 
+  // Gate: only OFFICIAL members and staff can access Tasks
+  const _taskSessionStatus = (session as any)?.user?.status;
+  const _taskStaffRoles = ['HR', 'MASTER', 'ADMIN', 'DIRECTOR', 'DATABASE_DEPT', 'SECRETARIES'];
+  const _taskIsOfficialOrStaff = _taskStaffRoles.includes(role) || _taskSessionStatus === 'OFFICIAL';
+  const _taskRole = (user as any)?.role || (session as any)?.user?.role || 'VOLUNTEER';
+  const _taskName = (user as any)?.fullName || (session as any)?.user?.name || 'User';
+  const _taskEmail = (user as any)?.email || (session as any)?.user?.email || '';
+  const _taskId = (user as any)?.id || (session as any)?.user?.id || '';
+
+  if (session?.user && !_taskIsOfficialOrStaff) {
+    return (
+      <DashboardLayout userRole={_taskRole} userName={_taskName} userEmail={_taskEmail} userId={_taskId}>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+          <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-5">
+            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </div>
+          <h2 className="text-2xl font-bold text-slate-800 mb-2">Official Members Only</h2>
+          <p className="text-slate-500 max-w-sm">Tasks are available exclusively to official ASAD members. Complete your membership to unlock this section.</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <>
-    <DashboardLayout userRole={(user as any)?.role || (session as any)?.user?.role || 'VOLUNTEER'} userName={(user as any)?.fullName || (session as any)?.user?.name || 'User'} userEmail={(user as any)?.email || (session as any)?.user?.email || ''} userId={(user as any)?.id || (session as any)?.user?.id || ''}>
+    <DashboardLayout userRole={_taskRole} userName={_taskName} userEmail={_taskEmail} userId={_taskId}>
       <div className="min-h-[calc(100vh-140px)] bg-slate-50/30 py-10 px-4">
         <div className="max-w-5xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">

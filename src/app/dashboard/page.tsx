@@ -229,9 +229,19 @@ export default function DashboardPage() {
   }, [router, status, user, userEmail, userLoading]);
 
   useEffect(() => {
+    if (!userEmail) return;
+    // Wait for user data to load before deciding what to fetch
+    if (!user) return;
+    // Skip tasks and donations API calls for non-OFFICIAL users — reduces DB/serverless load
+    if (user.status !== 'OFFICIAL') {
+      setPendingTasks([]);
+      setCampaigns([]);
+      setPendingTasksLoading(false);
+      setCampaignsLoading(false);
+      return;
+    }
     let mounted = true;
     (async () => {
-      if (!userEmail) return;
       setPendingTasksLoading(true);
       try {
         const res = await fetch('/api/tasks');
@@ -251,7 +261,6 @@ export default function DashboardPage() {
     })();
     // fetch donation campaigns to keep donations panel consistent with /dashboard/donations
     (async () => {
-      if (!userEmail) return;
       setCampaignsLoading(true);
       try {
         const r = await fetch('/api/donations');
@@ -270,7 +279,7 @@ export default function DashboardPage() {
       }
     })();
     return () => { mounted = false; };
-  }, [userEmail]);
+  }, [userEmail, user?.status]);
 
   // Compute pending and available credits from payouts
   const totalCredits = Number(user?.credits ?? user?.coins ?? 0);
@@ -320,9 +329,13 @@ export default function DashboardPage() {
     return () => { cancelled = true; };
   }, [pendingTasks]);
 
-  // Fetch payout history
+  // Fetch payout history — only for OFFICIAL members
   useEffect(() => {
     if (!userEmail) return;
+    if (!user || user.status !== 'OFFICIAL') {
+      setPayouts([]);
+      return;
+    }
     let cancelled = false;
     (async () => {
       try {
@@ -335,7 +348,7 @@ export default function DashboardPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, [userEmail]);
+  }, [userEmail, user?.status]);
 
   // Fetch points history & rank data on demand (once per session)
   const fetchPointsData = async () => {

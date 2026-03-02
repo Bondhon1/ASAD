@@ -37,8 +37,18 @@ export default function CommunityPage() {
 
   const currentUserId = (user as any)?.id || (session as any)?.user?.id || "";
 
+  const _commStatus = (session as any)?.user?.status;
+  const _commRole = (session as any)?.user?.role || '';
+  const _COMM_STAFF = ['HR', 'MASTER', 'ADMIN', 'DIRECTOR', 'DATABASE_DEPT', 'SECRETARIES'];
+  const isOfficialOrStaff = _COMM_STAFF.includes(_commRole) || _commStatus === 'OFFICIAL';
+
   const loadPosts = useCallback(
     async (cursor?: string, replace = false) => {
+      // Only load posts for official members or staff
+      if (!isOfficialOrStaff) {
+        setLoading(false);
+        return;
+      }
       if (!cursor) setLoading(true);
       else setLoadingMore(true);
 
@@ -67,7 +77,7 @@ export default function CommunityPage() {
       setLoading(false);
       setLoadingMore(false);
     },
-    [view, currentUserId]
+    [view, currentUserId, isOfficialOrStaff]
   );
 
   useEffect(() => {
@@ -198,6 +208,27 @@ export default function CommunityPage() {
   const userEmailVal = (user as any)?.email || (session as any)?.user?.email || "";
   const userIdVal = (user as any)?.id || (session as any)?.user?.id || "";
   const userStatusVal = (user as any)?.status || (session as any)?.user?.status || null;
+
+  // Gate: only OFFICIAL members and staff can access Community
+  if (session?.user && !isOfficialOrStaff) {
+    return (
+      <DashboardLayout
+        userRole={userRole}
+        userName={userName}
+        userEmail={userEmailVal}
+        userId={userIdVal}
+        initialUserStatus={userStatusVal}
+      >
+        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+          <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-5">
+            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </div>
+          <h2 className="text-2xl font-bold text-slate-800 mb-2">Official Members Only</h2>
+          <p className="text-slate-500 max-w-sm">The Community is available exclusively to official ASAD members. Complete your membership to join the conversation.</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout

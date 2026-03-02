@@ -127,12 +127,19 @@ function formatStatusLabel(status: string | null): string {
   }
 }
 
-function getMenuItems(userRole: string) {
+function getMenuItems(userRole: string, userStatus?: string | null) {
+  const isOfficialVolunteer = userStatus === "OFFICIAL";
+
   const commonItems = [
     { label: "Dashboard", href: "/dashboard" },
-    { label: "Tasks", href: "/dashboard/tasks" },
-    { label: "Donations", href: "/dashboard/donations" },
-    { label: "Community", href: "/dashboard/community" },
+    // Tasks, Donations, Community are only shown to OFFICIAL members
+    ...(isOfficialVolunteer
+      ? [
+          { label: "Tasks", href: "/dashboard/tasks" },
+          { label: "Donations", href: "/dashboard/donations" },
+          { label: "Community", href: "/dashboard/community" },
+        ]
+      : []),
     { label: "Settings", href: "/dashboard/settings" },
   ];
 
@@ -247,7 +254,7 @@ function ShellInner({
   const isUserManagementPage = pathname?.startsWith("/dashboard/hr/users");
   const displayLabel = isStaff ? userRole : formatStatusLabel(userStatus);
 
-  let menuItems = getMenuItems(userRole);
+  let menuItems = getMenuItems(userRole, userStatus);
   // Ensure Job Posts always appears last
   const jobIndex = menuItems.findIndex((it) => it.href === "/dashboard/hr/jobs");
   if (jobIndex !== -1) {

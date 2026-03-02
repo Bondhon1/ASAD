@@ -10,8 +10,15 @@ export default function DonationsListPage() {
   const { data: session, status } = useSession();
   const [donations, setDonations] = useState<Array<any>>([]);
 
+  const userStatus = (session as any)?.user?.status;
+  const role = (session as any)?.user?.role || '';
+  const STAFF_ROLES = ['HR', 'MASTER', 'ADMIN', 'DIRECTOR', 'DATABASE_DEPT', 'SECRETARIES'];
+  const isOfficialOrStaff = STAFF_ROLES.includes(role) || userStatus === 'OFFICIAL';
+
   useEffect(() => {
     if (status === "loading") return;
+    // Skip donations API call for non-official, non-staff users
+    if (!STAFF_ROLES.includes(role) && userStatus !== 'OFFICIAL') return;
     (async () => {
       try {
         const res = await fetch('/api/donations');
@@ -22,10 +29,24 @@ export default function DonationsListPage() {
         // ignore
       }
     })();
-  }, [status]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, userStatus, role]);
 
-  const role = (session as any)?.user?.role;
   const displayName = (session as any)?.user?.name || (session as any)?.user?.email || "User";
+
+  if (session?.user && !isOfficialOrStaff) {
+    return (
+      <DashboardLayout userRole={role || 'VOLUNTEER'} userName={displayName} userEmail={(session as any)?.user?.email || ''} userId={(session as any)?.user?.id || ''}>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+          <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-5">
+            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </div>
+          <h2 className="text-2xl font-bold text-slate-800 mb-2">Official Members Only</h2>
+          <p className="text-slate-500 max-w-sm">Donation campaigns are available exclusively to official ASAD members. Complete your membership to unlock this section.</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout userRole={role || "VOLUNTEER"} userName={displayName} userEmail={(session as any)?.user?.email || ""} userId={(session as any)?.user?.id || ""}>

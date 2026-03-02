@@ -808,7 +808,8 @@ export default function SettingsPage() {
           )}
         </div>
 
-        {/* Sectors & Clubs Section */}
+        {/* Sectors & Clubs Section — OFFICIAL members only */}
+        {user?.status === 'OFFICIAL' && (<>
         <div className="bg-white border border-gray-200 rounded-md mt-4">
           <button
             className="w-full text-left px-4 py-3 flex items-center justify-between"
@@ -1097,6 +1098,7 @@ export default function SettingsPage() {
             </div>
           );
         })()}
+        </>)}
 
         {/* Apply for Leave Section */}
         {(user?.role === 'VOLUNTEER' || user?.role === 'HR' || user?.role === 'MASTER' || user?.role === 'ADMIN' || user?.role === 'DIRECTOR' || user?.role === 'DATABASE_DEPT' || user?.role === 'SECRETARIES') && user?.status === 'OFFICIAL' && (
