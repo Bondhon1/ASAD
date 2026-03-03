@@ -224,7 +224,7 @@ function getMenuItems(userRole: string, userStatus?: string | null) {
   if (userRole === "ADMIN") {
     const adminItems = [
       ...hrItems.slice(0, -1),
-      { label: "Credit Management", href: "/dashboard/admin/credit-management" },
+      { label: "Task management", href: "/dashboard/secretaries" },
       { label: "Sector/club management", href: "/dashboard/admin/org-requests" },
       hrItems[hrItems.length - 1],
     ];
