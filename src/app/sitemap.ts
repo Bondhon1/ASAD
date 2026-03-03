@@ -1,7 +1,8 @@
 import { MetadataRoute } from "next";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = process.env.NEXTAUTH_URL || "https://asadofficial.org";
+  const raw = process.env.NEXTAUTH_URL || "https://asadofficial.org";
+  const baseUrl = raw.startsWith("http") ? raw : `https://${raw}`;
   
   // Static pages
   const staticPages: MetadataRoute.Sitemap = [

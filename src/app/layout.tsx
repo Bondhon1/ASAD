@@ -20,7 +20,8 @@ const playfair = Playfair_Display({ subsets: ["latin"], variable: "--font-playfa
 const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-dm-sans" });
 const nunito = Nunito({ subsets: ["latin"], variable: "--font-nunito" });
 
-const siteUrl = process.env.NEXTAUTH_URL || "https://amarsomoyamardesh.org";
+const rawSiteUrl = process.env.NEXTAUTH_URL || "https://amarsomoyamardesh.org";
+const siteUrl = rawSiteUrl.startsWith("http") ? rawSiteUrl : `https://${rawSiteUrl}`;
 
 export const viewport: Viewport = {
   width: "device-width",
