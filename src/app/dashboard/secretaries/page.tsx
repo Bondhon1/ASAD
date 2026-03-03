@@ -315,7 +315,7 @@ export default function SecretariesPage() {
 
   // Perform client-side redirect if unauthorized
   useEffect(() => {
-    if (!userLoading && displayRole !== 'MASTER' && displayRole !== 'SECRETARIES') {
+    if (!userLoading && displayRole !== 'MASTER' && displayRole !== 'SECRETARIES' && displayRole !== 'ADMIN') {
       router.push('/dashboard');
     }
   }, [userLoading, displayRole, router]);
@@ -325,7 +325,7 @@ export default function SecretariesPage() {
     const id = queryTaskId;
     if (!id) return;
     if (userLoading) return;
-    if (displayRole !== 'MASTER' && displayRole !== 'SECRETARIES') return;
+    if (displayRole !== 'MASTER' && displayRole !== 'SECRETARIES' && displayRole !== 'ADMIN') return;
 
     (async () => {
       setSubmissionsError(null);
@@ -417,10 +417,10 @@ export default function SecretariesPage() {
   };
 
 
-  // allow only MASTER or SECRETARIES (MASTER should still have access)
+  // allow only MASTER, ADMIN or SECRETARIES
   // Avoid calling router.push during render (server) — return null while
   // loading or if unauthorized; perform redirect client-side in useEffect.
-  if (!userLoading && displayRole !== 'MASTER' && displayRole !== 'SECRETARIES') {
+  if (!userLoading && displayRole !== 'MASTER' && displayRole !== 'SECRETARIES' && displayRole !== 'ADMIN') {
     return null;
   }
 

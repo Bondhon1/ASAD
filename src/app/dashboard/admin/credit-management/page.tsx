@@ -346,6 +346,11 @@ export default function CreditManagementPage() {
   }, [status, router]);
 
   useEffect(() => {
+    if (!viewer) return;
+    if (viewer.role !== "MASTER") router.push("/dashboard");
+  }, [viewer, router]);
+
+  useEffect(() => {
     if (viewer) fetchPayouts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewer]);
