@@ -318,6 +318,7 @@ export default function UsersManagementPage() {
   }, [query]);
 
   useEffect(() => {
+    if (!authChecked) return;
     (async () => {
       try {
         const res = await fetch('/api/hr/services');
@@ -328,7 +329,7 @@ export default function UsersManagementPage() {
         // ignore
       }
     })();
-  }, []);
+  }, [authChecked]);
 
   useEffect(() => {
     let active = true;
@@ -400,34 +401,9 @@ export default function UsersManagementPage() {
     return String(rank);
   };
 
-  // API returns users already filtered by status=UNOFFICIAL & isOfficial=true
-  // Apply client-side final payment verifiedAt date-range filter when OFFICIAL is selected
+  // Server handles all filtering (status, rank, date range). No client-side filtering needed.
   const selectedRankName = rankFilter ? (ranksList.find(r => r.id === rankFilter)?.name ?? rankFilter) : '';
-  const filtered = users.filter(u => {
-    // Do not apply strict client-side rank-name equality when a rank filter is set.
-    // The server returns users already filtered/expanded for parent ranks, so rely on server-side filtering.
-    // Keep this block only as a fallback (currently noop).
-    if (rankFilter) {
-      // noop: server provides the correct set (including child ranks for parent selection)
-    }
-    if (statusFilter === 'OFFICIAL' && (finalFrom || finalTo)) {
-      const v = (u as any).finalPayment?.verifiedAt;
-      if (!v) return false;
-      const d = new Date(v);
-      if (finalFrom) {
-        const sf = new Date(finalFrom);
-        if (!isNaN(sf.getTime()) && d < sf) return false;
-      }
-      if (finalTo) {
-        const tf = new Date(finalTo);
-        if (!isNaN(tf.getTime())) {
-          tf.setHours(23,59,59,999);
-          if (d > tf) return false;
-        }
-      }
-    }
-    return true;
-  });
+  const filtered = users;
 
   const grouped = filtered.reduce<Record<string, User[]>>((acc, u) => {
     const key = u.role || 'UNKNOWN';
@@ -476,7 +452,7 @@ export default function UsersManagementPage() {
                   </svg>
                 </div>
               </div>
-              <div className="text-2xl sm:text-3xl font-bold text-green-700">{stats.officialCount ?? filtered.filter(u => u.status === 'OFFICIAL' || u.volunteerProfile?.isOfficial).length}</div>
+              <div className="text-2xl sm:text-3xl font-bold text-green-700">{stats.officialCount ?? filtered.filter(u => u.status === 'OFFICIAL').length}</div>
             </div>
 
             <div className="min-w-[260px] sm:min-w-0 bg-gradient-to-br from-purple-50 to-white border border-purple-100 rounded-xl p-2 sm:p-5 shadow-sm hover:shadow-md transition-shadow lg:col-span-2">
@@ -811,7 +787,7 @@ export default function UsersManagementPage() {
                                     )}
                                   </div>
                                   <div className="text-xs text-gray-500">Status: {u.status}</div>
-                                  <div className="text-xs text-gray-500">Institute: {u.institute?.name || 'Independent'}</div>
+                                  <div className="text-xs text-gray-500">Institute: {displayUser.institute?.name || 'Independent'}</div>
                                   <div className="text-xs text-gray-500">Volunteer ID:
                                     <span className="ml-1">
                                       {editingVolunteerUserId === u.id ? (
@@ -876,10 +852,10 @@ export default function UsersManagementPage() {
                                 </div>
 
                                 <div className="space-y-3">
-                                  { (u.status === 'OFFICIAL' || u.volunteerProfile?.isOfficial) && (displayRole === 'HR' || displayRole === 'MASTER' || displayRole === 'ADMIN') && (
+                                  { (u.status === 'OFFICIAL' || displayUser.volunteerProfile?.isOfficial) && (displayRole === 'HR' || displayRole === 'MASTER' || displayRole === 'ADMIN') && (
                                     <div className="flex flex-col sm:flex-row gap-2">
-                                      <button onClick={() => { setShowRankForm(s => !s); const currentRankName = typeof u.volunteerProfile?.rank === 'string' ? u.volunteerProfile.rank : (u.volunteerProfile?.rank as any)?.name || ''; setRankInput(ranksList.find(r => r.name === currentRankName)?.id ?? ''); setSelected(u); }} className="w-full sm:w-auto px-2 py-1.5 text-xs md:px-3 bg-[#0b2545] text-white rounded">Set Rank</button>
-                                      <button onClick={() => { setShowPointsForm(s => !s); setPointsInput(u.volunteerProfile?.points ?? 0); setSelected(u); }} className="w-full sm:w-auto px-2 py-1.5 text-xs md:px-3 bg-gray-100 text-gray-800 rounded">Set Points</button>
+                                      <button onClick={() => { setShowRankForm(s => !s); const currentRankName = typeof displayUser.volunteerProfile?.rank === 'string' ? displayUser.volunteerProfile.rank : (displayUser.volunteerProfile?.rank as any)?.name || ''; setRankInput(ranksList.find(r => r.name === currentRankName)?.id ?? ''); setSelected(u); }} className="w-full sm:w-auto px-2 py-1.5 text-xs md:px-3 bg-[#0b2545] text-white rounded">Set Rank</button>
+                                      <button onClick={() => { setShowPointsForm(s => !s); setPointsInput(displayUser.volunteerProfile?.points ?? 0); setSelected(u); }} className="w-full sm:w-auto px-2 py-1.5 text-xs md:px-3 bg-gray-100 text-gray-800 rounded">Set Points</button>
                                     </div>
                                   )}
 
@@ -1062,13 +1038,13 @@ export default function UsersManagementPage() {
                                         </div>
                                       </div>
                                     ) : (
-                                      (displayRole === 'DIRECTOR' || displayRole === 'MASTER' || displayRole === 'HR' || displayRole === 'ADMIN') && (u.status === 'OFFICIAL' || u.volunteerProfile?.isOfficial) && (
+                                      (displayRole === 'DIRECTOR' || displayRole === 'MASTER' || displayRole === 'HR' || displayRole === 'ADMIN') && (u.status === 'OFFICIAL' || displayUser.volunteerProfile?.isOfficial) && (
                                         <div>
                                           <button onClick={() => {
                                             setEditingOrgUserId(u.id);
-                                            setSelectedServiceLocal(u.volunteerProfile?.service?.id || autoAssignServiceFromInstitute(u.institute?.name) || null);
-                                            setSelectedSectorsLocal(Array.isArray(u.volunteerProfile?.sectors) ? (u.volunteerProfile?.sectors as string[]) : []);
-                                            setSelectedClubsLocal(Array.isArray(u.volunteerProfile?.clubs) ? (u.volunteerProfile?.clubs as string[]) : []);
+                                            setSelectedServiceLocal(displayUser.volunteerProfile?.service?.id || autoAssignServiceFromInstitute(displayUser.institute?.name) || null);
+                                            setSelectedSectorsLocal(Array.isArray(displayUser.volunteerProfile?.sectors) ? (displayUser.volunteerProfile?.sectors as string[]) : []);
+                                            setSelectedClubsLocal(Array.isArray(displayUser.volunteerProfile?.clubs) ? (displayUser.volunteerProfile?.clubs as string[]) : []);
                                           }} className="w-full sm:w-auto px-2 py-1.5 text-xs md:px-3 bg-gray-100 rounded">Edit Service/Sectors/Clubs</button>
                                         </div>
                                       )

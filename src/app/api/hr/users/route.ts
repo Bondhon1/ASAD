@@ -173,18 +173,13 @@ async function fetchUsersData(
         status: true,
         role: true,
         volunteerId: true,
-        createdAt: true,
-        // Only essential nested data for list view
-        institute: { select: { name: true } },
+        // Only rank is needed for list row display; all other profile/payment/institute
+        // data is fetched on-demand via GET /api/hr/users/[id] when a user is expanded.
         volunteerProfile: { 
           select: { 
-            points: true, 
-            isOfficial: true, 
             rank: { select: { id: true, name: true } },
-            // Service, sectors, clubs moved to detail endpoint
           } 
         },
-        // Payment and interview data moved to detail endpoint
       },
       orderBy: { createdAt: 'desc' },
       skip,
