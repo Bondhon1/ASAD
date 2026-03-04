@@ -12,6 +12,7 @@ import {
   type Post,
   type Author,
 } from "@/components/community/PostCard";
+import CommunityLeaderboard from "@/components/community/Leaderboard";
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
@@ -239,7 +240,8 @@ export default function CommunityPage() {
       initialUserStatus={userStatusVal}
     >
       <div className="min-h-[calc(100vh-140px)] bg-slate-50/30 py-6 px-3 sm:px-4">
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-5xl mx-auto flex gap-6 items-start">
+          <div className="flex-1 min-w-0">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
             <div>
@@ -374,6 +376,9 @@ export default function CommunityPage() {
           {!hasMore && posts.length > 0 && (
             <p className="text-center text-xs text-slate-400 py-4">You've seen all posts</p>
           )}
+          </div>
+          {/* Leaderboard — sidebar on desktop, floating button on mobile */}
+          <CommunityLeaderboard />
         </div>
       </div>
     </DashboardLayout>
