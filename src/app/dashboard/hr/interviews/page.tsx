@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useRef, useCallback, Suspense, type FormEvent } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Plus, Calendar, Users, Link as LinkIcon, Trash2, CheckCircle, AlertCircle } from "lucide-react";
+import { Plus, Calendar, Users, Link as LinkIcon, Trash2, CheckCircle, AlertCircle, Search } from "lucide-react";
 import { motion } from "framer-motion";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { useCachedUserProfile } from "@/hooks/useCachedUserProfile";
@@ -44,6 +44,7 @@ function InterviewSlotsContent() {
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
   const [participants, setParticipants] = useState<any[]>([]);
   const [participantsLoading, setParticipantsLoading] = useState(false);
+  const [participantSearch, setParticipantSearch] = useState("");
   
   // Deduplication refs to prevent duplicate API calls
   const fetchingSlots = useRef(false);
@@ -310,6 +311,7 @@ function InterviewSlotsContent() {
     setShowParticipantsModal(false);
     setSelectedSlotId(null);
     setParticipants([]);
+    setParticipantSearch("");
   };
 
   const handleApproveDecline = async (applicationId: string, action: "approve" | "decline") => {
@@ -552,13 +554,29 @@ function InterviewSlotsContent() {
               <h3 className="text-xl font-semibold text-gray-900">Participants</h3>
               <button onClick={handleCloseParticipants} className="text-gray-500 hover:text-gray-700">×</button>
             </div>
+            <div className="relative mb-4">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search by email..."
+                value={participantSearch}
+                onChange={(e) => setParticipantSearch(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]"
+              />
+            </div>
             {participantsLoading ? (
               <div className="py-10 text-center text-gray-600">Loading participants...</div>
             ) : participants.length === 0 ? (
               <div className="py-10 text-center text-gray-500">No participants yet.</div>
-            ) : (
+            ) : (() => {
+              const filtered = participants.filter((app) =>
+                app.user?.email?.toLowerCase().includes(participantSearch.toLowerCase())
+              );
+              return filtered.length === 0 ? (
+                <div className="py-10 text-center text-gray-500">No participants match &quot;{participantSearch}&quot;.</div>
+              ) : (
               <div className="space-y-3 max-h-[60vh] overflow-y-auto">
-                {participants.map((app) => (
+                {filtered.map((app) => (
                   <div key={app.id} className="border border-gray-200 rounded-lg p-4 flex flex-col gap-2">
                     <div className="flex items-center justify-between">
                       <div>
@@ -579,7 +597,9 @@ function InterviewSlotsContent() {
                   </div>
                 ))}
               </div>
-            )}
+              );
+            })()
+            }
           </motion.div>
         </div>
       )}
