@@ -16,16 +16,15 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const viewer = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: { id: true, status: true, role: true },
-    });
+    // role and status are embedded in the JWT by the auth callback — no extra DB query needed
+    const viewerRole = (session.user as any).role ?? "";
+    const viewerStatus = (session.user as any).status ?? "";
 
     const STAFF_ROLES = ["HR", "MASTER", "ADMIN", "DIRECTOR", "DATABASE_DEPT", "SECRETARIES"];
     const isAllowed =
-      viewer?.status === "OFFICIAL" || STAFF_ROLES.includes(viewer?.role ?? "");
+      viewerStatus === "OFFICIAL" || STAFF_ROLES.includes(viewerRole);
 
-    if (!viewer || !isAllowed) {
+    if (!isAllowed) {
       return NextResponse.json(
         { error: "Only official volunteers can view the leaderboard" },
         { status: 403 }
