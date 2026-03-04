@@ -119,7 +119,7 @@ async function main() {
       userStatus,
       appStatus + flag,
       slotId ? `${slotId} (${slotTime})` : 'null',
-      ip?.interviewDate ? String(app?.interviewDate) : String(app?.interviewDate ?? 'null'),
+      String(app?.interviewDate ?? 'null'),
       ipStatus,
     ]);
   }
