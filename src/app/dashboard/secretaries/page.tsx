@@ -310,6 +310,7 @@ export default function SecretariesPage() {
   // Modal state for viewing submissions (approve flow)
   const [submissionsModalOpen, setSubmissionsModalOpen] = useState(false);
   const [submissionsLoading, setSubmissionsLoading] = useState(false);
+  const [submissionActionLoading, setSubmissionActionLoading] = useState<Set<string>>(new Set());
   const [submissionsList, setSubmissionsList] = useState<any[]>([]);
   const [submissionsError, setSubmissionsError] = useState<string | null>(null);
 
@@ -353,7 +354,7 @@ export default function SecretariesPage() {
     const taskId = currentTaskId || queryTaskId;
     if (!taskId) return;
     try {
-      setSubmissionsLoading(true);
+      setSubmissionActionLoading(prev => new Set(prev).add(submissionId));
       const res = await fetch(`/api/tasks/${taskId}/approve`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -366,7 +367,7 @@ export default function SecretariesPage() {
     } catch (e: any) {
       await alert('Approve failed: ' + (e?.message || 'Unknown'));
     } finally {
-      setSubmissionsLoading(false);
+      setSubmissionActionLoading(prev => { const next = new Set(prev); next.delete(submissionId); return next; });
     }
   };
 
@@ -376,7 +377,7 @@ export default function SecretariesPage() {
     const reason = await confirmPrompt('Reason for rejection (optional):', 'Rejection Reason');
     if (reason === null) return;
     try {
-      setSubmissionsLoading(true);
+      setSubmissionActionLoading(prev => new Set(prev).add(submissionId));
       const res = await fetch(`/api/tasks/${taskId}/approve`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -389,7 +390,7 @@ export default function SecretariesPage() {
     } catch (e: any) {
       await alert('Reject failed: ' + (e?.message || 'Unknown'));
     } finally {
-      setSubmissionsLoading(false);
+      setSubmissionActionLoading(prev => { const next = new Set(prev); next.delete(submissionId); return next; });
     }
   };
 
@@ -823,8 +824,12 @@ export default function SecretariesPage() {
 
                       {s.status === 'PENDING' && (
                         <div className="mt-3 flex items-center gap-2">
-                          <button onClick={() => handleApprove(s.id)} disabled={submissionsLoading} className="px-3 py-1.5 bg-green-600 text-white rounded-md text-sm">Approve</button>
-                          <button onClick={() => handleReject(s.id)} disabled={submissionsLoading} className="px-3 py-1.5 bg-red-50 border border-red-200 text-red-600 rounded-md text-sm">Reject</button>
+                          <button onClick={() => handleApprove(s.id)} disabled={submissionActionLoading.has(s.id)} className="px-3 py-1.5 bg-green-600 text-white rounded-md text-sm disabled:opacity-50">
+                            {submissionActionLoading.has(s.id) ? 'Saving...' : 'Approve'}
+                          </button>
+                          <button onClick={() => handleReject(s.id)} disabled={submissionActionLoading.has(s.id)} className="px-3 py-1.5 bg-red-50 border border-red-200 text-red-600 rounded-md text-sm disabled:opacity-50">
+                            {submissionActionLoading.has(s.id) ? 'Saving...' : 'Reject'}
+                          </button>
                         </div>
                       )}
                     </div>
