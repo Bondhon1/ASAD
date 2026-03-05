@@ -57,7 +57,7 @@ export async function POST(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { id: _slotId } = await params; // slot context (unused for validation)
+    const { id: slotId } = await params;
     const body = await request.json();
     const { applicationId, action } = body as { applicationId: string; action: string };
 
@@ -93,7 +93,7 @@ export async function POST(
             applicationId: application.id,
             userId: application.userId,
             userEmail: applicantUser.email,
-            slotId: id,
+            slotId: slotId,
           }),
           affectedVolunteerId: applicantUser.volunteerId || undefined,
         },
