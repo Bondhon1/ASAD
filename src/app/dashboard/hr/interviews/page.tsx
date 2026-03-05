@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useRef, useCallback, Suspense, type FormEvent } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Plus, Calendar, Users, Link as LinkIcon, Trash2, CheckCircle, AlertCircle, Search } from "lucide-react";
+import { Plus, Calendar, Users, Link as LinkIcon, Trash2, CheckCircle, AlertCircle, Search, Clipboard, ClipboardCheck } from "lucide-react";
 import { motion } from "framer-motion";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { useCachedUserProfile } from "@/hooks/useCachedUserProfile";
@@ -551,7 +551,10 @@ function InterviewSlotsContent() {
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-xl shadow-xl w-full max-w-3xl p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-semibold text-gray-900">Participants</h3>
-              <button onClick={handleCloseParticipants} className="text-gray-500 hover:text-gray-700">×</button>
+              <div className="flex items-center gap-2">
+                <CopyEmailsButton participants={participants} search={participantSearch} disabled={participantsLoading} />
+                <button onClick={handleCloseParticipants} className="text-gray-500 hover:text-gray-700 text-xl leading-none">×</button>
+              </div>
             </div>
             <div className="relative mb-4">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -603,6 +606,31 @@ function InterviewSlotsContent() {
         </div>
       )}
     </DashboardLayout>
+  );
+}
+
+function CopyEmailsButton({ participants, search, disabled }: { participants: { user?: { email?: string } }[]; search: string; disabled?: boolean }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    const filtered = participants.filter((app) =>
+      app.user?.email?.toLowerCase().includes(search.toLowerCase())
+    );
+    const csv = filtered.map((app) => app.user?.email).filter(Boolean).join(",");
+    navigator.clipboard.writeText(csv).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+  return (
+    <button
+      onClick={handleCopy}
+      disabled={disabled}
+      title="Copy emails as CSV"
+      className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-[#1E3A5F] border border-[#1E3A5F] rounded-lg hover:bg-[#1E3A5F] hover:text-white transition-colors disabled:opacity-40 disabled:pointer-events-none"
+    >
+      {copied ? <ClipboardCheck className="w-4 h-4" /> : <Clipboard className="w-4 h-4" />}
+      {copied ? "Copied!" : "Copy Emails"}
+    </button>
   );
 }
 
