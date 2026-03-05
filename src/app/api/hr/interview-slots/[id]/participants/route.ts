@@ -99,6 +99,11 @@ export async function POST(
         },
       });
 
+      // Remove earlier-stage notifications that are no longer relevant
+      await prisma.notification.deleteMany({
+        where: { userId: application.userId, type: "INITIAL_PAYMENT_ACCEPTED" },
+      });
+
       // Create notification for the user (not broadcast)
       const notification = await prisma.notification.create({
         data: {

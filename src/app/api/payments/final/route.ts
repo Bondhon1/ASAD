@@ -74,6 +74,11 @@ export async function POST(request: NextRequest) {
       data: { status: "INTERVIEW_PASSED" },
     });
 
+    // Remove stale rejection notification so the user sees a clean state
+    await prisma.notification.deleteMany({
+      where: { userId: user.id, type: "FINAL_PAYMENT_REJECTED" },
+    });
+
     // Invalidate profile cache to ensure fresh data on next fetch
     invalidateProfileCache(email);
 

@@ -43,6 +43,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           },
         });
         
+        // Remove stale notifications from previous failed attempts
+        await prisma.notification.deleteMany({
+          where: { userId: payment.userId, type: "INITIAL_PAYMENT_REJECTED" },
+        });
+
         // Create notification for initial payment approval (not broadcast)
         const notification = await prisma.notification.create({
           data: {
@@ -208,6 +213,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         const messengerFallback = "https://www.facebook.com/fatema.akter.anika.663182";
         const notificationMessage = `Congratulations! You are now an official volunteer. Your Volunteer ID is ${volunteerIdToUse}.\n\nJoin our Messenger group: ${messengerPrimary}\nIf that fails, DM: ${messengerFallback}`;
 
+        // Remove earlier-stage notifications that are no longer relevant
+        await prisma.notification.deleteMany({
+          where: { userId: payment.userId, type: { in: ["INTERVIEW_PASSED", "INITIAL_PAYMENT_ACCEPTED", "FINAL_PAYMENT_REJECTED"] } },
+        });
+
         const notification = await prisma.notification.create({
           data: {
             userId: payment.userId,
@@ -265,6 +275,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
             }),
             affectedVolunteerId: payment.user?.volunteerId || undefined,
           },
+        });
+
+        // Remove earlier-stage and duplicate stale notifications
+        await prisma.notification.deleteMany({
+          where: { userId: payment.userId, type: { in: ["INTERVIEW_PASSED", "FINAL_PAYMENT_REJECTED"] } },
         });
 
         // Create notification for final payment rejection (not broadcast)
