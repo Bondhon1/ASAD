@@ -24,16 +24,9 @@ export async function DELETE(
 
     const { id } = await params;
 
-    // Unassign all applications from this slot
-    await prisma.application.updateMany({
-      where: { interviewSlotId: id },
-      data: { 
-        interviewSlotId: null,
-        status: "INTERVIEW_REQUESTED", // Reset status
-      },
-    });
-
-    // Delete the slot
+    // Delete the slot — Prisma's onDelete: SetNull cascade will automatically
+    // set application.interviewSlotId = null for all linked applications.
+    // User status and application status are intentionally left unchanged.
     await prisma.interviewSlot.delete({
       where: { id },
     });

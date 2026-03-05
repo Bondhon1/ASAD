@@ -57,7 +57,7 @@ export async function POST(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { id } = await params; // slot id
+    const { id: _slotId } = await params; // slot context (unused for validation)
     const body = await request.json();
     const { applicationId, action } = body as { applicationId: string; action: string };
 
@@ -69,8 +69,8 @@ export async function POST(
       where: { id: applicationId },
       include: { user: { select: { id: true, fullName: true, email: true, volunteerId: true } } }
     });
-    if (!application || application.interviewSlotId !== id) {
-      return NextResponse.json({ error: "Application not found for this slot" }, { status: 404 });
+    if (!application) {
+      return NextResponse.json({ error: "Application not found" }, { status: 404 });
     }
 
     const applicantUser = application.user;
