@@ -25,7 +25,7 @@ export async function GET(
     const { id } = await params;
 
     const applications = await prisma.application.findMany({
-      where: { interviewSlotId: id },
+      where: { interviewSlotId: id, interviewResult: null },
       include: {
         user: {
           select: { id: true, fullName: true, email: true, volunteerId: true, profilePicUrl: true },
