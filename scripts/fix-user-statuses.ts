@@ -6,12 +6,7 @@
 import { prisma } from '../src/lib/prisma';
 
 const TARGET_EMAILS = [
-  'jahidhasan112008@gmail.com',
-  'sabihatarannum192@gmail.com',
-  'saarahbwu@gmail.com',
-  'mohammadmohib1567@gmail.com',
-  'kabirbushra05@gmail.com',
-  'tahsinalam.edu@gmail.com',
+  'abcd@gmail.com',
 ];
 
 async function main() {

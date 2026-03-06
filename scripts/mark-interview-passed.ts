@@ -6,33 +6,7 @@
 import { prisma } from '../src/lib/prisma';
 
 const TARGET_EMAILS = [
-  'tabassumarthi60@gmail.com',
-  'safarilove224@gmail.com',
-  'britentr12@gmail.com',
-  'mishkat.tc@gmail.com',
-  'applerafsan19@gmail.com',
-  'sornaly810@gmail.com',
-  'jahidhasan112008@gmail.com',
-  'mahfizurrahman0028@gmail.com',
-  'sabihatarannum192@gmail.com',
-  'samianur3048@gmail.com',
-  'sadiachad05@gmail.com',
-  'samiamjawad@gmail.com',
-  'farhanjarif481@gmail.com',
-  'saarahbwu@gmail.com',
-  'jerin03dipti@gmail.com',
-  'mohammadmohib1567@gmail.com',
-  'adhikarymoumita146@gmail.com',
-  'yusraislam2708@gmail.com',
-  'sajedasabihashoshi786@gmail.com',
-  'falihasharaf1997@gmail.com',
-  'moni87542@gmail.com',
-  'kabirbushra05@gmail.com',
-  'sameenmar1234@gmail.com',
-  'tahsinalam.edu@gmail.com',
-  'parvinhai69@gmail.com',
-  'labonisamiaakter65@gmail.com',
-  'golammomin232@gmail.com',
+  "abcd@gmail.com",
 ];
 
 async function main() {
