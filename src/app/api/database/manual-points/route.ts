@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
+import { createAuditLog } from '@/lib/prisma-audit';
 import { applyPointsChange } from '@/lib/rankUtils';
 import { publishBroadcastNotification } from '@/lib/ably';
 import { NotificationType } from '@prisma/client';
@@ -333,14 +334,7 @@ export async function POST(req: Request) {
 
     // ── Audit log ─────────────────────────────────────────────────────────────
     try {
-      await prisma.auditLog.create({
-        data: {
-          actorUserId: requester.id,
-          action: 'MANUAL_POINTS_ADJUSTMENT',
-          meta: JSON.stringify({ taskName, points, ids: rawIds, results, negativeDeductionSummary }),
-          points,
-        },
-      });
+      await createAuditLog(requester.id, 'MANUAL_POINTS_ADJUSTMENT', { taskName, points, ids: rawIds, results, negativeDeductionSummary }, undefined, points);
     } catch (e) {
       console.error('Failed to create audit log', e);
     }

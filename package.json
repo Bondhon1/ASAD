@@ -5,11 +5,14 @@
   "scripts": {
     "dev": "cross-env NODE_OPTIONS='--max-old-space-size=4096' next dev --webpack",
     "dev:turbo": "cross-env NODE_OPTIONS='--max-old-space-size=4096' next dev --turbopack",
-    "build": "prisma generate && cross-env NODE_OPTIONS='--max-old-space-size=4096' next build",
-    "build:vercel": "prisma generate && next build",
+    "generate": "prisma generate && prisma generate --schema=prisma/schema.audit.prisma",
+    "generate:audit": "prisma generate --schema=prisma/schema.audit.prisma",
+    "db:push:audit": "prisma db push --schema=prisma/schema.audit.prisma",
+    "build": "npm run generate && cross-env NODE_OPTIONS='--max-old-space-size=4096' next build",
+    "build:vercel": "npm run generate && next build",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "prisma generate",
+    "postinstall": "npm run generate",
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {

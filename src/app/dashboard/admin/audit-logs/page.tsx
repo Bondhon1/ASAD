@@ -115,41 +115,9 @@ export default function AuditLogsPage() {
       setTotalPages(data.totalPages || 0);
       setActionTypes(data.actionTypes || []);
 
-      // Resolve affected volunteer IDs to user info (email/fullName) when possible
-      try {
-        const ids = new Set<string>();
-        (data.logs || []).forEach((l: any) => {
-          if (l.affectedVolunteerId) ids.add(l.affectedVolunteerId);
-          try {
-            const m = l.meta ? JSON.parse(l.meta) : null;
-            const candidate = m?.volunteerId || m?.volunteer_id || m?.userId || m?.user_id || m?.affectedVolunteerId;
-            if (candidate) ids.add(candidate);
-          } catch (e) {
-            // ignore meta parse errors
-          }
-        });
-
-        const idArray = Array.from(ids).filter(Boolean);
-        if (idArray.length > 0) {
-          const pairs: Array<[string, { email?: string; fullName?: string } | null]> = await Promise.all(idArray.map(async (vid) => {
-            try {
-              const r = await fetch(`/api/hr/users?q=${encodeURIComponent(vid)}&pageSize=1`);
-              if (!r.ok) return [vid, null] as const;
-              const d = await r.json();
-              const u = Array.isArray(d.users) && d.users.length > 0 ? d.users[0] : null;
-              if (u) return [vid, { email: u.email, fullName: u.fullName } as { email?: string; fullName?: string }];
-            } catch (e) {
-              // ignore individual lookup errors
-            }
-            return [vid, null] as [string, null];
-          }));
-
-          const map: Record<string, { email?: string; fullName?: string }> = {};
-          pairs.forEach(([k, v]) => { if (v) map[String(k)] = v; });
-          setResolvedVolunteers(map);
-        }
-      } catch (e) {
-        // ignore resolution errors
+      // Use server-resolved volunteer map — no N+1 client-side lookups needed
+      if (data.resolvedVolunteers && typeof data.resolvedVolunteers === 'object') {
+        setResolvedVolunteers(data.resolvedVolunteers);
       }
     } catch (err: any) {
       console.error('Failed to fetch audit logs:', err);

@@ -1,0 +1,38 @@
+// Audit-log database schema — completely isolated from the main DB.
+// Stores immutable system-level audit records so that even if the main
+// database is lost the audit trail is preserved independently.
+//
+// NOTE: There is intentionally NO foreign-key relation back to the main
+// database's User table.  Actor information is denormalised at write time
+// so records remain meaningful even if a user is later deleted.
+
+generator auditClient {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma-audit"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("AUDIT_DATABASE_URL")
+}
+
+model AuditLog {
+  id                  String   @id @default(cuid())
+
+  // Actor info — denormalised snapshot at the time the event was recorded
+  actorUserId         String
+  actorName           String?
+  actorEmail          String?
+  actorVolunteerId    String?
+  actorRole           String?
+
+  action              String
+  meta                String?  // JSON for additional info
+  affectedVolunteerId String?  // volunteer ID affected by this action (if any)
+  points              Int?     // points change associated with this action (if any)
+  createdAt           DateTime @default(now())
+
+  @@index([actorUserId])
+  @@index([createdAt])
+  @@index([action])
+}

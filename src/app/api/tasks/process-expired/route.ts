@@ -21,34 +21,13 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
+import { createAuditLog } from '@/lib/prisma-audit';
 import { applyPointsChange } from '@/lib/rankUtils';
 import { NotificationType } from '@prisma/client';
 import { parseAudience, resolveAudienceUserIds } from '@/lib/taskAudience';
 
 // Special marker for auto-created deduction submissions
 const DEDUCTION_MARKER = '__DEADLINE_MISSED_DEDUCTION__';
-
-// Helper: create an audit log entry if we can determine an actor user id
-async function createAuditLog(actorUserId: string | null | undefined, action: string, meta?: any, affectedVolunteerId?: string | null, points?: number | null) {
-  try {
-    if (!actorUserId) {
-      console.warn('AuditLog skipped: no actorUserId for', action);
-      return;
-    }
-
-    await prisma.auditLog.create({
-      data: {
-        actorUserId,
-        action,
-        meta: meta ? JSON.stringify(meta) : undefined,
-        affectedVolunteerId: affectedVolunteerId || undefined,
-        points: points ?? undefined,
-      },
-    });
-  } catch (e: any) {
-    console.error('Failed to write AuditLog:', e?.message || e);
-  }
-}
 
 export async function POST(req: Request) {
   try {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
+import { createAuditLog } from "@/lib/prisma-audit";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { sendInterviewResultEmail } from "@/lib/email";
 import { publishNotification } from "@/lib/ably";
@@ -85,19 +86,12 @@ export async function POST(
       await prisma.user.update({ where: { id: application.userId }, data: { status: "INTERVIEW_PASSED", interviewApprovedById: user.id } });
 
       // Create audit log
-      await prisma.auditLog.create({
-        data: {
-          actorUserId: user.id,
-          action: 'INTERVIEW_APPROVED',
-          meta: JSON.stringify({
-            applicationId: application.id,
-            userId: application.userId,
-            userEmail: applicantUser.email,
-            slotId: slotId,
-          }),
-          affectedVolunteerId: applicantUser.volunteerId || undefined,
-        },
-      });
+      await createAuditLog(user.id, 'INTERVIEW_APPROVED', {
+        applicationId: application.id,
+        userId: application.userId,
+        userEmail: applicantUser.email,
+        slotId: slotId,
+      }, applicantUser.volunteerId || undefined);
 
       // Remove earlier-stage notifications that are no longer relevant
       await prisma.notification.deleteMany({

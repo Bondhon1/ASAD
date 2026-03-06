@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
+import { createAuditLog } from '@/lib/prisma-audit';
 import { NotificationType } from '@prisma/client';
 import { parseAudience, resolveAudienceUserIds } from '@/lib/taskAudience';
 
@@ -48,14 +49,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
 
     // Write an audit log entry for the deletion (best-effort)
     try {
-      await prisma.auditLog.create({
-        data: {
-          actorUserId: requester.id,
-          action: 'DELETE_TASK',
-          meta: JSON.stringify({ id: deleted.id, title: deleted.title, targetUserCount: deleted.targetUserIds?.length ?? 0 }),
-          points: deleted.pointsNegative ?? undefined,
-        },
-      });
+      await createAuditLog(requester.id, 'DELETE_TASK', { id: deleted.id, title: deleted.title, targetUserCount: deleted.targetUserIds?.length ?? 0 }, undefined, deleted.pointsNegative ?? undefined);
     } catch (e: any) {
       console.error('Failed to write AuditLog for DELETE /api/secretaries/tasks/[id]:', e?.message || e);
     }

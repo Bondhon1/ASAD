@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
+import { createAuditLog } from '@/lib/prisma-audit';
 
 // PATCH /api/admin/orgs/[id]  — toggle isOpen for a sector or club
 // Body: { type: 'SECTOR' | 'CLUB', isOpen: boolean }
@@ -34,13 +35,7 @@ export async function PATCH(
       const updated = await (prisma.sector.update as any)({ where: { id }, data: { isOpen } });
       // Audit log
       if (actor) {
-        await prisma.auditLog.create({
-          data: {
-            actorUserId: actor.id,
-            action: isOpen ? 'SECTOR_AVAILABILITY_OPENED' : 'SECTOR_AVAILABILITY_CLOSED',
-            meta: JSON.stringify({ sectorId: id, sectorName: updated.name, isOpen }),
-          },
-        }).catch(() => {}); // non-blocking
+        createAuditLog(actor.id, isOpen ? 'SECTOR_AVAILABILITY_OPENED' : 'SECTOR_AVAILABILITY_CLOSED', { sectorId: id, sectorName: updated.name, isOpen }).catch(() => {});
       }
       return NextResponse.json({ sector: updated });
     } else {
@@ -48,13 +43,7 @@ export async function PATCH(
       const updated = await (prisma.club.update as any)({ where: { id }, data: { isOpen } });
       // Audit log
       if (actor) {
-        await prisma.auditLog.create({
-          data: {
-            actorUserId: actor.id,
-            action: isOpen ? 'CLUB_AVAILABILITY_OPENED' : 'CLUB_AVAILABILITY_CLOSED',
-            meta: JSON.stringify({ clubId: id, clubName: updated.name, isOpen }),
-          },
-        }).catch(() => {}); // non-blocking
+        createAuditLog(actor.id, isOpen ? 'CLUB_AVAILABILITY_OPENED' : 'CLUB_AVAILABILITY_CLOSED', { clubId: id, clubName: updated.name, isOpen }).catch(() => {});
       }
       return NextResponse.json({ club: updated });
     }

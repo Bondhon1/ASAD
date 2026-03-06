@@ -65,7 +65,6 @@ model User {
   approvedDonations     Donation[]             @relation("ApprovedBy")
   pointsHistory         PointsHistory[]
   experiences           Experience[]
-  auditLogs             AuditLog[]             @relation("ActorUser")
   
   // Social features
   posts                 Post[]
@@ -893,20 +892,6 @@ enum NotificationType {
   // Legacy (retained for existing DB rows — no longer issued by new code)
   COIN_ENDORSED
   COIN_ENDORSEMENT_REJECTED
-}
-
-model AuditLog {
-  id                    String           @id @default(cuid())
-  actor                 User             @relation("ActorUser", fields: [actorUserId], references: [id], onDelete: Cascade)
-  actorUserId           String
-  action                String
-  meta                  String?          // JSON for additional info
-  affectedVolunteerId   String?          // volunteer ID affected by this action (if any)
-  points                Int?             // points change associated with this action (if any)
-  createdAt             DateTime         @default(now())
-  
-  @@index([actorUserId])
-  @@index([createdAt])
 }
 
 // ============================================================================

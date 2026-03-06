@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
+import { createAuditLog } from "@/lib/prisma-audit";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { sendFinalPaymentStatusEmail } from "@/lib/email";
 import { publishNotification } from "@/lib/ably";
@@ -28,20 +29,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         await prisma.initialPayment.update({ where: { id }, data: { status: "VERIFIED", verifiedAt: new Date(), approvedById: hr.id } });
         
         // Create audit log
-        await prisma.auditLog.create({
-          data: {
-            actorUserId: hr.id,
-            action: 'INITIAL_PAYMENT_APPROVED',
-            meta: JSON.stringify({
-              paymentId: id,
-              userId: payment.userId,
-              userEmail: payment.user.email,
-              trxId: payment.trxId,
-              amount: payment.amount,
-            }),
-            affectedVolunteerId: payment.user?.volunteerId || undefined,
-          },
-        });
+        await createAuditLog(hr.id, 'INITIAL_PAYMENT_APPROVED', {
+          paymentId: id,
+          userId: payment.userId,
+          userEmail: payment.user.email,
+          trxId: payment.trxId,
+          amount: payment.amount,
+        }, payment.user?.volunteerId || undefined);
         
         // Remove stale notifications from previous failed attempts
         await prisma.notification.deleteMany({
@@ -82,19 +76,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         await prisma.user.update({ where: { id: payment.userId }, data: { status: "REJECTED" } });
         
         // Create audit log
-        await prisma.auditLog.create({
-          data: {
-            actorUserId: hr.id,
-            action: 'INITIAL_PAYMENT_REJECTED',
-            meta: JSON.stringify({
-              paymentId: id,
-              userId: payment.userId,
-              userEmail: payment.user.email,
-              trxId: payment.trxId,
-            }),
-            affectedVolunteerId: payment.user?.volunteerId || undefined,
-          },
-        });
+        await createAuditLog(hr.id, 'INITIAL_PAYMENT_REJECTED', {
+          paymentId: id,
+          userId: payment.userId,
+          userEmail: payment.user.email,
+          trxId: payment.trxId,
+        }, payment.user?.volunteerId || undefined);
         
         // Create notification for initial payment rejection (not broadcast)
         const notification = await prisma.notification.create({
@@ -191,22 +178,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         await prisma.$transaction(ops);
 
         // Create audit log
-        await prisma.auditLog.create({
-          data: {
-            actorUserId: hr.id,
-            action: 'FINAL_PAYMENT_APPROVED',
-            meta: JSON.stringify({
-              paymentId: id,
-              userId: payment.userId,
-              userEmail: payment.user.email,
-              volunteerId: volunteerIdToUse,
-              trxId: payment.trxId,
-              amount: payment.amount,
-              assignMode: assignMode || 'auto',
-            }),
-            affectedVolunteerId: volunteerIdToUse || undefined,
-          },
-        });
+        await createAuditLog(hr.id, 'FINAL_PAYMENT_APPROVED', {
+          paymentId: id,
+          userId: payment.userId,
+          userEmail: payment.user.email,
+          volunteerId: volunteerIdToUse,
+          trxId: payment.trxId,
+          amount: payment.amount,
+          assignMode: assignMode || 'auto',
+        }, volunteerIdToUse || undefined);
 
         // Create notification for final payment approval (not broadcast)
         const messengerPrimary = "https://m.me/j/AbaLNSicNaKgVdak/";
@@ -263,19 +243,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         await prisma.user.update({ where: { id: payment.userId }, data: { status: "FINAL_PAYMENT_REJECTED" } });
 
         // Create audit log
-        await prisma.auditLog.create({
-          data: {
-            actorUserId: hr.id,
-            action: 'FINAL_PAYMENT_REJECTED',
-            meta: JSON.stringify({
-              paymentId: id,
-              userId: payment.userId,
-              userEmail: payment.user.email,
-              trxId: payment.trxId,
-            }),
-            affectedVolunteerId: payment.user?.volunteerId || undefined,
-          },
-        });
+        await createAuditLog(hr.id, 'FINAL_PAYMENT_REJECTED', {
+          paymentId: id,
+          userId: payment.userId,
+          userEmail: payment.user.email,
+          trxId: payment.trxId,
+        }, payment.user?.volunteerId || undefined);
 
         // Remove earlier-stage and duplicate stale notifications
         await prisma.notification.deleteMany({

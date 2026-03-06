@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
+import { createAuditLog } from '@/lib/prisma-audit';
 import { publishNotification } from '@/lib/ably';
 
 /** POST /api/admin/credits/manual-update — Assign or adjust credits for multiple volunteers */
@@ -90,13 +91,7 @@ export async function POST(req: Request) {
 
     // Audit log
     try {
-      await prisma.auditLog.create({
-        data: {
-          actorUserId: requester.id,
-          action: 'MANUAL_CREDITS_ADJUSTMENT',
-          meta: JSON.stringify({ reason, credits, ids: rawIds, results }),
-        },
-      });
+      await createAuditLog(requester.id, 'MANUAL_CREDITS_ADJUSTMENT', { reason, credits, ids: rawIds, results });
     } catch (_e) { /* non-critical */ }
 
     return NextResponse.json({ ok: true, results });

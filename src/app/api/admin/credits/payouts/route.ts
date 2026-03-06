@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
+import { createAuditLog } from '@/lib/prisma-audit';
 import { publishNotification } from '@/lib/ably';
 
 /** GET /api/admin/credits/payouts — List all payout requests */
@@ -145,23 +146,16 @@ export async function PATCH(req: Request) {
 
     // Audit log
     try {
-      await prisma.auditLog.create({
-        data: {
-          actorUserId: requester.id,
-          action: 'APC_PAYOUT_PROCESSED',
-          meta: JSON.stringify({
-            payoutId,
-            userId: payout.userId,
-            volunteerId: payout.user?.volunteerId,
-            credits: payout.credits,
-            bdtAmount: payout.bdtAmount,
-            confirmedBDT: confirmedBDT ?? payout.bdtAmount,
-            status,
-            notes,
-          }),
-          affectedVolunteerId: payout.user?.volunteerId ?? undefined,
-        },
-      });
+      await createAuditLog(requester.id, 'APC_PAYOUT_PROCESSED', {
+        payoutId,
+        userId: payout.userId,
+        volunteerId: payout.user?.volunteerId,
+        credits: payout.credits,
+        bdtAmount: payout.bdtAmount,
+        confirmedBDT: confirmedBDT ?? payout.bdtAmount,
+        status,
+        notes,
+      }, payout.user?.volunteerId ?? undefined);
     } catch (_e) { /* non-critical */ }
 
     return NextResponse.json({ ok: true, payout: updated });

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
+import { createAuditLog } from '@/lib/prisma-audit';
 import { publishNotification } from '@/lib/ably';
 import { NotificationType } from '@prisma/client';
 import { resolveAudienceUserIds } from '@/lib/taskAudience';
@@ -156,21 +157,14 @@ export async function POST(req: Request) {
     }
 
     // Create audit log for task creation
-    await prisma.auditLog.create({
-      data: {
-        actorUserId: requester.id,
-        action: 'TASK_CREATED',
-        meta: JSON.stringify({
-          taskId: created.id,
-          taskTitle: created.title,
-          targetUsersCount: targetUsers.length,
-          points: created.pointsPositive,
-          mandatory: created.mandatory,
-          assignedGroup: created.assignedGroup,
-        }),
-        points: created.pointsPositive || undefined,
-      },
-    });
+    await createAuditLog(requester.id, 'TASK_CREATED', {
+      taskId: created.id,
+      taskTitle: created.title,
+      targetUsersCount: targetUsers.length,
+      points: created.pointsPositive,
+      mandatory: created.mandatory,
+      assignedGroup: created.assignedGroup,
+    }, undefined, created.pointsPositive || undefined);
 
     return NextResponse.json({ ok: true, task: created, notificationsCreated: totalNotificationsCreated });
   } catch (err: any) {
