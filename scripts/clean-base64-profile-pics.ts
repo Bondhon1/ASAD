@@ -18,7 +18,7 @@ const prisma = new PrismaClient();
 
 // Parse a data: URL into { mimeType, ext, buffer }
 function parseDataUrl(dataUrl: string): { mimeType: string; ext: string; buffer: Buffer } | null {
-  const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/s);
+  const match = dataUrl.match(/^data:([^;]+);base64,([\s\S]+)$/);
   if (!match) return null;
   const mimeType = match[1];
   const buffer = Buffer.from(match[2], "base64");
