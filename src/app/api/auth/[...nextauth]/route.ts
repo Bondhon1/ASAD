@@ -128,26 +128,33 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.email = user.email;
-        
-        // Fetch user role and status from database
+      }
+
+      // Always fetch the latest role/status from DB so changes (e.g. approval
+      // to OFFICIAL) are reflected without requiring a re-login.
+      const lookupEmail = (token.email as string | undefined) ?? (user?.email ?? undefined);
+      if (lookupEmail) {
         const dbUser = await prisma.user.findUnique({
-          where: { email: user.email! },
-          select: { role: true, status: true, initialPayment: true },
+          where: { email: lookupEmail },
+          select: { id: true, role: true, status: true, initialPayment: true },
         });
-        
+
         if (dbUser) {
+          token.id = dbUser.id;
           token.role = dbUser.role;
           token.status = dbUser.status;
           token.needsPayment = !dbUser.initialPayment;
         }
-        
-        // Check if new Google user needs payment
-        if ((user as any).isNewGoogleUser) {
-          token.needsPayment = true;
-          token.role = "VOLUNTEER";
-          token.status = "APPLICANT";
-        }
       }
+
+      // For brand-new Google users the DB record is just created; override
+      // only if the flag is explicitly set (safety net).
+      if ((user as any)?.isNewGoogleUser) {
+        token.needsPayment = true;
+        token.role = "VOLUNTEER";
+        token.status = "APPLICANT";
+      }
+
       return token;
     },
     async session({ session, token }) {
