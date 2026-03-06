@@ -523,7 +523,8 @@ export async function applyPointsChange(
   pointsChange: number,
   reason: string,
   relatedTaskId?: string,
-  relatedDonationId?: string
+  relatedDonationId?: string,
+  skipHistory?: boolean
 ): Promise<{
   success: boolean;
   newPoints: number;
@@ -573,16 +574,18 @@ export async function applyPointsChange(
       },
     });
     
-    // Create points history record
-    await prisma.pointsHistory.create({
-      data: {
-        userId,
-        change: pointsChange,
-        reason,
-        relatedTaskId,
-        relatedDonationId,
-      },
-    });
+    // Create points history record (skip when the caller will create a shared batch row instead)
+    if (!skipHistory) {
+      await prisma.pointsHistory.create({
+        data: {
+          userId,
+          change: pointsChange,
+          reason,
+          relatedTaskId,
+          relatedDonationId,
+        },
+      });
+    }
 
     // Publish a lightweight realtime points update so clients can refresh UI (even if rank didn't change)
     try {

@@ -64,8 +64,14 @@ export async function GET(req: NextRequest) {
     }
 
     // Fetch points history (most recent 50)
+    // Includes: individual rows for this user + batch rows that targeted this user
     const history = await prisma.pointsHistory.findMany({
-      where: { userId: user.id },
+      where: {
+        OR: [
+          { userId: user.id, targetUserIds: { isEmpty: true } },
+          { targetUserIds: { has: user.id } },
+        ],
+      },
       orderBy: { createdAt: 'desc' },
       take: 50,
       select: {

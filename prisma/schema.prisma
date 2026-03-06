@@ -300,7 +300,8 @@ model Rank {
 model PointsHistory {
   id                    String           @id @default(cuid())
   user                  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId                String
+  userId                String           // for batch operations this is the actor (requester); targetUserIds holds the actual recipients
+  targetUserIds         String[]         @default([]) // non-empty = one shared row for a batch operation; empty = individual entry
   change                Int
   reason                String
   relatedTask           Task?            @relation(fields: [relatedTaskId], references: [id], onDelete: SetNull)
@@ -812,6 +813,7 @@ model Notification {
   user                  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId                String
   broadcast             Boolean          @default(false)
+  targetUserIds         String[]         @default([]) // if broadcast=true & non-empty, only these users see it
   type                  NotificationType
   title                 String
   message               String?
@@ -823,6 +825,7 @@ model Notification {
   @@index([userId])
   @@index([read])
   @@index([createdAt])
+  @@index([broadcast])
 }
 
 model BroadcastRead {

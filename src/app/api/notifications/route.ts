@@ -26,14 +26,18 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "20");
     const unreadOnly = searchParams.get("unreadOnly") === "true";
 
-    // Include notifications targeted to this user OR broadcast notifications
-    const where: any = {
-      OR: [
-        { userId: user.id },
-        { broadcast: true },
-      ],
-    };
-    if (unreadOnly) where.read = false; // note: broadcast read state is per-user and handled below
+    // Include:
+    //  - personal notifications (userId = this user)
+    //  - global broadcast (broadcast=true, targetUserIds empty)
+    //  - targeted broadcast (broadcast=true, targetUserIds contains this user)
+    const broadcastConditions = [
+      { broadcast: true, targetUserIds: { isEmpty: true } },
+      { broadcast: true, targetUserIds: { has: user.id } },
+    ];
+
+    const where: any = unreadOnly
+      ? { OR: [{ userId: user.id, read: false }, ...broadcastConditions] }
+      : { OR: [{ userId: user.id }, ...broadcastConditions] };
 
     const notifications = await prisma.notification.findMany({
       where,
@@ -52,10 +56,15 @@ export async function GET(request: NextRequest) {
       readIds = new Set(reads.map(r => r.notificationId));
     }
 
-    const notificationsWithRead = notifications.map(n => ({
+    let notificationsWithRead = notifications.map(n => ({
       ...n,
       read: n.broadcast ? readIds.has(n.id) : n.read,
     }));
+
+    // For unreadOnly requests, drop broadcasts that this user has already read
+    if (unreadOnly) {
+      notificationsWithRead = notificationsWithRead.filter(n => !n.read);
+    }
 
     const perUserUnread = await prisma.notification.count({ where: { userId: user.id, read: false } });
     const unreadBroadcastCount = broadcastIds.filter(id => !readIds.has(id)).length;

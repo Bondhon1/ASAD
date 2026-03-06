@@ -36,17 +36,33 @@ export async function GET() {
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
     // Step 1 – Aggregate points earned this month
-    const monthlyAgg = await prisma.pointsHistory.groupBy({
-      by: ["userId"],
-      where: { createdAt: { gte: monthStart, lt: monthEnd } },
-      _sum: { change: true },
-      orderBy: { _sum: { change: "desc" } },
-    });
+    // Uses raw SQL so that batch PointsHistory rows (targetUserIds non-empty) are correctly
+    // expanded per recipient via unnest(), rather than attributed to the actor's userId.
+    const rawAgg = await prisma.$queryRaw<{ user_id: string; total: bigint }[]>`
+      SELECT user_id, SUM(change)::bigint AS total
+      FROM (
+        -- Individual rows (no batch targets)
+        SELECT "userId" AS user_id, change
+        FROM "PointsHistory"
+        WHERE "createdAt" >= ${monthStart} AND "createdAt" < ${monthEnd}
+          AND array_length("targetUserIds", 1) IS NULL
+        UNION ALL
+        -- Batch rows: expand targetUserIds into individual entries
+        SELECT unnest("targetUserIds") AS user_id, change
+        FROM "PointsHistory"
+        WHERE "createdAt" >= ${monthStart} AND "createdAt" < ${monthEnd}
+          AND array_length("targetUserIds", 1) > 0
+      ) t
+      GROUP BY user_id
+      HAVING SUM(change) > 0
+      ORDER BY total DESC
+      LIMIT 50
+    `;
 
-    // Keep only positive net-gainers; cap at 50 for tie-break processing
-    const positiveEntries = monthlyAgg
-      .filter((e) => (e._sum.change ?? 0) > 0)
-      .slice(0, 50);
+    const positiveEntries = rawAgg.map(r => ({
+      userId: r.user_id,
+      _sum: { change: Number(r.total) },
+    }));
 
     const monthlyUserIds = new Set(positiveEntries.map((e) => e.userId));
 

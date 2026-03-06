@@ -36,6 +36,30 @@ export async function publishNotification(userId: string, notification: {
   }
 }
 
+// Publish a notification to multiple users' personal channels (for targeted broadcasts)
+export async function publishBroadcastNotification(userIds: string[], notification: {
+  id: string;
+  type: string;
+  title: string;
+  message: string | null;
+  link: string | null;
+  createdAt: Date;
+}) {
+  try {
+    const client = getServerAblyClient();
+    if (!client) return; // Ably not configured
+
+    await Promise.all(
+      userIds.map(userId =>
+        client.channels.get(`user-${userId}-notifications`).publish("notification", notification)
+      )
+    );
+  } catch (error) {
+    console.error("Failed to publish broadcast Ably notification:", error);
+    // Don't throw
+  }
+}
+
 // Publish a chat message event to both participants
 export async function publishChatMessage(params: {
   conversationId: string;

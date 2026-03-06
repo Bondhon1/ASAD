@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { applyPointsChange } from '@/lib/rankUtils';
-import { publishNotification } from '@/lib/ably';
+import { publishBroadcastNotification } from '@/lib/ably';
 
 export async function POST(req: Request) {
   try {
@@ -24,6 +24,7 @@ export async function POST(req: Request) {
     // parse CSV/newlines into identifiers
     const rawIds = idsCsv.split(/[,\n\r]+/).map((s: string) => s.trim()).filter(Boolean);
     const results: Array<any> = [];
+    const succeededUserIds: string[] = [];
 
     for (const ident of rawIds) {
       try {
@@ -34,47 +35,67 @@ export async function POST(req: Request) {
           continue;
         }
 
-        const r = await applyPointsChange(user.id, points, `Manual points: ${taskName}`);
+        // skipHistory=true — one shared PointsHistory row is created after the loop
+        const r = await applyPointsChange(user.id, points, `Manual points: ${taskName}`, undefined, undefined, true);
         if (!r.success) {
           results.push({ ident, ok: false, error: r.error || 'applyPointsChange failed' });
         } else {
           results.push({ ident, ok: true, newPoints: r.newPoints, rankChanged: r.rankChanged, newRankName: r.newRankName });
-
-          // Create a notification for the user informing about manual points adjustment
-          try {
-            const notif = await prisma.notification.create({
-              data: {
-                userId: user.id,
-                type: 'SYSTEM_ANNOUNCEMENT',
-                title: `${points > 0 ? 'Points Added' : 'Points Adjusted'}`,
-                message: `"${taskName}" applied: ${points > 0 ? '+' : ''}${points} points.`,
-                link: '/dashboard',
-              },
-            });
-
-            // Publish real-time notification (if Ably configured)
-            try {
-              await publishNotification(user.id, {
-                id: notif.id,
-                type: notif.type,
-                title: notif.title,
-                message: notif.message || null,
-                link: notif.link || null,
-                createdAt: notif.createdAt,
-              });
-            } catch (pubErr) {
-              console.error('Failed to publish notification for user', user.id, pubErr);
-            }
-          } catch (notifErr) {
-            console.error('Failed to create notification for user', user.id, notifErr);
-          }
+          succeededUserIds.push(user.id);
         }
       } catch (e: any) {
         results.push({ ident, ok: false, error: e?.message || 'Error' });
       }
     }
 
-    // Create an audit log for this action
+    if (succeededUserIds.length > 0) {
+      // One shared PointsHistory row for the entire batch
+      try {
+        await prisma.pointsHistory.create({
+          data: {
+            userId: requester.id,           // actor (required FK); targetUserIds has the actual recipients
+            targetUserIds: succeededUserIds,
+            change: points,
+            reason: `Manual points: ${taskName}`,
+          },
+        });
+      } catch (histErr) {
+        console.error('Failed to create batch points history', histErr);
+      }
+
+      // One broadcast notification targeted only to the affected users
+      try {
+        const notif = await prisma.notification.create({
+          data: {
+            userId: requester.id,
+            broadcast: true,
+            targetUserIds: succeededUserIds,
+            type: 'SYSTEM_ANNOUNCEMENT',
+            title: points > 0 ? 'Points Added' : 'Points Adjusted',
+            message: `"${taskName}" applied: ${points > 0 ? '+' : ''}${points} points.`,
+            link: '/dashboard',
+          },
+        });
+
+        // Real-time push to each affected user's channel
+        try {
+          await publishBroadcastNotification(succeededUserIds, {
+            id: notif.id,
+            type: notif.type,
+            title: notif.title,
+            message: notif.message ?? null,
+            link: notif.link ?? null,
+            createdAt: notif.createdAt,
+          });
+        } catch (pubErr) {
+          console.error('Failed to publish broadcast notification via Ably', pubErr);
+        }
+      } catch (notifErr) {
+        console.error('Failed to create broadcast notification', notifErr);
+      }
+    }
+
+    // Audit log
     try {
       await prisma.auditLog.create({ data: { actorUserId: requester.id, action: 'MANUAL_POINTS_ADJUSTMENT', meta: JSON.stringify({ taskName, points, ids: rawIds, results }), points: points } });
     } catch (e) {
