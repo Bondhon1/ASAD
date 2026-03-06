@@ -158,10 +158,27 @@ type Result = {
   newRankName?: string;
 };
 
-function ResultsModal({ results, onClose }: { results: Result[]; onClose: () => void }) {
+type NegativeDeductionSummary = {
+  negativePoints: number;
+  totalAffected: number;
+  skippedOnLeave: number;
+  skippedInIdList: number;
+  rankChangedCount: number;
+  failed: number;
+};
+
+function ResultsModal({
+  results,
+  negativeDeductionSummary,
+  onClose,
+}: {
+  results: Result[];
+  negativeDeductionSummary?: NegativeDeductionSummary | null;
+  onClose: () => void;
+}) {
   const successCount = results.filter(r => r.ok).length;
   const failCount = results.length - successCount;
-  
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-in fade-in">
       <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[80vh] overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-4">
@@ -252,10 +269,52 @@ function ResultsModal({ results, onClose }: { results: Result[]; onClose: () => 
               </div>
             </div>
           )}
+
+          {/* Negative Deduction Summary */}
+          {negativeDeductionSummary && (
+            <div className="mt-6 p-4 bg-orange-50 border border-orange-200 rounded-xl">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="p-1.5 bg-orange-100 rounded-lg">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-orange-600">
+                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                  </svg>
+                </div>
+                <h3 className="font-semibold text-orange-900">Global Deduction: -{negativeDeductionSummary.negativePoints} pts</h3>
+              </div>
+              {negativeDeductionSummary.failed === -1 ? (
+                <p className="text-sm text-red-700 font-medium">⚠️ Global deduction encountered a fatal error. No accounts were deducted.</p>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-orange-500 flex-shrink-0"/>
+                    <span className="text-slate-700">Deducted from <strong>{negativeDeductionSummary.totalAffected}</strong> volunteer{negativeDeductionSummary.totalAffected !== 1 ? 's' : ''}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-blue-400 flex-shrink-0"/>
+                    <span className="text-slate-700"><strong>{negativeDeductionSummary.skippedInIdList}</strong> in ID list (exempt)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0"/>
+                    <span className="text-slate-700"><strong>{negativeDeductionSummary.skippedOnLeave}</strong> on leave (exempt)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-purple-400 flex-shrink-0"/>
+                    <span className="text-slate-700"><strong>{negativeDeductionSummary.rankChangedCount}</strong> rank downgrade{negativeDeductionSummary.rankChangedCount !== 1 ? 's' : ''}</span>
+                  </div>
+                  {negativeDeductionSummary.failed > 0 && (
+                    <div className="flex items-center gap-2 col-span-2">
+                      <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0"/>
+                      <span className="text-red-700"><strong>{negativeDeductionSummary.failed}</strong> failed (batch error)</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
-        
+
         <div className="px-6 py-4 border-t border-slate-200 bg-slate-50">
-          <button 
+          <button
             onClick={onClose}
             className="w-full px-4 py-2 bg-slate-800 text-white font-medium rounded-lg hover:bg-slate-900 transition-colors"
           >
@@ -276,8 +335,11 @@ export default function ManualPointsPage() {
   const [taskName, setTaskName] = useState("");
   const [points, setPoints] = useState<number | "">(0);
   const [volunteerIds, setVolunteerIds] = useState<string[]>([]);
+  const [enableNegativeDeduction, setEnableNegativeDeduction] = useState(false);
+  const [negativePoints, setNegativePoints] = useState<number | "">("" );
   const [submitting, setSubmitting] = useState(false);
   const [results, setResults] = useState<Result[] | null>(null);
+  const [negativeDeductionSummary, setNegativeDeductionSummary] = useState<NegativeDeductionSummary | null>(null);
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -293,42 +355,69 @@ export default function ManualPointsPage() {
   const { confirm, toast } = useModal();
 
   const submit = async () => {
-    if (volunteerIds.length === 0) {
-      toast('No volunteer IDs provided', { type: 'error' });
+    const hasIds = volunteerIds.length > 0;
+    const hasDeduction = enableNegativeDeduction && negativePoints !== '' && Number(negativePoints) > 0;
+
+    if (!hasIds && !hasDeduction) {
+      toast('Provide volunteer IDs or enable negative deduction', { type: 'error' });
       return;
     }
-    if (points === '' || Number.isNaN(Number(points))) {
+    if (hasIds && (points === '' || Number.isNaN(Number(points)))) {
       toast('Please provide a valid points number', { type: 'error' });
       return;
     }
+    if (hasDeduction && (Number.isNaN(Number(negativePoints)) || Number(negativePoints) <= 0)) {
+      toast('Negative Points must be a positive number', { type: 'error' });
+      return;
+    }
 
-    // Confirm with custom modal
-    const sample = volunteerIds.slice(0, 8).join(', ');
+    // Build confirm message
+    const parts: string[] = [];
+    if (hasIds) {
+      const sample = volunteerIds.slice(0, 8).join(', ');
+      parts.push(`• Add ${Number(points) > 0 ? '+' : ''}${points} points to ${volunteerIds.length} specific volunteer${volunteerIds.length > 1 ? 's' : ''} (IDs: ${sample}${volunteerIds.length > 8 ? ', ...' : ''})`);
+    }
+    if (hasDeduction) {
+      parts.push(`• Deduct -${negativePoints} points from ALL OFFICIAL volunteers (exempting IDs above + users on approved leave)`);
+    }
+
     const ok = await confirm(
-      `Apply ${points > 0 ? '+' : ''}${points} points to ${volunteerIds.length} volunteer${volunteerIds.length > 1 ? 's' : ''}?\n\nSample IDs: ${sample}${volunteerIds.length > 8 ? ', ...' : ''}`,
-      'Confirm Point Adjustment',
-      points < 0 ? 'warning' : 'info'
+      parts.join('\n\n'),
+      hasDeduction ? '⚠️ Confirm — This affects ALL volunteers' : 'Confirm Point Adjustment',
+      hasDeduction ? 'warning' : 'info'
     );
     if (!ok) return;
 
     setSubmitting(true);
     setResults(null);
+    setNegativeDeductionSummary(null);
     try {
-      const idsCsv = volunteerIds.join(',');
-      const payload = { taskName: taskName || 'Manual upgrade', points: Number(points || 0), idsCsv };
-      const res = await fetch('/api/database/manual-points', { 
-        method: 'POST', 
-        headers: { 'content-type': 'application/json' }, 
-        body: JSON.stringify(payload) 
+      const payload = {
+        taskName: taskName || 'Manual upgrade',
+        points: Number(points || 0),
+        idsCsv: volunteerIds.join(','),
+        enableNegativeDeduction: hasDeduction,
+        negativePoints: Number(negativePoints || 0),
+      };
+      const res = await fetch('/api/database/manual-points', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || 'Failed');
-      
-      // Show results modal
-      if (Array.isArray(data.results)) {
+
+      if (Array.isArray(data.results) && data.results.length > 0) {
         setResults(data.results);
+      } else if (data.negativeDeductionSummary) {
+        setNegativeDeductionSummary(data.negativeDeductionSummary);
+        // Force modal open even without positive-ID results
+        setResults([]);
       } else {
         toast('Operation completed successfully', { type: 'success' });
+      }
+      if (data.negativeDeductionSummary) {
+        setNegativeDeductionSummary(data.negativeDeductionSummary);
       }
     } catch (e: any) {
       toast(e?.message || 'Operation failed', { type: 'error' });
@@ -365,47 +454,124 @@ export default function ManualPointsPage() {
           </div>
           
           <div className="p-6 space-y-6">
+            {/* Task Name */}
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">Task Name</label>
-              <input 
-                value={taskName} 
-                onChange={(e) => setTaskName(e.target.value)} 
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" 
-                placeholder="e.g. Database: manual grant, Event bonus points" 
+              <input
+                value={taskName}
+                onChange={(e) => setTaskName(e.target.value)}
+                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                placeholder="e.g. Database: manual grant, Event bonus points"
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Points to Add/Deduct
-                <span className="ml-2 text-xs font-normal text-slate-500">(use negative for deduction)</span>
-              </label>
-              <input 
-                type="number" 
-                value={points as any} 
-                onChange={(e) => setPoints(e.target.value === '' ? '' : Number(e.target.value))} 
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-mono" 
-                placeholder="e.g. 50 or -20"
-              />
+            {/* ── Section 1: Specific ID Point Addition ─────────────────────── */}
+            <div className="border border-blue-100 rounded-xl p-4 bg-blue-50/40 space-y-4">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-xs font-bold">1</span>
+                <span className="text-sm font-semibold text-blue-900">Specific ID Point Addition</span>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Volunteer IDs
+                  <span className="ml-2 text-xs font-normal text-slate-500">(numeric volunteer IDs only)</span>
+                </label>
+                <VolunteerIDChipInput volunteerIds={volunteerIds} onChange={setVolunteerIds} />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Points to Add
+                  <span className="ml-2 text-xs font-normal text-slate-500">(added only to the IDs above)</span>
+                </label>
+                <input
+                  type="number"
+                  value={points as any}
+                  onChange={(e) => setPoints(e.target.value === '' ? '' : Number(e.target.value))}
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-mono"
+                  placeholder="e.g. 50"
+                />
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Volunteer IDs
-                <span className="ml-2 text-xs font-normal text-slate-500">(numeric volunteer IDs only)</span>
-              </label>
-              <VolunteerIDChipInput volunteerIds={volunteerIds} onChange={setVolunteerIds} />
+            {/* ── Section 2: Global Negative Deduction ──────────────────────── */}
+            <div className={`border rounded-xl p-4 space-y-4 transition-colors ${
+              enableNegativeDeduction ? 'border-orange-300 bg-orange-50/40' : 'border-slate-200 bg-slate-50/40'
+            }`}>
+              {/* Toggle header */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-orange-500 text-white text-xs font-bold">2</span>
+                  <span className="text-sm font-semibold text-slate-800">Global Negative Deduction</span>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={enableNegativeDeduction}
+                  onClick={() => setEnableNegativeDeduction(v => !v)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-1 ${
+                    enableNegativeDeduction ? 'bg-orange-500' : 'bg-slate-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                      enableNegativeDeduction ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {enableNegativeDeduction && (
+                <>
+                  {/* Caution banner */}
+                  <div className="flex items-start gap-3 p-3 bg-orange-100 border border-orange-300 rounded-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-orange-700 flex-shrink-0 mt-0.5">
+                      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                    <div>
+                      <p className="text-sm font-bold text-orange-900">⚠️ High-Impact Operation</p>
+                      <p className="text-xs text-orange-800 mt-1">
+                        This will deduct points from <strong>every OFFICIAL volunteer</strong> except those listed above and anyone currently on approved leave.
+                        Rank downgrades will occur automatically. This action is logged and cannot be undone in bulk.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Negative Points field */}
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                      Negative Points
+                      <span className="ml-2 text-xs font-normal text-slate-500">(deducted from all active volunteers)</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={negativePoints as any}
+                      onChange={(e) => setNegativePoints(e.target.value === '' ? '' : Number(e.target.value))}
+                      className="w-full px-4 py-2.5 border border-orange-300 rounded-lg outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all font-mono bg-white"
+                      placeholder="e.g. 10"
+                    />
+                    <p className="mt-1.5 text-xs text-slate-500">
+                      Exempt: volunteers listed in Section 1 • volunteers on approved leave today
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
 
+            {/* Submit / Reset */}
             <div className="flex items-center gap-3 pt-4 border-t border-slate-200">
-              <button 
-                onClick={submit} 
-                disabled={submitting || volunteerIds.length === 0}
-                className="flex-1 sm:flex-none px-6 py-2.5 bg-[#0b2545] text-white font-medium rounded hover:bg-[#0d2d5a] disabled:opacity-60 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow-md"
+              <button
+                onClick={submit}
+                disabled={submitting || (volunteerIds.length === 0 && !enableNegativeDeduction)}
+                className={`flex-1 sm:flex-none px-6 py-2.5 text-white font-medium rounded hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow-md ${
+                  enableNegativeDeduction ? 'bg-orange-600 hover:bg-orange-700' : 'bg-[#0b2545] hover:bg-[#0d2d5a]'
+                }`}
               >
                 {submitting ? (
                   <span className="flex items-center justify-center gap-2">
-                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
                     Processing...
                   </span>
                 ) : (
@@ -413,13 +579,23 @@ export default function ManualPointsPage() {
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="20 6 9 17 4 12"/>
                     </svg>
-                    Submit ({volunteerIds.length} {volunteerIds.length === 1 ? 'ID' : 'IDs'})
+                    {enableNegativeDeduction
+                      ? `Submit (${volunteerIds.length > 0 ? `+IDs & ` : ''}Global deduction)`
+                      : `Submit (${volunteerIds.length} ${volunteerIds.length === 1 ? 'ID' : 'IDs'})`}
                   </span>
                 )}
               </button>
-              <button 
-                type="button" 
-                onClick={() => { setTaskName(''); setPoints(0); setVolunteerIds([]); setResults(null); }} 
+              <button
+                type="button"
+                onClick={() => {
+                  setTaskName('');
+                  setPoints(0);
+                  setVolunteerIds([]);
+                  setEnableNegativeDeduction(false);
+                  setNegativePoints('');
+                  setResults(null);
+                  setNegativeDeductionSummary(null);
+                }}
                 className="px-4 py-2.5 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors"
               >
                 Reset
@@ -429,7 +605,13 @@ export default function ManualPointsPage() {
         </div>
       </div>
 
-      {results && <ResultsModal results={results} onClose={() => setResults(null)} />}
+      {(results !== null) && (
+        <ResultsModal
+          results={results}
+          negativeDeductionSummary={negativeDeductionSummary}
+          onClose={() => { setResults(null); setNegativeDeductionSummary(null); }}
+        />
+      )}
     </DashboardLayout>
   );
 }
