@@ -462,11 +462,14 @@ export default function SettingsPage() {
                         if (res.ok && json.url) {
                           setProfilePicUrl(json.url);
                           setUser((prev: any) => prev ? ({ ...prev, profilePicUrl: json.url }) : prev);
-                          setMessage('Uploaded avatar');
-                        } else if (json.url) {
-                          setProfilePicUrl(json.url);
-                          setUser((prev: any) => prev ? ({ ...prev, profilePicUrl: json.url }) : prev);
-                          setMessage('Uploaded (fallback)');
+                          // Auto-save the new URL to the DB so it persists on reload
+                          // without requiring the user to also click the Save button.
+                          await fetch('/api/user/update', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ profilePicUrl: json.url }),
+                          });
+                          setMessage('Profile picture saved');
                         } else {
                           setMessage(json.error || 'Upload failed');
                         }

@@ -5,6 +5,28 @@ import { getCachedProfile, setCachedProfile, getCacheTTL } from "@/lib/profileCa
 export const dynamic = "force-dynamic";
 export const revalidate = 30; // Cache for 30 seconds with edge
 
+// Sector/club lists rarely change — cache them for 5 minutes to avoid
+// full table scans on every full profile request.
+let orgCache: {
+  sectors: { id: string; name: string }[];
+  clubs: { id: string; name: string }[];
+  timestamp: number;
+} | null = null;
+const ORG_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+async function getOrgMaps() {
+  const now = Date.now();
+  if (orgCache && now - orgCache.timestamp < ORG_CACHE_TTL) {
+    return orgCache;
+  }
+  const [sectors, clubs] = await Promise.all([
+    prisma.sector.findMany({ select: { id: true, name: true } }),
+    prisma.club.findMany({ select: { id: true, name: true } }),
+  ]);
+  orgCache = { sectors, clubs, timestamp: now };
+  return orgCache;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -150,10 +172,7 @@ export async function GET(request: NextRequest) {
     // Resolve sector/club IDs to names (skip in lite mode for performance)
     if (vp && !lite) {
       try {
-        const [allSectors, allClubs] = await Promise.all([
-          prisma.sector.findMany({ select: { id: true, name: true } }),
-          prisma.club.findMany({ select: { id: true, name: true } }),
-        ]);
+        const { sectors: allSectors, clubs: allClubs } = await getOrgMaps();
         const sectorById = new Map(allSectors.map(s => [s.id, s.name]));
         const sectorNames = new Set(allSectors.map(s => s.name));
         const clubById = new Map(allClubs.map(c => [c.id, c.name]));

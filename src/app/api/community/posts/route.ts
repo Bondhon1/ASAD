@@ -50,9 +50,16 @@ export async function GET(request: NextRequest) {
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       include: {
         author: { select: AUTHOR_SELECT },
-        reactions: { select: { userId: true, type: true } },
+        // Only fetch the current user's reaction (not the full array for every user).
+        // reactionCount is computed via _count to avoid loading all reaction rows.
+        reactions: {
+          where: { userId: user.id },
+          select: { type: true },
+          take: 1,
+        },
         _count: {
           select: {
+            reactions: true,
             comments: { where: { isDeleted: false, parentCommentId: null } },
           },
         },
@@ -65,9 +72,10 @@ export async function GET(request: NextRequest) {
 
     const enriched = items.map((p) => ({
       ...p,
-      reactionCount: p.reactions.length,
-      userReacted: p.reactions.some((r) => r.userId === user.id),
+      reactionCount: p._count.reactions,
+      userReacted: p.reactions.length > 0,
       commentCount: p._count.comments,
+      reactions: undefined, // strip the raw array from the response
     }));
 
     return NextResponse.json({ posts: enriched, nextCursor });

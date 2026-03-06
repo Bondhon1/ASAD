@@ -17,7 +17,24 @@ export async function POST(request: NextRequest) {
     const user = await prisma.user.findUnique({ where: { email }, include: { volunteerProfile: true } });
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-    // incoming profilePicUrl received from client
+    // Reject base64 data URLs — storing them in PostgreSQL causes massive NeonDB
+    // network transfer because every query selecting profilePicUrl transfers the
+    // entire encoded image. Profile pictures must be uploaded to Vercel Blob first.
+    if (typeof profilePicUrl === 'string' && profilePicUrl.startsWith('data:')) {
+      return NextResponse.json(
+        { error: 'Profile picture must be a hosted URL. Please upload the image first.' },
+        { status: 400 }
+      );
+    }
+    // Also validate it looks like a URL if provided
+    if (typeof profilePicUrl === 'string' && profilePicUrl.length > 0) {
+      try {
+        const u = new URL(profilePicUrl);
+        if (u.protocol !== 'http:' && u.protocol !== 'https:') throw new Error('bad protocol');
+      } catch {
+        return NextResponse.json({ error: 'profilePicUrl must be a valid https URL' }, { status: 400 });
+      }
+    }
 
     // Determine new institute id if institute name provided
     let newInstituteId = user.instituteId;

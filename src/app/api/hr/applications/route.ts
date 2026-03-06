@@ -1,11 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 export const dynamic = "force-dynamic";
 
+const ALLOWED_ROLES = ["HR", "MASTER", "ADMIN", "DIRECTOR", "DATABASE_DEPT"];
+
 export async function GET(request: NextRequest) {
   try {
-    // TODO: Add authentication check for HR/MASTER role
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const requester = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { role: true, status: true },
+    });
+
+    if (!requester || requester.status === "BANNED" || !ALLOWED_ROLES.includes(requester.role)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
@@ -50,7 +66,8 @@ export async function GET(request: NextRequest) {
               phone: true,
               volunteerId: true,
               status: true,
-              profilePicUrl: true,
+              // profilePicUrl intentionally excluded — can be large base64 in legacy data,
+              // not needed for listing applications
               institute: { select: { id: true, name: true } },
               initialPayment: { select: { id: true, status: true, amount: true, createdAt: true } },
             },

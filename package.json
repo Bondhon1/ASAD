@@ -20,6 +20,7 @@
     "@prisma/adapter-neon": "^6.19.0",
     "@prisma/client": "^6.19.0",
     "@vercel/analytics": "^1.6.1",
+    "@vercel/blob": "^2.3.1",
     "ably": "^2.0.0",
     "axios": "^1.13.2",
     "bcryptjs": "^3.0.3",

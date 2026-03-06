@@ -208,9 +208,9 @@ export default function TasksPage() {
       }
     };
 
-    const iv = setInterval(checkPending, 8000);
+    const iv = setInterval(checkPending, 60000); // Poll every 60s (was 8s — 7.5x fewer DB hits)
     // also run once shortly after mount
-    const t = setTimeout(checkPending, 2000);
+    const t = setTimeout(checkPending, 3000);
     return () => { stopped = true; clearInterval(iv); clearTimeout(t); };
   }, []);
 

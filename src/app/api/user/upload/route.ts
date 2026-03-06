@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { put } from "@vercel/blob";
 
 export const dynamic = "force-dynamic";
 
 // This endpoint expects a JSON body: { fileName, mimeType, data: base64 }
-// It will proxy the upload to Vercel Blob using VERCEL_BLOB_TOKEN and return the public URL.
+// Uploads to Vercel Blob and returns the public URL.
+// IMPORTANT: Never fall back to base64 data URLs — storing them in the DB
+// causes enormous NeonDB network transfer because every query that selects
+// profilePicUrl would transfer the entire encoded image.
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -15,66 +19,39 @@ export async function POST(request: NextRequest) {
     const { fileName, mimeType, data } = body as { fileName?: string; mimeType?: string; data?: string };
     if (!fileName || !data) return NextResponse.json({ error: 'fileName and data required' }, { status: 400 });
 
-    const tokenEnvMap = [
-      ['VERCEL_BLOB_TOKEN', process.env.VERCEL_BLOB_TOKEN],
-      ['BLOB_READ_WRITE_TOKEN', process.env.BLOB_READ_WRITE_TOKEN],
-      ['BLOB_TOKEN', process.env.BLOB_TOKEN],
-      ['VERCEL_BLOB_READ_WRITE_TOKEN', process.env.VERCEL_BLOB_READ_WRITE_TOKEN],
-    ];
-    const found = tokenEnvMap.find(([, v]) => !!v);
-    const blobToken = found ? found[1] : undefined;
+    // Reject if data is already a URL (nothing to upload)
+    if (data.startsWith('http://') || data.startsWith('https://')) {
+      return NextResponse.json({ url: data });
+    }
+
+    // Resolve blob token from environment
+    const blobToken =
+      process.env.BLOB_READ_WRITE_TOKEN ||
+      process.env.VERCEL_BLOB_READ_WRITE_TOKEN ||
+      process.env.VERCEL_BLOB_TOKEN ||
+      process.env.BLOB_TOKEN;
+
     if (!blobToken) {
-      console.error('DEBUG blob token not found in environment');
-      return NextResponse.json({ error: 'Server not configured for blob uploads' }, { status: 500 });
+      return NextResponse.json({ error: 'Blob storage is not configured on this server' }, { status: 500 });
     }
-    // Do not log token or its source in production.
 
-    // create blob entry to receive upload
-    // prepare binary buffer and accurate size (bytes)
     const buffer = Buffer.from(data, 'base64');
-    const size = buffer.length;
 
-    const metaRes = await fetch('https://api.vercel.com/v1/blob', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${blobToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ name: fileName, size, contentType: mimeType || 'application/octet-stream' })
-    });
-
-    if (!metaRes.ok) {
-      const text = await metaRes.text();
-      console.error('vercel blob meta error', text);
-      // Fallback: return a data URL so the client can still use the image
-      const dataUrl = `data:${mimeType || 'application/octet-stream'};base64,${data}`;
-      return NextResponse.json({ url: dataUrl, fallback: true, details: text });
+    // Enforce a 4 MB limit on profile pictures to prevent abuse
+    if (buffer.length > 4 * 1024 * 1024) {
+      return NextResponse.json({ error: 'Image too large. Maximum size is 4 MB.' }, { status: 413 });
     }
 
-    const meta = await metaRes.json();
-    const uploadUrl = meta.uploadURL || meta.upload_url || meta.uploadUrl || meta.upload_url;
-    const publicUrl = meta.url || meta.publicUrl || meta.file || meta.public_url;
-    if (!uploadUrl) return NextResponse.json({ error: 'Invalid blob response', details: meta }, { status: 502 });
-    const putRes = await fetch(uploadUrl, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': mimeType || 'application/octet-stream',
-        'Content-Length': String(buffer.length),
-      },
-      body: buffer
+    const blob = await put(`avatars/${fileName}`, buffer, {
+      access: 'public',
+      token: blobToken,
+      contentType: mimeType || 'image/jpeg',
+      addRandomSuffix: true, // prevent "already exists" errors on re-upload
     });
 
-    if (!putRes.ok) {
-      const text = await putRes.text();
-      console.error('vercel blob upload error', text);
-      // Fallback to data URL so client can continue
-      const dataUrl = `data:${mimeType || 'application/octet-stream'};base64,${data}`;
-      return NextResponse.json({ url: dataUrl, fallback: true, details: text });
-    }
-
-    return NextResponse.json({ url: publicUrl || meta.url });
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    return NextResponse.json({ url: blob.url });
+  } catch (error: any) {
+    console.error('Blob upload error:', error?.message || error);
+    return NextResponse.json({ error: 'Failed to upload image. Please try again.' }, { status: 500 });
   }
 }

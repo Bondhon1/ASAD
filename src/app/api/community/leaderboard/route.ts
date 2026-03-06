@@ -3,7 +3,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 
-export const dynamic = "force-dynamic";
+// Leaderboard is expensive (raw SQL aggregation + user fetches).
+// Cache the computed result for 2 minutes across all requests.
+let leaderboardCache: { data: any; timestamp: number } | null = null;
+const LEADERBOARD_CACHE_TTL = 2 * 60 * 1000; // 2 minutes
 
 // GET /api/community/leaderboard
 // Always returns exactly 10 users.
@@ -29,6 +32,17 @@ export async function GET() {
         { error: "Only official volunteers can view the leaderboard" },
         { status: 403 }
       );
+    }
+
+    // Return cached result if still fresh — avoids expensive SQL + user fetches on every page load
+    const nowMs = Date.now();
+    if (leaderboardCache && nowMs - leaderboardCache.timestamp < LEADERBOARD_CACHE_TTL) {
+      return NextResponse.json(leaderboardCache.data, {
+        headers: {
+          'Cache-Control': 'private, max-age=60, stale-while-revalidate=60',
+          'X-Cache': 'HIT',
+        },
+      });
     }
 
     const now = new Date();
@@ -162,9 +176,19 @@ export async function GET() {
 
     const leaderboard = [...topMonthly, ...fillEntries];
 
-    return NextResponse.json({
+    const responseData = {
       leaderboard,
       month: monthStart.toISOString(),
+    };
+
+    // Update server-side cache
+    leaderboardCache = { data: responseData, timestamp: Date.now() };
+
+    return NextResponse.json(responseData, {
+      headers: {
+        'Cache-Control': 'private, max-age=60, stale-while-revalidate=60',
+        'X-Cache': 'MISS',
+      },
     });
   } catch (err) {
     console.error("[leaderboard] error:", err);
