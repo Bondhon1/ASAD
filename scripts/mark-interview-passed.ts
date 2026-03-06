@@ -72,7 +72,7 @@ async function main() {
     console.log(`  ${userOk}${appOk} ${u.email}`);
     if (u.status !== 'INTERVIEW_PASSED')
       console.log(`      User.status        = ${u.status}`);
-    if (u.application?.status !== 'INTERVIEW_PASSED')
+    if (u.application?.status !== 'ACCEPTED')
       console.log(`      Application.status = ${u.application?.status}`);
   }
 
