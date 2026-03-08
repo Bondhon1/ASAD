@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { useCachedUserProfile } from "@/hooks/useCachedUserProfile";
+import MonthlyPaymentWidget from "@/components/dashboard/MonthlyPaymentWidget";
+import MonthlyOverdueBadge from "@/components/dashboard/MonthlyOverdueBadge";
 
 interface User {
   id: string;
@@ -640,6 +642,9 @@ export default function DashboardPage() {
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <div className="text-lg font-semibold text-gray-900">{user.fullName || user.username || "Volunteer"}</div>
+                    {(user.status === 'OFFICIAL' || user.volunteerProfile?.isOfficial) && (
+                      <MonthlyOverdueBadge />
+                    )}
                     {activeLeave && (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 text-xs font-semibold border border-orange-200">
                         <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
@@ -710,6 +715,11 @@ export default function DashboardPage() {
                 )}
               </div>
             </div>
+          )}
+
+          {/* Monthly donation alerts, popup & overdue warnings */}
+          {(user.status === 'OFFICIAL' || user.volunteerProfile?.isOfficial) && (
+            <MonthlyPaymentWidget />
           )}
 
           <div className="md:hidden mb-6">

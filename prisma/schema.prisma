@@ -108,6 +108,13 @@ model User {
   orgJoinRequests       OrgJoinRequest[]      @relation("UserOrgJoinRequests")
   processedOrgJoinRequests OrgJoinRequest[]   @relation("ProcessedOrgJoinRequests")
   
+  // Monthly payment system
+  monthlyPayments             MonthlyPayment[]              @relation("UserMonthlyPayments")
+  approvedMonthlyPayments     MonthlyPayment[]              @relation("MonthlyPaymentApprovedBy")
+  monthlyDelayRequests        MonthlyPaymentDelayRequest[]  @relation("UserDelayRequests")
+  reviewedDelayRequests       MonthlyPaymentDelayRequest[]  @relation("DelayRequestReviewedBy")
+  monthlyPaymentConfigs       MonthlyPaymentConfig[]        @relation("MonthlyConfigCreatedBy")
+
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
   
@@ -889,6 +896,13 @@ enum NotificationType {
   // Mentions
   MENTION
 
+  // Monthly Payment
+  MONTHLY_PAYMENT_DUE
+  MONTHLY_PAYMENT_APPROVED
+  MONTHLY_PAYMENT_REJECTED
+  MONTHLY_PAYMENT_DELAY_APPROVED
+  MONTHLY_PAYMENT_DELAY_REJECTED
+
   // Legacy (retained for existing DB rows — no longer issued by new code)
   COIN_ENDORSED
   COIN_ENDORSEMENT_REJECTED
@@ -981,4 +995,98 @@ enum JoinRequestStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+// ============================================================================
+// MONTHLY PAYMENT SYSTEM
+// Donation months: Jan(1), Mar(3), May(5), Jul(7), Sep(9), Nov(11)
+// Defaults: amount=35 BDT, fine=5 BDT, deadline=15th of the month
+// ============================================================================
+
+enum MonthlyPaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum DelayRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// Per-month configuration set by admin/master
+model MonthlyPaymentConfig {
+  id          String   @id @default(cuid())
+  month       Int      // 1-12
+  year        Int
+  amount      Float    @default(35)
+  fine        Float    @default(5)
+  deadline    Int      @default(15) // day of the month
+  bkashNumber String?
+  nagadNumber String?
+  notes       String?
+  createdById String?
+  createdBy   User?    @relation("MonthlyConfigCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  payments    MonthlyPayment[]
+
+  @@unique([month, year])
+  @@index([month, year])
+}
+
+// User's delay request for a specific month (admin can approve to waive fine)
+model MonthlyPaymentDelayRequest {
+  id           String             @id @default(cuid())
+  user         User               @relation("UserDelayRequests", fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
+  month        Int
+  year         Int
+  reason       String
+  status       DelayRequestStatus @default(PENDING)
+  reviewedBy   User?              @relation("DelayRequestReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedById String?
+  reviewedAt   DateTime?
+  adminNote    String?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  @@unique([userId, month, year])
+  @@index([userId])
+  @@index([status])
+  @@index([month, year])
+}
+
+// Individual user monthly payment submission
+model MonthlyPayment {
+  id              String               @id @default(cuid())
+  user            User                 @relation("UserMonthlyPayments", fields: [userId], references: [id], onDelete: Cascade)
+  userId          String
+  month           Int
+  year            Int
+  baseAmount      Float                // required amount without fine
+  fineAmount      Float                @default(0)
+  totalAmount     Float                // baseAmount + fineAmount
+  isLate          Boolean              @default(false) // submitted after deadline
+  isDelayApproved Boolean              @default(false) // approved delay = no fine
+  senderNumber    String
+  paymentMethod   String               // bkash | nagad
+  trxId           String
+  status          MonthlyPaymentStatus @default(PENDING)
+  rejectionReason String?
+  approvedBy      User?                @relation("MonthlyPaymentApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedById    String?
+  approvedAt      DateTime?
+  config          MonthlyPaymentConfig? @relation(fields: [configId], references: [id], onDelete: SetNull)
+  configId        String?
+  submittedAt     DateTime             @default(now())
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([month, year])
+  @@index([userId, month, year])
 }

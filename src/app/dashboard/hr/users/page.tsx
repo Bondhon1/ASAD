@@ -9,6 +9,7 @@ import { SERVICES, autoAssignServiceFromInstitute } from '@/lib/organizations';
 import { formatShortDhakaDateTime } from '@/lib/dateUtils';
 import { useModal } from '@/components/ui/ModalProvider';
 import { ChatWithButton } from '@/components/chat/ChatWithButton';
+import UserMonthlyOverdueIndicator from '@/components/dashboard/UserMonthlyOverdueIndicator';
 
 interface User {
   id: string;
@@ -27,6 +28,7 @@ interface User {
   donations?: Array<any>;
   followersCount?: number;
   followingCount?: number;
+  overdueMonthsCount?: number;
 }
 
 export default function UsersManagementPage() {
@@ -732,6 +734,7 @@ export default function UsersManagementPage() {
                                 <div className="min-w-0 flex-1">
                                   <div className="flex items-center gap-2">
                                     <div className="font-semibold text-gray-900 truncate">{u.fullName || u.username || u.email}</div>
+                                    {u.status === 'OFFICIAL' && <UserMonthlyOverdueIndicator userId={u.id} overdueCount={u.overdueMonthsCount ?? 0} />}
                                     {/* Mobile: rank next to name; hidden on sm+ */}
                                     <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-xs font-medium text-gray-800 sm:hidden">{getRankName(u.volunteerProfile?.rank)}</span>
                                   </div>
@@ -748,7 +751,10 @@ export default function UsersManagementPage() {
                             <div className="mt-2 bg-white border border-gray-100 rounded-lg p-4">
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2 text-sm">
-                                  <div className="text-gray-700 font-semibold">{u.fullName || u.username || u.email}</div>
+                                  <div className="flex items-center gap-2">
+                                    <div className="text-gray-700 font-semibold">{u.fullName || u.username || u.email}</div>
+                                    {u.status === 'OFFICIAL' && <UserMonthlyOverdueIndicator userId={u.id} overdueCount={u.overdueMonthsCount ?? 0} />}
+                                  </div>
                                   <div className="text-xs text-gray-500">Email: {u.email}</div>
                                   <div className="text-xs text-gray-500">Role: {u.role}</div>
                                   <div className="text-xs mt-1">
@@ -1113,6 +1119,9 @@ export default function UsersManagementPage() {
                               >
                                 View Profile
                               </a>
+                              {u.status === 'OFFICIAL' && (
+                                <UserMonthlyOverdueIndicator userId={u.id} overdueCount={u.overdueMonthsCount ?? 0} />
+                              )}
                               {u.status === 'OFFICIAL' && (
                                 <ChatWithButton
                                   targetUserId={u.id}

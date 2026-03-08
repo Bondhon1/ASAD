@@ -21,6 +21,7 @@ import {
   Briefcase,
   FileText,
   Bell,
+  CreditCard,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import NotificationDropdown from "@/components/dashboard/NotificationDropdown";
@@ -100,6 +101,7 @@ const ICON_MAP: Record<string, any> = {
   "/dashboard/hr/requests": UserCheck,
   "/dashboard/hr/interviews": Calendar,
   "/dashboard/hr/approvals": CheckSquare,
+  "/dashboard/admin/monthly-payments": CreditCard,
   "/dashboard/hr/jobs": Briefcase,
   "/dashboard/hr/leaves": FileText,
   "/dashboard/hr/users": Users,
@@ -210,6 +212,7 @@ function getMenuItems(userRole: string, userStatus?: string | null) {
     { label: "Services", href: "/dashboard/hr/services" },
     { label: "Manage Points / Ranks", href: "/dashboard/database" },
     { label: "Credit Management", href: "/dashboard/admin/credit-management" },
+    { label: "Monthly Payments", href: "/dashboard/admin/monthly-payments" },
     { label: "Sector/club management", href: "/dashboard/admin/org-requests" },
     { label: "Tasks", href: "/dashboard/tasks" },
     { label: "Task management", href: "/dashboard/secretaries" },
@@ -225,6 +228,7 @@ function getMenuItems(userRole: string, userStatus?: string | null) {
     const adminItems = [
       ...hrItems.slice(0, -1),
       { label: "Task management", href: "/dashboard/secretaries" },
+      { label: "Monthly Payments", href: "/dashboard/admin/monthly-payments" },
       { label: "Sector/club management", href: "/dashboard/admin/org-requests" },
       hrItems[hrItems.length - 1],
     ];

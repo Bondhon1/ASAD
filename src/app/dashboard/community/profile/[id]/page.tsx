@@ -9,6 +9,7 @@ import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { useCachedUserProfile } from "@/hooks/useCachedUserProfile";
 import { PostCard, type Post } from "@/components/community/PostCard";
 import { ChatWithButton } from "@/components/chat/ChatWithButton";
+import UserMonthlyOverdueIndicator from "@/components/dashboard/UserMonthlyOverdueIndicator";
 
 interface UserProfile {
   id: string;
@@ -311,7 +312,12 @@ export default function UserProfilePage() {
               </div>
 
               {/* Name & details */}
-              <h1 className="text-xl font-bold text-slate-800">{profile.fullName || "Volunteer"}</h1>
+              <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                {profile.fullName || "Volunteer"}
+                {profile.status === "OFFICIAL" && (
+                  <UserMonthlyOverdueIndicator userId={profile.id} />
+                )}
+              </h1>
               {profile.volunteerId && (
                 <p className="text-sm text-slate-400 font-mono">#{profile.volunteerId}</p>
               )}

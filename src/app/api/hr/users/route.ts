@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { getCache, setCache, CACHE_TTL, invalidateAll } from '@/lib/hrUsersCache';
+import { getRelevantDonationMonths, DEFAULT_DEADLINE_DAY, isAfterDeadline } from '@/lib/monthlyPayment';
 
 export async function GET(req: Request) {
   try {
@@ -195,7 +196,37 @@ async function fetchUsersData(
     return u;
   });
 
-  const data = { users: usersNormalized, total, page, pageSize };
+  // Compute overdue donation counts for OFFICIAL users — one batch query instead of per-user calls
+  const officialIds = users.filter((u: any) => u.status === 'OFFICIAL').map((u: any) => u.id);
+  const overdueMap: Record<string, number> = {};
+  if (officialIds.length > 0) {
+    const overduePairs = getRelevantDonationMonths(24).filter(p =>
+      isAfterDeadline(p.month, p.year, DEFAULT_DEADLINE_DAY)
+    );
+    if (overduePairs.length > 0) {
+      const payments = await prisma.monthlyPayment.findMany({
+        where: {
+          userId: { in: officialIds },
+          status: { in: ['APPROVED', 'PENDING'] },
+          OR: overduePairs.map(p => ({ month: p.month, year: p.year })),
+        },
+        select: { userId: true, month: true, year: true },
+      });
+      for (const uid of officialIds) {
+        const userPayments = payments.filter((p: any) => p.userId === uid);
+        overdueMap[uid] = overduePairs.filter(dp =>
+          !userPayments.some((p: any) => p.month === dp.month && p.year === dp.year)
+        ).length;
+      }
+    }
+  }
+
+  const usersWithOverdue = usersNormalized.map((u: any) => ({
+    ...u,
+    overdueMonthsCount: overdueMap[u.id] ?? 0,
+  }));
+
+  const data = { users: usersWithOverdue, total, page, pageSize };
 
   // Update cache
   setCache(cacheKey, { data, timestamp: Date.now() });

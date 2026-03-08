@@ -349,6 +349,7 @@ export default function DashboardLayout({
     '/dashboard/admin/audit-logs': FileText,
     '/dashboard/admin/credit-management': CreditIcon,
     '/dashboard/admin/org-requests': Users,
+    '/dashboard/admin/monthly-payments': DollarSign,
   };
 
   const handleLogout = async () => {
@@ -404,6 +405,7 @@ export default function DashboardLayout({
       { label: "Leave Management", href: "/dashboard/hr/leaves" },
       { label: "User Management", href: "/dashboard/hr/users" },
       { label: "Services", href: "/dashboard/hr/services" },
+      { label: "Monthly Payments", href: "/dashboard/admin/monthly-payments" },
       { label: "Tasks", href: "/dashboard/tasks" },
       { label: "Settings", href: "/dashboard/settings" },
     ];
@@ -462,6 +464,7 @@ export default function DashboardLayout({
       { label: "Manage Points / Ranks", href: "/dashboard/database" },
       { label: "Credit Management", href: "/dashboard/admin/credit-management" },
       { label: "Sector/club management", href: "/dashboard/admin/org-requests" },
+      { label: "Monthly Payments", href: "/dashboard/admin/monthly-payments" },
       { label: "Tasks", href: "/dashboard/tasks" },
       { label: "Task management", href: "/dashboard/secretaries" },
       { label: "Community", href: "/dashboard/community" },
