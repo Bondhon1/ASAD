@@ -186,6 +186,7 @@ export default function AdminMonthlyPaymentsPage() {
   const [subsLoading, setSubsLoading] = useState(false);
   const [subsFilter, setSubsFilter] = useState<"PENDING" | "APPROVED" | "REJECTED" | "all">("PENDING");
   const [subsMonthFilter, setSubsMonthFilter] = useState<string>(`${today.month}-${today.year}`);
+  const [subsStats, setSubsStats] = useState<Submission[]>([]);
 
   // ── Delay requests tab state ──────────────────────────────────────────────
   const [delayRequests, setDelayRequests] = useState<DelayRequest[]>([]);
@@ -288,9 +289,26 @@ export default function AdminMonthlyPaymentsPage() {
     }
   }, [subsFilter, subsMonthFilter, toast]);
 
+  const fetchSubsStats = useCallback(async () => {
+    try {
+      const [monthPart, yearPart] = subsMonthFilter === "all" ? [null, null] : subsMonthFilter.split("-");
+      const params = new URLSearchParams();
+      if (monthPart) params.set("month", monthPart);
+      if (yearPart) params.set("year", yearPart);
+      const res = await fetch(`/api/admin/monthly-payments/submissions?${params}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setSubsStats(data.submissions || []);
+    } catch { /* silent */ }
+  }, [subsMonthFilter]);
+
   useEffect(() => {
     if (activeTab === "submissions") fetchSubmissions();
   }, [activeTab, fetchSubmissions]);
+
+  useEffect(() => {
+    if (activeTab === "submissions") fetchSubsStats();
+  }, [activeTab, fetchSubsStats]);
 
   const handleSubmissionAction = async (id: string, action: "approve" | "reject") => {
     let rejectionReason: string | null = null;
@@ -674,14 +692,14 @@ export default function AdminMonthlyPaymentsPage() {
             </div>
 
             {/* Stats bar */}
-            {!subsLoading && submissions.length > 0 && (() => {
-              const pending = submissions.filter(s => s.status === "PENDING").length;
-              const approved = submissions.filter(s => s.status === "APPROVED").length;
-              const rejected = submissions.filter(s => s.status === "REJECTED").length;
-              const totalCollected = submissions.filter(s => s.status === "APPROVED").reduce((sum, s) => sum + s.totalAmount, 0);
-              const lateCount = submissions.filter(s => s.isLate).length;
+            {subsStats.length > 0 && (() => {
+              const pending = subsStats.filter(s => s.status === "PENDING").length;
+              const approved = subsStats.filter(s => s.status === "APPROVED").length;
+              const rejected = subsStats.filter(s => s.status === "REJECTED").length;
+              const totalCollected = subsStats.filter(s => s.status === "APPROVED").reduce((sum, s) => sum + s.totalAmount, 0);
+              const lateCount = subsStats.filter(s => s.isLate).length;
               const stats = [
-                { label: "Total", value: submissions.length, color: "text-gray-700", bg: "bg-gray-50 border-gray-200" },
+                { label: "Total", value: subsStats.length, color: "text-gray-700", bg: "bg-gray-50 border-gray-200" },
                 { label: "Pending", value: pending, color: "text-yellow-700", bg: "bg-yellow-50 border-yellow-200" },
                 { label: "Approved", value: approved, color: "text-green-700", bg: "bg-green-50 border-green-200" },
                 { label: "Rejected", value: rejected, color: "text-red-700", bg: "bg-red-50 border-red-200" },
