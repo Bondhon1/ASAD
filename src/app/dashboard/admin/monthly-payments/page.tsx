@@ -673,6 +673,33 @@ export default function AdminMonthlyPaymentsPage() {
               <button onClick={fetchSubmissions} className="ml-auto text-xs text-[#0b2545] hover:underline font-medium">↻ Refresh</button>
             </div>
 
+            {/* Stats bar */}
+            {!subsLoading && submissions.length > 0 && (() => {
+              const pending = submissions.filter(s => s.status === "PENDING").length;
+              const approved = submissions.filter(s => s.status === "APPROVED").length;
+              const rejected = submissions.filter(s => s.status === "REJECTED").length;
+              const totalCollected = submissions.filter(s => s.status === "APPROVED").reduce((sum, s) => sum + s.totalAmount, 0);
+              const lateCount = submissions.filter(s => s.isLate).length;
+              const stats = [
+                { label: "Total", value: submissions.length, color: "text-gray-700", bg: "bg-gray-50 border-gray-200" },
+                { label: "Pending", value: pending, color: "text-yellow-700", bg: "bg-yellow-50 border-yellow-200" },
+                { label: "Approved", value: approved, color: "text-green-700", bg: "bg-green-50 border-green-200" },
+                { label: "Rejected", value: rejected, color: "text-red-700", bg: "bg-red-50 border-red-200" },
+                { label: "Late", value: lateCount, color: "text-orange-700", bg: "bg-orange-50 border-orange-200" },
+                { label: "Collected", value: `৳${totalCollected}`, color: "text-blue-700", bg: "bg-blue-50 border-blue-200" },
+              ];
+              return (
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                  {stats.map(stat => (
+                    <div key={stat.label} className={`rounded-xl border px-3 py-2.5 ${stat.bg}`}>
+                      <div className={`text-base font-bold ${stat.color}`}>{stat.value}</div>
+                      <div className="text-xs text-gray-500 mt-0.5">{stat.label}</div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+
             {subsLoading ? (
               <div className="space-y-3 animate-pulse">
                 {[1, 2, 3].map(i => <div key={i} className="h-24 bg-gray-100 rounded-xl" />)}
