@@ -500,6 +500,19 @@ export default function DashboardLayout({
     const [jobItem] = menuItems.splice(jobIndex, 1);
     menuItems.push(jobItem);
   }
+
+  // Active sidebar item: pick the menu item whose href is the longest prefix of pathname.
+  // Using `href + '/'` prevents "/dashboard" from matching "/dashboard-xyz".
+  // This naturally handles sub-routes (e.g. /dashboard/community/profile → Community)
+  // and disambiguates overlapping items (e.g. /dashboard/donations/create → Create Donation).
+  const activeHref = pathname
+    ? menuItems.reduce<string | null>((best, item) => {
+        const matches =
+          pathname === item.href || pathname.startsWith(item.href + "/");
+        if (matches && (!best || item.href.length > best.length)) return item.href;
+        return best;
+      }, null)
+    : null;
   
   // Check if userId is valid for notifications
   const hasValidUserId = userId && userId !== "";
@@ -557,11 +570,16 @@ export default function DashboardLayout({
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
             {menuItems.map((item) => {
               const Icon = item.icon;
+              const isActive = item.href === activeHref;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="flex items-center gap-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-[#1E3A5F]/10 hover:text-[#1E3A5F] transition-colors"
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                    isActive
+                      ? "bg-[#1E3A5F] text-white"
+                      : "text-gray-700 hover:bg-[#1E3A5F]/10 hover:text-[#1E3A5F]"
+                  }`}
                   onClick={() => setSidebarOpen(false)}
                 >
                   <Icon size={20} />
