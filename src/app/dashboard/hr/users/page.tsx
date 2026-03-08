@@ -29,6 +29,7 @@ interface User {
   followersCount?: number;
   followingCount?: number;
   overdueMonthsCount?: number;
+  monthlyPaymentExempt?: boolean;
 }
 
 export default function UsersManagementPage() {
@@ -734,7 +735,11 @@ export default function UsersManagementPage() {
                                 <div className="min-w-0 flex-1">
                                   <div className="flex items-center gap-2">
                                     <div className="font-semibold text-gray-900 truncate">{u.fullName || u.username || u.email}</div>
-                                    {u.status === 'OFFICIAL' && <UserMonthlyOverdueIndicator userId={u.id} overdueCount={u.overdueMonthsCount ?? 0} />}
+                                    {u.status === 'OFFICIAL' && (
+                                      u.monthlyPaymentExempt
+                                        ? <span className="text-xs bg-purple-100 text-purple-700 border border-purple-200 rounded-full px-2 py-0.5 font-medium">Exempt</span>
+                                        : <UserMonthlyOverdueIndicator userId={u.id} overdueCount={u.overdueMonthsCount ?? 0} />
+                                    )}
                                     {/* Mobile: rank next to name; hidden on sm+ */}
                                     <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-xs font-medium text-gray-800 sm:hidden">{getRankName(u.volunteerProfile?.rank)}</span>
                                   </div>
@@ -753,7 +758,11 @@ export default function UsersManagementPage() {
                                 <div className="space-y-2 text-sm">
                                   <div className="flex items-center gap-2">
                                     <div className="text-gray-700 font-semibold">{u.fullName || u.username || u.email}</div>
-                                    {u.status === 'OFFICIAL' && <UserMonthlyOverdueIndicator userId={u.id} overdueCount={u.overdueMonthsCount ?? 0} />}
+                                    {u.status === 'OFFICIAL' && (
+                                      u.monthlyPaymentExempt
+                                        ? <span className="text-xs bg-purple-100 text-purple-700 border border-purple-200 rounded-full px-2 py-0.5 font-medium">Exempt</span>
+                                        : <UserMonthlyOverdueIndicator userId={u.id} overdueCount={u.overdueMonthsCount ?? 0} />
+                                    )}
                                   </div>
                                   <div className="text-xs text-gray-500">Email: {u.email}</div>
                                   <div className="text-xs text-gray-500">Role: {u.role}</div>
@@ -1120,7 +1129,9 @@ export default function UsersManagementPage() {
                                 View Profile
                               </a>
                               {u.status === 'OFFICIAL' && (
-                                <UserMonthlyOverdueIndicator userId={u.id} overdueCount={u.overdueMonthsCount ?? 0} />
+                                u.monthlyPaymentExempt
+                                  ? <span className="text-xs bg-purple-100 text-purple-700 border border-purple-200 rounded-full px-2 py-0.5 font-medium">Exempt</span>
+                                  : <UserMonthlyOverdueIndicator userId={u.id} overdueCount={u.overdueMonthsCount ?? 0} />
                               )}
                               {u.status === 'OFFICIAL' && (
                                 <ChatWithButton

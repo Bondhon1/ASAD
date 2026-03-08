@@ -32,11 +32,24 @@ export async function GET(req: NextRequest) {
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
-      select: { id: true, status: true },
+      select: { id: true, status: true, monthlyPaymentExempt: true },
     });
 
     if (!user || user.status !== 'OFFICIAL') {
       return NextResponse.json({ error: 'Only OFFICIAL members have monthly donations' }, { status: 403 });
+    }
+
+    // Exempt users: return immediately with no obligations
+    if (user.monthlyPaymentExempt) {
+      return NextResponse.json({
+        exempt: true,
+        today: getDhakaToday(),
+        isDonationMonth: false,
+        currentMonthSummary: null,
+        unpaidMonths: [],
+        unpaidCount: 0,
+        monthSummaries: [],
+      });
     }
 
     const today = getDhakaToday();

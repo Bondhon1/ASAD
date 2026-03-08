@@ -91,7 +91,8 @@ export async function GET(request: NextRequest) {
           finalPayment: { 
             select: { id: true, status: true, createdAt: true, amount: true }
           },
-          password: true // Include for hasPassword check
+          password: true, // Include for hasPassword check
+          monthlyPaymentExempt: true,
         }
       });
     } else {
@@ -141,6 +142,7 @@ export async function GET(request: NextRequest) {
             orderBy: { donatedAt: 'desc' },
             take: 20,
           },
+          monthlyPaymentExempt: true,
         }
       });
     }

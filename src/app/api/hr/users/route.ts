@@ -181,6 +181,7 @@ async function fetchUsersData(
             rank: { select: { id: true, name: true } },
           } 
         },
+        monthlyPaymentExempt: true,
       },
       orderBy: { createdAt: 'desc' },
       skip,
@@ -196,8 +197,8 @@ async function fetchUsersData(
     return u;
   });
 
-  // Compute overdue donation counts for OFFICIAL users — one batch query instead of per-user calls
-  const officialIds = users.filter((u: any) => u.status === 'OFFICIAL').map((u: any) => u.id);
+  // Compute overdue donation counts for OFFICIAL non-exempt users — one batch query instead of per-user calls
+  const officialIds = users.filter((u: any) => u.status === 'OFFICIAL' && !u.monthlyPaymentExempt).map((u: any) => u.id);
   const overdueMap: Record<string, number> = {};
   if (officialIds.length > 0) {
     const overduePairs = getRelevantDonationMonths(24).filter(p =>
@@ -223,7 +224,7 @@ async function fetchUsersData(
 
   const usersWithOverdue = usersNormalized.map((u: any) => ({
     ...u,
-    overdueMonthsCount: overdueMap[u.id] ?? 0,
+    overdueMonthsCount: u.monthlyPaymentExempt ? 0 : (overdueMap[u.id] ?? 0),
   }));
 
   const data = { users: usersWithOverdue, total, page, pageSize };

@@ -80,6 +80,7 @@ export default function MonthlyPaymentWidget() {
   };
 
   if (loading || !status) return null;
+  if (status.exempt) return null;
 
   const { currentMonthSummary, unpaidMonths, unpaidCount, isDonationMonth, today } = status;
   const overdueTotal = unpaidMonths.reduce((s: number, m: MonthSummary) => s + m.dueAmount, 0);

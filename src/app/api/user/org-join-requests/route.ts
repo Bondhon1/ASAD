@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
+import { publishNotification } from '@/lib/ably';
 
 // GET – list the current user's join requests
 export async function GET() {
@@ -104,7 +105,7 @@ export async function POST(req: Request) {
     });
     for (const admin of admins) {
       try {
-        await prisma.notification.create({
+        const notif = await prisma.notification.create({
           data: {
             userId: admin.id,
             type: 'SYSTEM_ANNOUNCEMENT',
@@ -113,6 +114,10 @@ export async function POST(req: Request) {
             link: '/dashboard/admin/org-requests',
           },
         });
+        await publishNotification(admin.id, {
+          id: notif.id, type: notif.type, title: notif.title,
+          message: notif.message, link: notif.link, createdAt: notif.createdAt,
+        }).catch(() => {});
       } catch (e) {
         console.error('Failed to create admin notification', e);
       }

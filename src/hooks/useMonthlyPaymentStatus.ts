@@ -24,6 +24,7 @@ export interface MonthSummary {
 }
 
 export interface MonthlyPaymentStatusData {
+  exempt?: boolean;
   today: { month: number; year: number; day: number };
   isDonationMonth: boolean;
   currentMonthSummary: MonthSummary | null;

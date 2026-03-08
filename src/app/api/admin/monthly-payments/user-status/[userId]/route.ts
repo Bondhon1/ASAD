@@ -34,11 +34,15 @@ export async function GET(
 
     const targetUser = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, status: true },
+      select: { id: true, status: true, monthlyPaymentExempt: true },
     });
 
     if (!targetUser || targetUser.status !== 'OFFICIAL') {
       return NextResponse.json({ unpaidCount: 0, unpaidMonths: [] });
+    }
+
+    if (targetUser.monthlyPaymentExempt) {
+      return NextResponse.json({ exempt: true, unpaidCount: 0, unpaidMonths: [] });
     }
 
     const relevantPairs = getRelevantDonationMonths(24);

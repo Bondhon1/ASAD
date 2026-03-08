@@ -33,6 +33,10 @@ function getNotificationIcon(type: string): string {
       return "🏆";
     case "FRIEND_REQUEST":
       return "👋";
+    case "MONTHLY_PAYMENT_EXEMPT_GRANTED":
+      return "🛡️";
+    case "MONTHLY_PAYMENT_EXEMPT_REVOKED":
+      return "🔔";
     case "SYSTEM_ANNOUNCEMENT":
       return "📢";
     default:

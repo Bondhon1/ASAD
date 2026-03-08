@@ -17,6 +17,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { applyPointsChange, applyCredit } from '@/lib/rankUtils';
+import { publishNotification } from '@/lib/ably';
 import { NotificationType } from '@prisma/client';
 
 type ApprovalBody = {
@@ -132,7 +133,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       ? NotificationType.TASK_APPROVED 
       : NotificationType.TASK_REJECTED;
 
-    await prisma.notification.create({
+    const notif = await prisma.notification.create({
       data: {
         userId: submission.userId,
         broadcast: false,
@@ -146,6 +147,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         link: '/dashboard/tasks',
       },
     });
+    await publishNotification(submission.userId, {
+      id: notif.id, type: notif.type, title: notif.title,
+      message: notif.message, link: notif.link, createdAt: notif.createdAt,
+    }).catch(() => {});
 
     return NextResponse.json({
       ok: true,

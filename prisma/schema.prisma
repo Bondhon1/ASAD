@@ -114,6 +114,12 @@ model User {
   monthlyDelayRequests        MonthlyPaymentDelayRequest[]  @relation("UserDelayRequests")
   reviewedDelayRequests       MonthlyPaymentDelayRequest[]  @relation("DelayRequestReviewedBy")
   monthlyPaymentConfigs       MonthlyPaymentConfig[]        @relation("MonthlyConfigCreatedBy")
+  monthlyPaymentExempt        Boolean                       @default(false)
+  monthlyPaymentExemptReason  String?
+  monthlyPaymentExemptAt      DateTime?
+  monthlyPaymentExemptById    String?
+  monthlyPaymentExemptBy      User?                         @relation("MonthlyExemptBy", fields: [monthlyPaymentExemptById], references: [id], onDelete: SetNull)
+  monthlyExemptedUsers        User[]                        @relation("MonthlyExemptBy")
 
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
@@ -902,6 +908,8 @@ enum NotificationType {
   MONTHLY_PAYMENT_REJECTED
   MONTHLY_PAYMENT_DELAY_APPROVED
   MONTHLY_PAYMENT_DELAY_REJECTED
+  MONTHLY_PAYMENT_EXEMPT_GRANTED
+  MONTHLY_PAYMENT_EXEMPT_REVOKED
 
   // Legacy (retained for existing DB rows — no longer issued by new code)
   COIN_ENDORSED

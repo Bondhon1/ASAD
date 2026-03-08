@@ -52,6 +52,7 @@ export default function MonthlyOverdueBadge() {
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   if (!status) return null;
+  if (status.exempt) return null;
 
   const { unpaidMonths, unpaidCount, isDonationMonth, currentMonthSummary } = status;
 

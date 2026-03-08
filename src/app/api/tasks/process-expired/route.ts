@@ -25,6 +25,7 @@ import { createAuditLog } from '@/lib/prisma-audit';
 import { applyPointsChange } from '@/lib/rankUtils';
 import { NotificationType } from '@prisma/client';
 import { parseAudience, resolveAudienceUserIds } from '@/lib/taskAudience';
+import { publishNotification } from '@/lib/ably';
 
 // Special marker for auto-created deduction submissions
 const DEDUCTION_MARKER = '__DEADLINE_MISSED_DEDUCTION__';
@@ -235,7 +236,7 @@ export async function POST(req: Request) {
             ? `You missed the deadline for "${task.title}". ${task.pointsNegative} points have been deducted.${deductionResult?.rankChanged ? ` Your rank has changed to ${deductionResult.newRankName}.` : ''}`
             : `You missed the deadline for "${task.title}".`;
           
-          await prisma.notification.create({
+          const expiredNotif = await prisma.notification.create({
             data: {
               userId: targetUserId,
               broadcast: false,
@@ -245,6 +246,10 @@ export async function POST(req: Request) {
               link: '/dashboard/tasks',
             },
           });
+          await publishNotification(targetUserId, {
+            id: expiredNotif.id, type: expiredNotif.type, title: expiredNotif.title,
+            message: expiredNotif.message, link: expiredNotif.link, createdAt: expiredNotif.createdAt,
+          }).catch(() => {});
         } catch (err: any) {
           // If unique constraint violation, user was already processed
           if (err?.code === 'P2002') {
