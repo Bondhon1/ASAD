@@ -165,7 +165,7 @@ export default function MonthlyPaymentSubmitModal({
           {/* Recipient number */}
           {recipientNumber && (
             <div className="bg-gray-50 rounded-lg p-3 flex items-center justify-between text-sm">
-              <span className="text-gray-500">Send to ({paymentMethod === "bkash" ? "bKash" : "Nagad"})</span>
+              <span className="text-gray-500">Send money to ({paymentMethod === "bkash" ? "bKash" : "Nagad"})</span>
               <span className="font-mono font-bold text-gray-800 text-base">{recipientNumber}</span>
             </div>
           )}
