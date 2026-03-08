@@ -11,7 +11,16 @@ import { MONTH_NAMES, DONATION_MONTHS, getDhakaToday, getDonationPeriodLabel } f
 
 const ADMIN_ROLES = ["MASTER", "ADMIN", "HR"];
 
-type TabKey = "config" | "submissions" | "delay-requests" | "exemptions";
+type TabKey = "config" | "submissions" | "delay-requests" | "exemptions" | "stats-history";
+
+interface PeriodStat {
+  month: number;
+  year: number;
+  pending: number;
+  approved: number;
+  rejected: number;
+  totalCollected: number;
+}
 
 interface MonthlyConfig {
   id: string;
@@ -188,6 +197,10 @@ export default function AdminMonthlyPaymentsPage() {
   const [subsMonthFilter, setSubsMonthFilter] = useState<string>(`${today.month}-${today.year}`);
   const [subsStats, setSubsStats] = useState<Submission[]>([]);
 
+  // ── Stats history tab state ────────────────────────────────────────────────
+  const [statsHistory, setStatsHistory] = useState<PeriodStat[]>([]);
+  const [statsHistoryLoading, setStatsHistoryLoading] = useState(false);
+
   // ── Delay requests tab state ──────────────────────────────────────────────
   const [delayRequests, setDelayRequests] = useState<DelayRequest[]>([]);
   const [delayLoading, setDelayLoading] = useState(false);
@@ -358,6 +371,25 @@ export default function AdminMonthlyPaymentsPage() {
     if (activeTab === "delay-requests") fetchDelayRequests();
   }, [activeTab, fetchDelayRequests]);
 
+  // ── Fetch stats history ───────────────────────────────────────────────────
+  const fetchStatsHistory = useCallback(async () => {
+    setStatsHistoryLoading(true);
+    try {
+      const res = await fetch("/api/admin/monthly-payments/stats-history");
+      if (!res.ok) return;
+      const data = await res.json();
+      setStatsHistory(data.history || []);
+    } catch {
+      toast("Failed to load stats history", { type: "error" });
+    } finally {
+      setStatsHistoryLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    if (activeTab === "stats-history") fetchStatsHistory();
+  }, [activeTab, fetchStatsHistory]);
+
   // ── Fetch exempt users ────────────────────────────────────────────────────
   const fetchExemptUsers = useCallback(async () => {
     setExemptLoading(true);
@@ -493,6 +525,7 @@ export default function AdminMonthlyPaymentsPage() {
     { key: "submissions", label: "Submissions", badge: submissions.filter(s => s.status === "PENDING").length || undefined },
     { key: "delay-requests", label: "Delay Requests", badge: delayRequests.filter(d => d.status === "PENDING").length || undefined },
     { key: "exemptions", label: "Exemptions", badge: exemptUsers.length || undefined },
+    { key: "stats-history", label: "Stats History" },
   ];
 
   return (
@@ -932,6 +965,74 @@ export default function AdminMonthlyPaymentsPage() {
         )}
 
         {/* ── Delay Requests Tab ───────────────────────────────────────────── */}
+        {/* ── Stats History Tab ─────────────────────────────────────────── */}
+        {activeTab === "stats-history" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-gray-500">Approved payments per donation period, sorted newest first.</p>
+              <button onClick={fetchStatsHistory} className="text-xs text-[#0b2545] hover:underline font-medium">↻ Refresh</button>
+            </div>
+
+            {statsHistoryLoading ? (
+              <div className="space-y-2 animate-pulse">
+                {[1, 2, 3, 4].map(i => <div key={i} className="h-14 bg-gray-100 rounded-xl" />)}
+              </div>
+            ) : statsHistory.length === 0 ? (
+              <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-sm text-gray-500">
+                No payment records found.
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                {/* Table header */}
+                <div className="grid grid-cols-5 gap-2 px-4 py-2.5 bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  <div className="col-span-2">Period</div>
+                  <div className="text-center">Paid</div>
+                  <div className="text-center">Pending</div>
+                  <div className="text-right">Collection</div>
+                </div>
+                <div className="divide-y divide-gray-100">
+                  {statsHistory.map(p => (
+                    <div key={`${p.month}-${p.year}`} className="grid grid-cols-5 gap-2 px-4 py-3 items-center hover:bg-gray-50 transition-colors">
+                      <div className="col-span-2">
+                        <span className="font-semibold text-sm text-gray-800">
+                          {getDonationPeriodLabel(p.month)}
+                        </span>
+                        <span className="ml-2 text-xs text-gray-400">{String(p.year).slice(-2)}</span>
+                      </div>
+                      <div className="text-center">
+                        <span className="inline-flex items-center justify-center bg-green-100 text-green-700 border border-green-200 text-xs font-semibold rounded-full px-2.5 py-0.5 min-w-[2.5rem]">
+                          {p.approved}
+                        </span>
+                      </div>
+                      <div className="text-center">
+                        {p.pending > 0 ? (
+                          <span className="inline-flex items-center justify-center bg-yellow-100 text-yellow-700 border border-yellow-200 text-xs font-semibold rounded-full px-2.5 py-0.5 min-w-[2.5rem]">
+                            {p.pending}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">—</span>
+                        )}
+                      </div>
+                      <div className="text-right font-semibold text-sm text-[#0b2545]">
+                        ৳{p.totalCollected.toLocaleString()}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {/* Totals row */}
+                {statsHistory.length > 1 && (
+                  <div className="grid grid-cols-5 gap-2 px-4 py-3 bg-[#0b2545] text-white">
+                    <div className="col-span-2 text-xs font-semibold uppercase tracking-wide">Total ({statsHistory.length} periods)</div>
+                    <div className="text-center text-sm font-bold">{statsHistory.reduce((s, p) => s + p.approved, 0)}</div>
+                    <div className="text-center text-sm font-bold">{statsHistory.reduce((s, p) => s + p.pending, 0) || "—"}</div>
+                    <div className="text-right text-sm font-bold">৳{statsHistory.reduce((s, p) => s + p.totalCollected, 0).toLocaleString()}</div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {activeTab === "delay-requests" && (
           <div className="space-y-4">
             <div className="flex gap-3 items-center">
