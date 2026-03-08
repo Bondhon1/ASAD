@@ -7,7 +7,7 @@ import { useSession } from "next-auth/react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { useCachedUserProfile } from "@/hooks/useCachedUserProfile";
 import { useModal } from "@/components/ui/ModalProvider";
-import { MONTH_NAMES, DONATION_MONTHS, getDhakaToday } from "@/lib/monthlyPayment";
+import { MONTH_NAMES, DONATION_MONTHS, getDhakaToday, getDonationPeriodLabel } from "@/lib/monthlyPayment";
 
 const ADMIN_ROLES = ["MASTER", "ADMIN", "HR"];
 
@@ -259,7 +259,7 @@ export default function AdminMonthlyPaymentsPage() {
       });
       const data = await res.json();
       if (!res.ok) { toast(data.error || "Failed to save", { type: "error" }); return; }
-      toast(`Configuration saved for ${MONTH_NAMES[configMonth]} ${configYear}`, { type: "success" });
+      toast(`Configuration saved for ${getDonationPeriodLabel(configMonth)} ${configYear}`, { type: "success" });
       fetchConfig();
     } catch {
       toast("Network error", { type: "error" });
@@ -466,7 +466,7 @@ export default function AdminMonthlyPaymentsPage() {
     while (m <= 0) { m += 12; y--; }
     while (m > 12) { m -= 12; y++; }
     if (DONATION_MONTHS.includes(m)) {
-      monthOptions.push({ value: `${m}-${y}`, label: `${MONTH_NAMES[m]} ${y}` });
+      monthOptions.push({ value: `${m}-${y}`, label: `${getDonationPeriodLabel(m)} ${y}` });
     }
   }
 
@@ -485,7 +485,7 @@ export default function AdminMonthlyPaymentsPage() {
           <h1 className="text-2xl font-bold text-[#0b2545]">Monthly Payments</h1>
           <p className="text-sm text-gray-500 mt-1">
             Manage monthly donation configuration and review submissions.
-            Donation months: Jan, Mar, May, Jul, Sep, Nov.
+            Donation periods: Jan-Feb, Mar-Apr, May-Jun, Jul-Aug, Sep-Oct, Nov-Dec.
           </p>
         </div>
 
@@ -527,7 +527,7 @@ export default function AdminMonthlyPaymentsPage() {
                     className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#0b2545]"
                   >
                     {DONATION_MONTHS.map(m => (
-                      <option key={m} value={m}>{MONTH_NAMES[m]}</option>
+                      <option key={m} value={m}>{getDonationPeriodLabel(m)}</option>
                     ))}
                   </select>
                 </div>
@@ -553,7 +553,7 @@ export default function AdminMonthlyPaymentsPage() {
                 <>
                   {configData && (
                     <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-3 text-xs text-green-700">
-                      Configuration exists for {MONTH_NAMES[configData.month]} {configData.year}
+                      Configuration exists for {getDonationPeriodLabel(configData.month)} {configData.year}
                       {configData.createdBy && ` · Set by ${configData.createdBy.fullName ?? "Admin"}`}
                     </div>
                   )}
@@ -712,7 +712,7 @@ export default function AdminMonthlyPaymentsPage() {
                           {sub.user.institute?.name ?? "—"} · {sub.user.email}
                         </div>
                         <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1 text-xs text-gray-600">
-                          <div><span className="text-gray-400">Month:</span> <strong>{MONTH_NAMES[sub.month]} {sub.year}</strong></div>
+                          <div><span className="text-gray-400">Period:</span> <strong>{getDonationPeriodLabel(sub.month)} {sub.year}</strong></div>
                           <div><span className="text-gray-400">Amount:</span> <strong className="text-green-700">৳{sub.totalAmount}</strong>{sub.fineAmount > 0 && <span className="text-red-500 ml-1">(+৳{sub.fineAmount} fine)</span>}</div>
                           <div><span className="text-gray-400">Method:</span> <strong className="capitalize">{sub.paymentMethod}</strong></div>
                           <div><span className="text-gray-400">TrxID:</span> <span className="font-mono">{sub.trxId}</span></div>
@@ -931,7 +931,7 @@ export default function AdminMonthlyPaymentsPage() {
                           {req.user.institute?.name ?? "—"} · {req.user.email}
                         </div>
                         <div className="mt-2 text-xs text-gray-600">
-                          <strong>Month:</strong> {MONTH_NAMES[req.month]} {req.year} ·{" "}
+                          <strong>Period:</strong> {getDonationPeriodLabel(req.month)} {req.year} ·{" "}
                           <strong>Requested:</strong> {new Date(req.createdAt).toLocaleString("en-US", { timeZone: "Asia/Dhaka", month: "short", day: "numeric" })}
                         </div>
                         <div className="mt-2 bg-gray-50 rounded-lg p-2 text-xs text-gray-700">

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import MonthlyPaymentSubmitModal from "./MonthlyPaymentSubmitModal";
-import { MONTH_NAMES } from "@/lib/monthlyPayment";
+import { MONTH_NAMES, getDonationPeriodLabel } from "@/lib/monthlyPayment";
 import { useMonthlyPaymentStatus } from "@/hooks/useMonthlyPaymentStatus";
 
 interface MonthSummary {
@@ -116,7 +116,7 @@ export default function MonthlyPaymentWidget() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-blue-800">
-              Monthly donation due by {currentMonthSummary.deadlineDay}{getDaySuffix(currentMonthSummary.deadlineDay)} {currentMonthSummary.monthName}
+              Monthly donation due by {currentMonthSummary.deadlineDay}{getDaySuffix(currentMonthSummary.deadlineDay)} {getDonationPeriodLabel(currentMonthSummary.month)}
             </p>
             <p className="text-xs text-blue-600 mt-0.5">
               Amount: <strong>৳{currentMonthSummary.dueAmount}</strong>
@@ -146,7 +146,7 @@ export default function MonthlyPaymentWidget() {
             <div className="bg-gradient-to-r from-[#0b2545] to-[#1a3a6b] px-5 py-4 flex items-center justify-between">
               <div>
                 <h3 className="text-white font-bold text-base">Monthly Donation Reminder</h3>
-                <p className="text-blue-200 text-xs mt-0.5">{currentMonthSummary.monthName} {currentMonthSummary.year}</p>
+                <p className="text-blue-200 text-xs mt-0.5">{getDonationPeriodLabel(currentMonthSummary.month)} {currentMonthSummary.year}</p>
               </div>
               <button
                 onClick={dismissPopup}
@@ -161,23 +161,23 @@ export default function MonthlyPaymentWidget() {
             <div className="p-5">
               {currentMonthSummary.isLate ? (
                 <p className="text-sm text-red-700 font-medium">
-                  Your {currentMonthSummary.monthName} monthly donation is overdue. A fine of ৳{currentMonthSummary.fine} applies.
+                  Your {getDonationPeriodLabel(currentMonthSummary.month)} monthly donation is overdue. A fine of ৳{currentMonthSummary.fine} applies.
                 </p>
               ) : (
                 <p className="text-sm text-gray-700">
-                  Your monthly donation for <strong>{currentMonthSummary.monthName}</strong> is due by the <strong>{currentMonthSummary.deadlineDay}{getDaySuffix(currentMonthSummary.deadlineDay)}</strong>.
+                  Your monthly donation for <strong>{getDonationPeriodLabel(currentMonthSummary.month)}</strong> is due by the <strong>{currentMonthSummary.deadlineDay}{getDaySuffix(currentMonthSummary.deadlineDay)}</strong>.
                 </p>
               )}
               <div className={`mt-3 rounded-lg p-3 ${overdueTotal > 0 ? "bg-orange-50" : currentMonthSummary.fineApplies ? "bg-red-50" : "bg-blue-50"}`}>
                 {overdueTotal > 0 && (
                   <div className="space-y-0.5 mb-2 text-xs">
                     <div className="flex justify-between text-gray-600">
-                      <span>{currentMonthSummary.monthName}</span>
+                      <span>{getDonationPeriodLabel(currentMonthSummary.month)}</span>
                       <span>৳{currentMonthSummary.dueAmount}</span>
                     </div>
                     {unpaidMonths.map(m => (
                       <div key={`${m.month}-${m.year}`} className="flex justify-between text-red-600">
-                        <span>{m.monthName} <span className="text-[10px]">(overdue)</span></span>
+                        <span>{getDonationPeriodLabel(m.month)} <span className="text-[10px]">(overdue)</span></span>
                         <span>৳{m.dueAmount}</span>
                       </div>
                     ))}

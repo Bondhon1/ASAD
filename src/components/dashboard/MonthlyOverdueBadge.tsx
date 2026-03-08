@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import MonthlyPaymentSubmitModal from "./MonthlyPaymentSubmitModal";
 import MonthlyDelayRequestModal from "./MonthlyDelayRequestModal";
 import { useMonthlyPaymentStatus } from "@/hooks/useMonthlyPaymentStatus";
+import { getDonationPeriodLabel } from "@/lib/monthlyPayment";
 
 function getDaySuffix(day: number): string {
   if (day >= 11 && day <= 13) return "th";
@@ -117,9 +118,9 @@ export default function MonthlyOverdueBadge() {
                 <p className="text-xs font-bold text-orange-700 mb-1">Due this month</p>
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <span className="text-xs font-semibold text-gray-800">{currentMonthSummary.monthName} {currentMonthSummary.year}</span>
+                    <span className="text-xs font-semibold text-gray-800">{getDonationPeriodLabel(currentMonthSummary.month)} {currentMonthSummary.year}</span>
                     <span className="ml-1.5 text-xs text-orange-600 font-medium">৳{currentMonthSummary.dueAmount}</span>
-                    <span className="block text-[11px] text-gray-500">Due by {currentMonthSummary.deadlineDay}{getDaySuffix(currentMonthSummary.deadlineDay)} {currentMonthSummary.monthName}</span>
+                    <span className="block text-[11px] text-gray-500">Due by {currentMonthSummary.deadlineDay}{getDaySuffix(currentMonthSummary.deadlineDay)} {getDonationPeriodLabel(currentMonthSummary.month)}</span>
                   </div>
                 </div>
                 <button
@@ -145,7 +146,7 @@ export default function MonthlyOverdueBadge() {
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <span className="text-xs font-semibold text-gray-800">
-                            {m.monthName} {m.year}
+                            {getDonationPeriodLabel(m.month)} {m.year}
                           </span>
                           <span className="ml-1.5 text-xs text-red-600 font-medium">
                             {m.fineApplies

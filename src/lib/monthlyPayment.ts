@@ -15,6 +15,14 @@ export const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
+/**
+ * Returns the two-month period label for a donation month.
+ * e.g. 1 → "January-February", 3 → "March-April", 11 → "November-December"
+ */
+export function getDonationPeriodLabel(month: number): string {
+  return `${MONTH_NAMES[month]}-${MONTH_NAMES[month + 1]}`;
+}
+
 export function isDonationMonth(month: number): boolean {
   return DONATION_MONTHS.includes(month);
 }

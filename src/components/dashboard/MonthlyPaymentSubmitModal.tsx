@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MONTH_NAMES } from "@/lib/monthlyPayment";
+import { MONTH_NAMES, getDonationPeriodLabel } from "@/lib/monthlyPayment";
 
 interface OverdueMonth {
   month: number;
@@ -51,7 +51,7 @@ export default function MonthlyPaymentSubmitModal({
   const currentMonthAmount = fineApplies ? baseAmount + fine : baseAmount;
   const overdueTotal = overdueMonths.reduce((s, m) => s + m.dueAmount, 0);
   const totalAmount = currentMonthAmount + overdueTotal;
-  const monthLabel = `${MONTH_NAMES[month]} ${year}`;
+  const monthLabel = `${getDonationPeriodLabel(month)} ${year}`;
   const recipientNumber = paymentMethod === "bkash" ? bkashNumber : nagadNumber;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -127,7 +127,7 @@ export default function MonthlyPaymentSubmitModal({
                 {overdueMonths.map((m) => (
                   <div key={`${m.month}-${m.year}`} className="flex justify-between items-center text-sm mt-1">
                     <span className="text-gray-700">
-                      {m.monthName} {m.year}
+                      {getDonationPeriodLabel(m.month)} {m.year}
                       {m.fineApplies && <span className="text-xs text-red-500 ml-1">(+৳{m.fine} fine)</span>}
                     </span>
                     <span className="font-semibold text-red-600">৳{m.dueAmount}</span>

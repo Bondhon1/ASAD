@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MONTH_NAMES } from "@/lib/monthlyPayment";
+import { MONTH_NAMES, getDonationPeriodLabel } from "@/lib/monthlyPayment";
 
 interface MonthlyDelayRequestModalProps {
   month: number;
@@ -20,7 +20,7 @@ export default function MonthlyDelayRequestModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const monthLabel = `${MONTH_NAMES[month]} ${year}`;
+  const monthLabel = `${getDonationPeriodLabel(month)} ${year}`;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

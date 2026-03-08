@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
+import { getDonationPeriodLabel } from "@/lib/monthlyPayment";
 
 interface UserMonthlyOverdueIndicatorProps {
   userId: string;
@@ -104,7 +105,7 @@ export default function UserMonthlyOverdueIndicator({
               <div className="space-y-1">
                 {data.unpaidMonths.map(m => (
                   <div key={`${m.month}-${m.year}`} className="text-xs text-red-600 bg-red-50 rounded px-2 py-1">
-                    {m.monthName} {m.year}
+                    {getDonationPeriodLabel(m.month)} {m.year}
                   </div>
                 ))}
               </div>
