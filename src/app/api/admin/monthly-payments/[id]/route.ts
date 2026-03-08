@@ -85,7 +85,7 @@ export async function POST(
     if (action === 'approve') {
       await applyPointsChange(
         payment.userId,
-        2,
+        4,
         'Monthly payment approved',
         undefined,
         updated.id,
