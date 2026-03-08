@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { publishNotification } from '@/lib/ably';
 import { createAuditLog } from '@/lib/prisma-audit';
+import { applyPointsChange } from '@/lib/rankUtils';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,6 +79,17 @@ export async function POST(
           approvedAt: new Date(),
         },
       });
+    }
+
+    // Award 2 points for the approved payment (overdue months do not earn points)
+    if (action === 'approve') {
+      await applyPointsChange(
+        payment.userId,
+        2,
+        'Monthly payment approved',
+        undefined,
+        updated.id,
+      ).catch((e) => console.error('[monthly-payments] applyPointsChange failed', e));
     }
 
     // Send notification to user
