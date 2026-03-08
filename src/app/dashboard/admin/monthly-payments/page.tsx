@@ -178,7 +178,7 @@ export default function AdminMonthlyPaymentsPage() {
   const [configYear, setConfigYear] = useState(today.year);
   const [configData, setConfigData] = useState<MonthlyConfig | null>(null);
   const [configLoading, setConfigLoading] = useState(false);
-  const [configForm, setConfigForm] = useState({ amount: "70", fine: "10", deadline: "15", bkashNumber: "01727576254", nagadNumber: "01727576254", notes: "" });
+  const [configForm, setConfigForm] = useState({ amount: "70", fine: "10", deadline: "15", bkashNumber: "01983600518", nagadNumber: "01983600518", notes: "" });
   const [configSaving, setConfigSaving] = useState(false);
 
   // ── Submissions tab state ─────────────────────────────────────────────────
@@ -227,7 +227,7 @@ export default function AdminMonthlyPaymentsPage() {
           notes: data.config.notes ?? "",
         });
       } else {
-        setConfigForm({ amount: "70", fine: "10", deadline: "15", bkashNumber: "01727576254", nagadNumber: "01727576254", notes: "" });
+        setConfigForm({ amount: "70", fine: "10", deadline: "15", bkashNumber: "01983600518", nagadNumber: "01983600518", notes: "" });
       }
     } catch {
       toast("Failed to load config", { type: "error" });
