@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
-      select: { id: true, status: true, monthlyPaymentExempt: true },
+      select: { id: true, status: true, monthlyPaymentExempt: true, monthlyPaymentExemptReason: true },
     });
 
     if (!user || user.status !== 'OFFICIAL') {
@@ -43,6 +43,7 @@ export async function GET(req: NextRequest) {
     if (user.monthlyPaymentExempt) {
       return NextResponse.json({
         exempt: true,
+        exemptReason: user.monthlyPaymentExemptReason ?? null,
         today: getDhakaToday(),
         isDonationMonth: false,
         currentMonthSummary: null,

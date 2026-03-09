@@ -10,6 +10,7 @@ import { useCachedUserProfile } from "@/hooks/useCachedUserProfile";
 import { PostCard, type Post } from "@/components/community/PostCard";
 import { ChatWithButton } from "@/components/chat/ChatWithButton";
 import UserMonthlyOverdueIndicator from "@/components/dashboard/UserMonthlyOverdueIndicator";
+import UserMonthlyExemptBadge from "@/components/dashboard/UserMonthlyExemptBadge";
 
 interface UserProfile {
   id: string;
@@ -18,6 +19,8 @@ interface UserProfile {
   profilePicUrl: string | null;
   role: string;
   status: string;
+  monthlyPaymentExempt: boolean;
+  monthlyPaymentExemptReason: string | null;
   createdAt: string;
   isFollowing: boolean;
   isMe: boolean;
@@ -315,7 +318,9 @@ export default function UserProfilePage() {
               <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                 {profile.fullName || "Volunteer"}
                 {profile.status === "OFFICIAL" && (
-                  <UserMonthlyOverdueIndicator userId={profile.id} />
+                  profile.monthlyPaymentExempt
+                    ? <UserMonthlyExemptBadge reason={profile.monthlyPaymentExemptReason} />
+                    : <UserMonthlyOverdueIndicator userId={profile.id} />
                 )}
               </h1>
               {profile.volunteerId && (

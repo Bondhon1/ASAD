@@ -10,6 +10,7 @@ import { formatShortDhakaDateTime } from '@/lib/dateUtils';
 import { useModal } from '@/components/ui/ModalProvider';
 import { ChatWithButton } from '@/components/chat/ChatWithButton';
 import UserMonthlyOverdueIndicator from '@/components/dashboard/UserMonthlyOverdueIndicator';
+import UserMonthlyExemptBadge from '@/components/dashboard/UserMonthlyExemptBadge';
 
 interface User {
   id: string;
@@ -737,7 +738,7 @@ export default function UsersManagementPage() {
                                     <div className="font-semibold text-gray-900 truncate">{u.fullName || u.username || u.email}</div>
                                     {u.status === 'OFFICIAL' && (
                                       u.monthlyPaymentExempt
-                                        ? <span className="text-xs bg-purple-100 text-purple-700 border border-purple-200 rounded-full px-2 py-0.5 font-medium">Exempt</span>
+                                        ? <UserMonthlyExemptBadge />
                                         : <UserMonthlyOverdueIndicator userId={u.id} overdueCount={u.overdueMonthsCount ?? 0} />
                                     )}
                                     {/* Mobile: rank next to name; hidden on sm+ */}
@@ -760,7 +761,7 @@ export default function UsersManagementPage() {
                                     <div className="text-gray-700 font-semibold">{u.fullName || u.username || u.email}</div>
                                     {u.status === 'OFFICIAL' && (
                                       u.monthlyPaymentExempt
-                                        ? <span className="text-xs bg-purple-100 text-purple-700 border border-purple-200 rounded-full px-2 py-0.5 font-medium">Exempt</span>
+                                        ? <UserMonthlyExemptBadge />
                                         : <UserMonthlyOverdueIndicator userId={u.id} overdueCount={u.overdueMonthsCount ?? 0} />
                                     )}
                                   </div>
@@ -1130,7 +1131,7 @@ export default function UsersManagementPage() {
                               </a>
                               {u.status === 'OFFICIAL' && (
                                 u.monthlyPaymentExempt
-                                  ? <span className="text-xs bg-purple-100 text-purple-700 border border-purple-200 rounded-full px-2 py-0.5 font-medium">Exempt</span>
+                                  ? <UserMonthlyExemptBadge />
                                   : <UserMonthlyOverdueIndicator userId={u.id} overdueCount={u.overdueMonthsCount ?? 0} />
                               )}
                               {u.status === 'OFFICIAL' && (

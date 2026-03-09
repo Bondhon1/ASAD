@@ -30,6 +30,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         role: true,
         status: true,
         createdAt: true,
+        monthlyPaymentExempt: true,
+        monthlyPaymentExemptReason: true,
         volunteerProfile: {
           select: {
             bio: true,

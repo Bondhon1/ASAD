@@ -8,6 +8,7 @@ import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { useCachedUserProfile } from "@/hooks/useCachedUserProfile";
 import MonthlyPaymentWidget from "@/components/dashboard/MonthlyPaymentWidget";
 import MonthlyOverdueBadge from "@/components/dashboard/MonthlyOverdueBadge";
+import MonthlyExemptDashboardBadge from "@/components/dashboard/MonthlyExemptDashboardBadge";
 
 interface User {
   id: string;
@@ -644,6 +645,9 @@ export default function DashboardPage() {
                     <div className="text-lg font-semibold text-gray-900">{user.fullName || user.username || "Volunteer"}</div>
                     {(user.status === 'OFFICIAL' || user.volunteerProfile?.isOfficial) && (
                       <MonthlyOverdueBadge />
+                    )}
+                    {(user.status === 'OFFICIAL' || user.volunteerProfile?.isOfficial) && (
+                      <MonthlyExemptDashboardBadge />
                     )}
                     {activeLeave && (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 text-xs font-semibold border border-orange-200">

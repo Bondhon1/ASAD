@@ -7,6 +7,7 @@ import { useSession } from "next-auth/react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { useCachedUserProfile } from "@/hooks/useCachedUserProfile";
 import { useModal } from "@/components/ui/ModalProvider";
+import UserMonthlyExemptBadge from "@/components/dashboard/UserMonthlyExemptBadge";
 import { MONTH_NAMES, DONATION_MONTHS, getDhakaToday, getDonationPeriodLabel } from "@/lib/monthlyPayment";
 
 const ADMIN_ROLES = ["MASTER", "ADMIN", "HR"];
@@ -930,9 +931,7 @@ export default function AdminMonthlyPaymentsPage() {
                           {u.volunteerId && (
                             <span className="text-xs text-gray-500 font-mono">#{u.volunteerId}</span>
                           )}
-                          <span className="text-xs bg-purple-100 text-purple-700 border border-purple-200 rounded-full px-2 py-0.5 font-medium">
-                            Exempt
-                          </span>
+                          <UserMonthlyExemptBadge reason={u.monthlyPaymentExemptReason} />
                         </div>
                         <div className="text-xs text-gray-500 mt-0.5">
                           {u.institute?.name ?? "—"} · {u.email}
