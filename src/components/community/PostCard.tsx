@@ -4,6 +4,8 @@ import { useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { MentionTextarea, renderMentionContent } from "./MentionTextarea";
+import UserMonthlyExemptBadge from "@/components/dashboard/UserMonthlyExemptBadge";
+import UserMonthlyOverdueIndicator from "@/components/dashboard/UserMonthlyOverdueIndicator";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -14,6 +16,9 @@ export interface Author {
   profilePicUrl: string | null;
   role: string;
   status: string;
+  monthlyPaymentExempt?: boolean | null;
+  monthlyPaymentExemptReason?: string | null;
+  overdueMonthsCount?: number;
 }
 
 export interface Reply {
@@ -163,12 +168,19 @@ export function CommentItem({
       <div className="flex-1 min-w-0">
         <div className="bg-slate-50 border border-slate-100 rounded-2xl px-3 py-2">
           <div className="flex items-center justify-between gap-2 flex-wrap">
-            <Link
-              href={`/dashboard/community/profile/${comment.author.id}`}
-              className="font-semibold text-sm text-slate-800 hover:text-[#1E3A5F] transition-colors"
-            >
-              {comment.author.fullName || "Volunteer"}
-            </Link>
+            <div className="flex items-center gap-1">
+              <Link
+                href={`/dashboard/community/profile/${comment.author.id}`}
+                className="font-semibold text-sm text-slate-800 hover:text-[#1E3A5F] transition-colors"
+              >
+                {comment.author.fullName || "Volunteer"}
+              </Link>
+              {comment.author.status === "OFFICIAL" && (
+                comment.author.monthlyPaymentExempt
+                  ? <UserMonthlyExemptBadge reason={comment.author.monthlyPaymentExemptReason} />
+                  : <UserMonthlyOverdueIndicator userId={comment.author.id} overdueCount={comment.author.overdueMonthsCount ?? 0} />
+              )}
+            </div>
             {comment.author.volunteerId && (
               <span className="text-[10px] text-slate-400 font-mono">#{comment.author.volunteerId}</span>
             )}
@@ -432,12 +444,19 @@ export function PostCard({
             <Avatar user={post.author} size={44} />
           </Link>
           <div className="min-w-0">
-            <Link
-              href={`/dashboard/community/profile/${post.author.id}`}
-              className="font-semibold text-slate-800 hover:text-[#1E3A5F] transition-colors leading-tight block"
-            >
-              {post.author.fullName || "Volunteer"}
-            </Link>
+            <div className="flex items-center gap-1">
+              <Link
+                href={`/dashboard/community/profile/${post.author.id}`}
+                className="font-semibold text-slate-800 hover:text-[#1E3A5F] transition-colors leading-tight"
+              >
+                {post.author.fullName || "Volunteer"}
+              </Link>
+              {post.author.status === "OFFICIAL" && (
+                post.author.monthlyPaymentExempt
+                  ? <UserMonthlyExemptBadge reason={post.author.monthlyPaymentExemptReason} />
+                  : <UserMonthlyOverdueIndicator userId={post.author.id} overdueCount={post.author.overdueMonthsCount ?? 0} />
+              )}
+            </div>
             {post.author.volunteerId && (
               <span className="text-xs text-slate-400 font-mono">#{post.author.volunteerId}</span>
             )}

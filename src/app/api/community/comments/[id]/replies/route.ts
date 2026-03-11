@@ -4,6 +4,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { publishNotification } from "@/lib/ably";
 import { notifyMentions } from "@/lib/mentionUtils";
+import { computeOverdueMap } from "@/lib/computeOverdueMap";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,10 @@ const AUTHOR_SELECT = {
   fullName: true,
   volunteerId: true,
   profilePicUrl: true,
+  role: true,
+  status: true,
+  monthlyPaymentExempt: true,
+  monthlyPaymentExemptReason: true,
 };
 
 // POST /api/community/comments/[id]/replies — reply to a comment
@@ -86,8 +91,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       excludeIds: [parent.authorId],
     });
 
+    const overdueMap = await computeOverdueMap(
+      reply.author.monthlyPaymentExempt ? [] : [user.id],
+    );
+
     return NextResponse.json({
-      reply: { ...reply, reactionCount: 0, userReacted: false },
+      reply: {
+        ...reply,
+        author: {
+          ...reply.author,
+          overdueMonthsCount: reply.author.monthlyPaymentExempt ? 0 : (overdueMap[user.id] ?? 0),
+        },
+        reactionCount: 0,
+        userReacted: false,
+      },
     });
   } catch (err) {
     return NextResponse.json({ error: "Server error" }, { status: 500 });

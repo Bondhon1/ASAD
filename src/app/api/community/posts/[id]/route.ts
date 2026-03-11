@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import { computeOverdueMap } from "@/lib/computeOverdueMap";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,8 @@ const AUTHOR_SELECT = {
   profilePicUrl: true,
   role: true,
   status: true,
+  monthlyPaymentExempt: true,
+  monthlyPaymentExemptReason: true,
 };
 
 // GET /api/community/posts/[id]
@@ -43,9 +46,17 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     if (!post || post.isDeleted)
       return NextResponse.json({ error: "Post not found" }, { status: 404 });
 
+    const overdueMap = await computeOverdueMap(
+      post.author.status === "OFFICIAL" && !post.author.monthlyPaymentExempt ? [post.author.id] : [],
+    );
+
     return NextResponse.json({
       post: {
         ...post,
+        author: {
+          ...post.author,
+          overdueMonthsCount: post.author.monthlyPaymentExempt ? 0 : (overdueMap[post.author.id] ?? 0),
+        },
         reactionCount: post.reactions.length,
         userReacted: post.reactions.some((r) => r.userId === user.id),
         commentCount: post._count.comments,

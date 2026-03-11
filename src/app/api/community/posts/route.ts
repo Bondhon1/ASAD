@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { notifyMentions } from "@/lib/mentionUtils";
+import { computeOverdueMap } from "@/lib/computeOverdueMap";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,8 @@ const AUTHOR_SELECT = {
   profilePicUrl: true,
   role: true,
   status: true,
+  monthlyPaymentExempt: true,
+  monthlyPaymentExemptReason: true,
 };
 
 // GET /api/community/posts?cursor=...&limit=10
@@ -70,8 +73,20 @@ export async function GET(request: NextRequest) {
     const items = hasMore ? posts.slice(0, limit) : posts;
     const nextCursor = hasMore ? items[items.length - 1].id : null;
 
+    const authorIdsForOverdue = [...new Set(
+      items
+        .map((p) => p.author)
+        .filter((a) => a.status === "OFFICIAL" && !a.monthlyPaymentExempt)
+        .map((a) => a.id),
+    )];
+    const overdueMap = await computeOverdueMap(authorIdsForOverdue);
+
     const enriched = items.map((p) => ({
       ...p,
+      author: {
+        ...p.author,
+        overdueMonthsCount: p.author.monthlyPaymentExempt ? 0 : (overdueMap[p.author.id] ?? 0),
+      },
       reactionCount: p._count.reactions,
       userReacted: p.reactions.length > 0,
       commentCount: p._count.comments,
@@ -148,9 +163,17 @@ export async function POST(request: NextRequest) {
       postId: post.id,
     });
 
+    const overdueMap = await computeOverdueMap(
+      post.author.monthlyPaymentExempt ? [] : [user.id],
+    );
+
     return NextResponse.json({
       post: {
         ...post,
+        author: {
+          ...post.author,
+          overdueMonthsCount: post.author.monthlyPaymentExempt ? 0 : (overdueMap[user.id] ?? 0),
+        },
         reactionCount: 0,
         userReacted: false,
         commentCount: 0,

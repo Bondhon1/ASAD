@@ -4,6 +4,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { publishNotification } from "@/lib/ably";
 import { notifyMentions } from "@/lib/mentionUtils";
+import { computeOverdueMap } from "@/lib/computeOverdueMap";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,10 @@ const AUTHOR_SELECT = {
   fullName: true,
   volunteerId: true,
   profilePicUrl: true,
+  role: true,
+  status: true,
+  monthlyPaymentExempt: true,
+  monthlyPaymentExemptReason: true,
 };
 
 // GET /api/community/posts/[id]/comments
@@ -65,12 +70,31 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const items = hasMore ? comments.slice(0, limit) : comments;
     const nextCursor = hasMore ? items[items.length - 1].id : null;
 
+    const allAuthors = [
+      ...items.map((c) => c.author),
+      ...items.flatMap((c) => c.replies.map((r) => r.author)),
+    ];
+    const authorIdsForOverdue = [...new Set(
+      allAuthors
+        .filter((a) => a.status === "OFFICIAL" && !a.monthlyPaymentExempt)
+        .map((a) => a.id),
+    )];
+    const overdueMap = await computeOverdueMap(authorIdsForOverdue);
+
     const enriched = items.map((c) => ({
       ...c,
+      author: {
+        ...c.author,
+        overdueMonthsCount: c.author.monthlyPaymentExempt ? 0 : (overdueMap[c.author.id] ?? 0),
+      },
       reactionCount: c.reactions.length,
       userReacted: c.reactions.some((r) => r.userId === user.id),
       replies: c.replies.map((r) => ({
         ...r,
+        author: {
+          ...r.author,
+          overdueMonthsCount: r.author.monthlyPaymentExempt ? 0 : (overdueMap[r.author.id] ?? 0),
+        },
         reactionCount: r.reactions.length,
         userReacted: r.reactions.some((rv) => rv.userId === user.id),
       })),
@@ -154,9 +178,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       excludeIds: [post.authorId],
     });
 
+    const overdueMap = await computeOverdueMap(
+      comment.author.monthlyPaymentExempt ? [] : [user.id],
+    );
+
     return NextResponse.json({
       comment: {
         ...comment,
+        author: {
+          ...comment.author,
+          overdueMonthsCount: comment.author.monthlyPaymentExempt ? 0 : (overdueMap[user.id] ?? 0),
+        },
         reactionCount: 0,
         userReacted: false,
         replies: [],
