@@ -122,7 +122,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ use
 
         await publishNotification(userId, {
           id: notif.id, type: notif.type, title: notif.title,
-          message: notif.message ?? undefined, link: notif.link ?? undefined,
+          message: notif.message ?? null, link: notif.link ?? null,
           createdAt: notif.createdAt,
         });
       } catch {}
