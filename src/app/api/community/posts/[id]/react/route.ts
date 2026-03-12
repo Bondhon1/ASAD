@@ -47,21 +47,57 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       // Notify post author (not if reacting to own post)
       if (post.authorId !== user.id) {
         try {
-          const notif = await prisma.notification.create({
-            data: {
-              userId: post.authorId,
-              type: "POST_REACTION",
-              title: `${user.fullName || "A volunteer"} loved your post`,
-              message: `${user.fullName || "A volunteer"} reacted to your post.`,
-              link: `/dashboard/community?post=${id}`,
-            },
+          const groupKey = `post_reaction:${id}`;
+          const existingNotif = await prisma.notification.findFirst({
+            where: { userId: post.authorId, groupKey },
           });
+
+          let notif;
+          if (existingNotif) {
+            // Prepend this actor (most-recent first), deduplicate
+            const updatedActorIds = [
+              user.id,
+              ...existingNotif.actorIds.filter((aid) => aid !== user.id),
+            ];
+            const actorUsers = await prisma.user.findMany({
+              where: { id: { in: updatedActorIds.slice(0, 2) } },
+              select: { id: true, fullName: true },
+            });
+            // Preserve ordering: most-recent first
+            const orderedNames = updatedActorIds
+              .slice(0, 2)
+              .map((aid) => actorUsers.find((u) => u.id === aid)?.fullName || "A volunteer");
+            const total = updatedActorIds.length;
+            const { title, message } = buildReactionText(orderedNames, total);
+
+            notif = await prisma.notification.update({
+              where: { id: existingNotif.id },
+              data: { title, message, actorIds: updatedActorIds, read: false },
+            });
+          } else {
+            const { title, message } = buildReactionText(
+              [user.fullName || "A volunteer"],
+              1,
+            );
+            notif = await prisma.notification.create({
+              data: {
+                userId: post.authorId,
+                type: "POST_REACTION",
+                groupKey,
+                actorIds: [user.id],
+                title,
+                message,
+                link: `/dashboard/community?post=${id}`,
+              },
+            });
+          }
+
           await publishNotification(post.authorId, {
             id: notif.id,
             type: notif.type,
             title: notif.title,
-            message: notif.message,
-            link: notif.link,
+            message: notif.message ?? undefined,
+            link: notif.link ?? undefined,
             createdAt: notif.createdAt,
           });
         } catch {}
@@ -74,4 +110,27 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     console.error("POST react error", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
+}
+
+function buildReactionText(
+  names: string[],
+  total: number,
+): { title: string; message: string } {
+  if (total === 1) {
+    return {
+      title: `${names[0]} loved your post`,
+      message: `${names[0]} reacted to your post.`,
+    };
+  }
+  if (total === 2) {
+    return {
+      title: `${names[0]} and ${names[1]} loved your post`,
+      message: `${names[0]} and ${names[1]} reacted to your post.`,
+    };
+  }
+  const rest = total - 2;
+  return {
+    title: `${names[0]}, ${names[1]} and ${rest} more loved your post`,
+    message: `${names[0]}, ${names[1]} and ${rest} more reacted to your post.`,
+  };
 }

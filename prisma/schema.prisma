@@ -832,12 +832,16 @@ model Notification {
   link                  String?          // Optional link to navigate to
   read                  Boolean          @default(false)
   createdAt             DateTime         @default(now())
+  // Count-based grouped notifications (e.g., POST_REACTION, NEW_FOLLOWER)
+  groupKey              String?          // Dedup key, e.g. "post_reaction:<postId>" or "new_follower"
+  actorIds              String[]         @default([]) // Actor user IDs, most-recent first
   broadcastReads        BroadcastRead[]
   
   @@index([userId])
   @@index([read])
   @@index([createdAt])
   @@index([broadcast])
+  @@index([userId, groupKey])
 }
 
 model BroadcastRead {

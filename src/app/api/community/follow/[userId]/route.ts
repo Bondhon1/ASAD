@@ -77,18 +77,53 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ use
 
       // Notify the followed user
       try {
-        const notif = await prisma.notification.create({
-          data: {
-            userId: userId,
-            type: "NEW_FOLLOWER",
-            title: "New follower",
-            message: `${me.fullName || "A volunteer"} started following you.`,
-            link: `/dashboard/community/profile/${me.id}`,
-          },
+        const groupKey = `new_follower`;
+        const existingNotif = await prisma.notification.findFirst({
+          where: { userId, groupKey },
         });
+
+        let notif;
+        if (existingNotif) {
+          const updatedActorIds = [
+            me.id,
+            ...existingNotif.actorIds.filter((aid) => aid !== me.id),
+          ];
+          const actorUsers = await prisma.user.findMany({
+            where: { id: { in: updatedActorIds.slice(0, 2) } },
+            select: { id: true, fullName: true },
+          });
+          const orderedNames = updatedActorIds
+            .slice(0, 2)
+            .map((aid) => actorUsers.find((u) => u.id === aid)?.fullName || "A volunteer");
+          const total = updatedActorIds.length;
+          const { title, message } = buildFollowerText(orderedNames, total);
+
+          notif = await prisma.notification.update({
+            where: { id: existingNotif.id },
+            data: { title, message, actorIds: updatedActorIds, read: false },
+          });
+        } else {
+          const { title, message } = buildFollowerText(
+            [me.fullName || "A volunteer"],
+            1,
+          );
+          notif = await prisma.notification.create({
+            data: {
+              userId,
+              type: "NEW_FOLLOWER",
+              groupKey,
+              actorIds: [me.id],
+              title,
+              message,
+              link: `/dashboard/community/profile/${userId}`,
+            },
+          });
+        }
+
         await publishNotification(userId, {
           id: notif.id, type: notif.type, title: notif.title,
-          message: notif.message, link: notif.link, createdAt: notif.createdAt,
+          message: notif.message ?? undefined, link: notif.link ?? undefined,
+          createdAt: notif.createdAt,
         });
       } catch {}
     }
@@ -98,4 +133,27 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ use
   } catch (err) {
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
+}
+
+function buildFollowerText(
+  names: string[],
+  total: number,
+): { title: string; message: string } {
+  if (total === 1) {
+    return {
+      title: `${names[0]} started following you`,
+      message: `${names[0]} started following you.`,
+    };
+  }
+  if (total === 2) {
+    return {
+      title: `${names[0]} and ${names[1]} started following you`,
+      message: `${names[0]} and ${names[1]} started following you.`,
+    };
+  }
+  const rest = total - 2;
+  return {
+    title: `${names[0]}, ${names[1]} and ${rest} more started following you`,
+    message: `${names[0]}, ${names[1]} and ${rest} more started following you.`,
+  };
 }
