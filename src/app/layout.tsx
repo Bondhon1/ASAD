@@ -20,8 +20,13 @@ const playfair = Playfair_Display({ subsets: ["latin"], variable: "--font-playfa
 const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-dm-sans" });
 const nunito = Nunito({ subsets: ["latin"], variable: "--font-nunito" });
 
-const rawSiteUrl = process.env.NEXTAUTH_URL || "https://amarsomoyamardesh.org";
+const rawSiteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  process.env.NEXTAUTH_URL ||
+  process.env.VERCEL_PROJECT_PRODUCTION_URL ||
+  "https://amarsomoyamardesh.org";
 const siteUrl = rawSiteUrl.startsWith("http") ? rawSiteUrl : `https://${rawSiteUrl}`;
+const socialPreviewImage = `${siteUrl.replace(/\/$/, "")}/banner.jpg`;
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -113,7 +118,7 @@ export const metadata: Metadata = {
       "Join ASAD, Bangladesh's leading youth volunteer organization. Together, we create impact through community service, education, and social development.",
     images: [
       {
-        url: "/og-image.png",
+        url: socialPreviewImage,
         width: 1200,
         height: 630,
         alt: "Amar Somoy Amar Desh - Building Communities Together",
@@ -125,7 +130,7 @@ export const metadata: Metadata = {
     title: "Amar Somoy Amar Desh | ASAD",
     description:
       "Join ASAD, Bangladesh's leading youth volunteer organization. Together, we create impact through community service and social development.",
-    images: ["/og-image.png"],
+    images: [socialPreviewImage],
     creator: "@asadofficial",
   },
   robots: {
