@@ -93,6 +93,7 @@ export async function GET(request: NextRequest) {
           },
           password: true, // Include for hasPassword check
           monthlyPaymentExempt: true,
+          credits: true, // APC (Asadian Performance Credit) field
         }
       });
     } else {
@@ -143,6 +144,7 @@ export async function GET(request: NextRequest) {
             take: 20,
           },
           monthlyPaymentExempt: true,
+          credits: true, // APC (Asadian Performance Credit) field
         }
       });
     }
