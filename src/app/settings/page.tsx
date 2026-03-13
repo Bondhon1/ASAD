@@ -320,6 +320,18 @@ export default function SettingsPage() {
     }
   };
 
+  // Helper to format phone number for WhatsApp
+  const formatPhoneForWhatsApp = (phone: string): string => {
+    let result = '';
+    for (let i = 0; i < phone.length; i++) {
+      const code = phone.charCodeAt(i);
+      if (code >= 48 && code <= 57) { // ASCII codes for 0-9
+        result += phone[i];
+      }
+    }
+    return result;
+  };
+
   // Static descriptions from the public sectors page
   const getSectorDescription = (name: string, dbDescription?: string | null): string => {
     if (dbDescription) return dbDescription;
@@ -1318,48 +1330,30 @@ export default function SettingsPage() {
                 {adminsLoading ? (
                   <div className="text-sm text-gray-500 py-4 text-center">Loading admins...</div>
                 ) : admins.length === 0 ? (
-                  <div className="text-sm text-gray-500 py-4 text-center">No admins found</div>
+                  <div className="text-sm text-gray-500 py-4 text-center">No admins available</div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     {admins.map((admin) => (
-                      <div key={admin.id} className="border border-gray-200 rounded-lg p-3 hover:bg-gray-50 transition-colors">
-                        <div className="flex items-start gap-3">
-                          {admin.profilePicUrl ? (
-                            <Image
-                              src={admin.profilePicUrl}
-                              alt={admin.fullName || 'Admin'}
-                              width={40}
-                              height={40}
-                              className="flex-shrink-0 w-10 h-10 rounded-full object-cover"
-                            />
-                          ) : (
-                            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center text-xs font-semibold text-gray-600">
-                              {admin.fullName ? admin.fullName.charAt(0).toUpperCase() : '?'}
-                            </div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-3 flex-wrap">
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <div className="text-sm font-medium text-gray-900">{admin.fullName || 'Unknown'}</div>
-                                  <span className={`flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
-                                    admin.role === 'DIRECTOR' ? 'bg-purple-100 text-purple-700' :
-                                    'bg-blue-100 text-blue-700'
-                                  }`}>
-                                    {admin.role}
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <a href={`mailto:${admin.email}`} className="inline-flex items-center justify-center px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded transition-colors" title={admin.email}>
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-                                </a>
-                                {admin.phone && (
-                                  <a href={`https://wa.me/${admin.phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 text-xs font-medium rounded transition-colors" title={`WhatsApp: ${admin.phone}`}>
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.272-.099-.47-.148-.67.15-.23.297-.921.967-.129 1.226.792.259 1.693.849 1.928 1.049.234.2.374.346.374.647 0 .305-.189.713-.385 1.006-.196.292-.385.585-.792.585h-.001c-.404 0-1.584-.211-2.409-.654-.823-.443-1.577-1.041-2.078-1.614-.501-.572-.805-1.237-.971-1.902-.166-.665-.123-1.232.114-1.728.237-.496.655-.922 1.161-1.147.506-.225 1.075-.243 1.583-.054.509.189.961.565 1.279 1.128.318.563.496 1.24.517 1.918.021.678-.127 1.351-.326 1.971-.2.62-.559 1.179-.994 1.646-.435.467-.968.868-1.577 1.133-.608.265-1.286.421-1.993.405-.707-.016-1.378-.178-2.002-.488z"/></svg>
-                                  </a>
-                                )}
-                              </div>
+                      <div key={admin.id} className="p-3 border border-gray-100 rounded bg-gray-50 hover:bg-gray-100 transition-colors">
+                        <div className="flex items-center justify-between gap-2">
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">{admin.fullName}</div>
+                            <div className={`text-xs font-semibold inline-block px-2 py-0.5 rounded mt-1 ${
+                              admin.role === 'DIRECTOR' ? 'bg-purple-100 text-purple-700' :
+                              'bg-blue-100 text-blue-700'
+                            }`}>{admin.role}</div>
+                          </div>
+                          <div className="flex gap-2">
+                            {admin.email && (
+                              <a href={`mailto:${admin.email}`} className="inline-flex items-center justify-center p-1.5 bg-gray-100 hover:bg-gray-200 rounded transition-colors" title={`Email: ${admin.email}`}>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                              </a>
+                            )}
+                            {admin.phone && (
+                              <a href={`https://wa.me/${admin.phone.replace(/\\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center p-1.5 bg-green-100 hover:bg-green-200 rounded transition-colors" title={`WhatsApp: ${admin.phone}`}>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.272-.099-.47-.148-.67.15-.23.297-.921.967-.129 1.226.792.259 1.693.849 1.928 1.049.234.2.374.346.374.647 0 .305-.189.713-.385 1.006-.196.292-.385.585-.792.585h-.001c-.404 0-1.584-.211-2.409-.654-.823-.443-1.577-1.041-2.078-1.614-.501-.572-.805-1.237-.971-1.902-.166-.665-.123-1.232.114-1.728.237-.496.655-.922 1.161-1.147.506-.225 1.075-.243 1.583-.054.509.189.961.565 1.279 1.128.318.563.496 1.24.517 1.918.021.678-.127 1.351-.326 1.971-.2.62-.559 1.179-.994 1.646-.435.467-.968.868-1.577 1.133-.608.265-1.286.421-1.993.405-.707-.016-1.378-.178-2.002-.488z"/></svg>
+                              </a>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -1370,11 +1364,10 @@ export default function SettingsPage() {
             </div>
           )}
         </div>
-
       </div>
       )}
 
     </DashboardLayout>
-  );
-}
+  )};
+
 
