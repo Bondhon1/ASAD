@@ -70,6 +70,10 @@ export default function SettingsPage() {
   const [leaveEndDate, setLeaveEndDate] = useState('');
   const [leaveSubmitting, setLeaveSubmitting] = useState(false);
   const [leavesLoading, setLeavesLoading] = useState(false);
+  // Support section state
+  const [supportExpanded, setSupportExpanded] = useState(false);
+  const [admins, setAdmins] = useState<Array<{ id: string; fullName: string | null; email: string; phone: string | null; role: string; profilePicUrl: string | null }>>([]);
+  const [adminsLoading, setAdminsLoading] = useState(false);
   const skeleton = (
     <div className="max-w-4xl mx-auto px-6 py-8 animate-pulse space-y-4">
       <div className="h-8 w-40 bg-gray-200 rounded" />
@@ -276,6 +280,19 @@ export default function SettingsPage() {
       setJoinRequests(joinData.requests || []);
     } catch (e) {
       console.error('Failed to fetch orgs', e);
+    }
+  };
+
+  const fetchAdmins = async () => {
+    try {
+      setAdminsLoading(true);
+      const res = await fetch('/api/admin/admins', { cache: 'no-store' });
+      const data = await res.json();
+      setAdmins(data.admins || []);
+    } catch (e) {
+      console.error('Failed to fetch admins', e);
+    } finally {
+      setAdminsLoading(false);
     }
   };
 
@@ -1248,9 +1265,122 @@ export default function SettingsPage() {
         </div>
         )}
 
+        {/* Support Section */}
+        <div className="bg-white border border-gray-200 rounded-md mt-4">
+          <button
+            className="w-full text-left px-4 py-3 flex items-center justify-between"
+            onClick={() => {
+              setSupportExpanded(v => {
+                const next = !v;
+                if (next && admins.length === 0) fetchAdmins();
+                return next;
+              });
+            }}
+            aria-expanded={supportExpanded}
+          >
+            <div>
+              <div className="text-sm font-medium text-gray-900">Support</div>
+              <div className="text-xs text-gray-500">Get help from developers and admins</div>
+            </div>
+            <div className="text-gray-500">{supportExpanded ? '−' : '+'}</div>
+          </button>
+
+          {supportExpanded && (
+            <div className="p-4 border-t border-gray-100 space-y-6">
+              {/* Developer Support */}
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Developer Support</div>
+                <p className="text-xs text-gray-600 mb-3 bg-blue-50 border border-blue-100 rounded p-3">
+                  Contact the developer for: <span className="font-medium">technical issues, bugs, app errors, feature requests, or system troubleshooting.</span>
+                </p>
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-lg p-4 space-y-3">
+                  <div>
+                    <div className="text-xs text-gray-600 font-medium">Email</div>
+                    <a href="mailto:bondhon0101@gmail.com" className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all">
+                      bondhon0101@gmail.com
+                    </a>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-600 font-medium">Messenger</div>
+                    <a href="https://www.facebook.com/samiul1haque2bondhon" target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all">
+                      facebook.com/samiul1haque2bondhon
+                    </a>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-600 font-medium">WhatsApp</div>
+                    <a href="https://wa.me/8801707591003" target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:text-blue-700 hover:underline">
+                      +880 170 759 1003
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              {/* Admin Support */}
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Admin Support</div>
+                <p className="text-xs text-gray-600 mb-3 bg-emerald-50 border border-emerald-100 rounded p-3">
+                  Contact admins for: <span className="font-medium">account-related issues, approval requests, policy inquiries, volunteer concerns, or general administrative support.</span>
+                </p>
+                {adminsLoading ? (
+                  <div className="text-sm text-gray-500 py-4 text-center">Loading admins...</div>
+                ) : admins.length === 0 ? (
+                  <div className="text-sm text-gray-500 py-4 text-center">No admins found</div>
+                ) : (
+                  <div className="space-y-3">
+                    {admins.map((admin) => (
+                      <div key={admin.id} className="border border-gray-200 rounded-lg p-3 hover:bg-gray-50 transition-colors">
+                        <div className="flex items-start gap-3">
+                          {admin.profilePicUrl ? (
+                            <Image
+                              src={admin.profilePicUrl}
+                              alt={admin.fullName || 'Admin'}
+                              width={40}
+                              height={40}
+                              className="flex-shrink-0 w-10 h-10 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center text-xs font-semibold text-gray-600">
+                              {admin.fullName ? admin.fullName.charAt(0).toUpperCase() : '?'}
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <div className="text-sm font-medium text-gray-900">{admin.fullName || 'Unknown'}</div>
+                              <span className={`flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
+                                admin.role === 'DIRECTOR' ? 'bg-purple-100 text-purple-700' :
+                                admin.role === 'MASTER' ? 'bg-orange-100 text-orange-700' :
+                                'bg-blue-100 text-blue-700'
+                              }`}>
+                                {admin.role}
+                              </span>
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              <a href={`mailto:${admin.email}`} className="text-blue-600 hover:text-blue-700 hover:underline">
+                                {admin.email}
+                              </a>
+                            </div>
+                            {admin.phone && (
+                              <div className="text-xs text-gray-500 mt-0.5">
+                                <a href={`tel:${admin.phone}`} className="text-blue-600 hover:text-blue-700 hover:underline">
+                                  {admin.phone}
+                                </a>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
       </div>
       )}
 
     </DashboardLayout>
   );
 }
+
