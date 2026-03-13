@@ -22,6 +22,7 @@ import {
   FileText,
   Bell,
   CreditCard,
+  Flag,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import NotificationDropdown from "@/components/dashboard/NotificationDropdown";
@@ -112,6 +113,7 @@ const ICON_MAP: Record<string, any> = {
   "/dashboard/admin/audit-logs": FileText,
   "/dashboard/admin/credit-management": CreditIcon,
   "/dashboard/admin/org-requests": Users,
+  "/dashboard/admin/community/reports": Flag,
 };
 
 function formatStatusLabel(status: string | null): string {
@@ -214,6 +216,7 @@ function getMenuItems(userRole: string, userStatus?: string | null) {
     { label: "Credit Management", href: "/dashboard/admin/credit-management" },
     { label: "Monthly Payments", href: "/dashboard/admin/monthly-payments" },
     { label: "Sector/club management", href: "/dashboard/admin/org-requests" },
+    { label: "Community Reports", href: "/dashboard/admin/community/reports" },
     { label: "Tasks", href: "/dashboard/tasks" },
     { label: "Task management", href: "/dashboard/secretaries" },
     { label: "Community", href: "/dashboard/community" },
@@ -230,6 +233,7 @@ function getMenuItems(userRole: string, userStatus?: string | null) {
       { label: "Task management", href: "/dashboard/secretaries" },
       { label: "Monthly Payments", href: "/dashboard/admin/monthly-payments" },
       { label: "Sector/club management", href: "/dashboard/admin/org-requests" },
+      { label: "Community Reports", href: "/dashboard/admin/community/reports" },
       hrItems[hrItems.length - 1],
     ];
     return mergeWithCommon(adminItems as any);
