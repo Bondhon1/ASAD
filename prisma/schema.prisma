@@ -19,7 +19,7 @@ model User {
   username              String?                @unique
   fullName              String?
   email                 String                 @unique
-  phone                 String?                @unique
+  phone                 String?
   password              String?
   profilePicUrl         String?
   institute             Institute?             @relation(fields: [instituteId], references: [id], onDelete: SetNull)
@@ -71,6 +71,8 @@ model User {
   postReactions         PostReaction[]
   commentReactions      CommentReaction[]
   postComments          PostComment[]
+  postReports           PostReport[]        @relation("PostReports")
+  postReportsResolved   PostReport[]        @relation("PostReportsResolvedBy")
   following             Follow[]              @relation("Follower")
   followers             Follow[]              @relation("Following")
   sentMessages          Message[]             @relation("FromUser")
@@ -547,6 +549,7 @@ model Post {
   isDeleted             Boolean          @default(false)
   comments              PostComment[]
   reactions             PostReaction[]
+  reports               PostReport[]
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
   
@@ -612,6 +615,34 @@ model CommentReaction {
   @@unique([commentId, userId])
   @@index([commentId])
   @@index([userId])
+}
+
+model PostReport {
+  id                    String           @id @default(cuid())
+  post                  Post             @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId                String
+  reporter              User             @relation("PostReports", fields: [reporterId], references: [id], onDelete: Cascade)
+  reporterId            String
+  reason                String           // e.g., INAPPROPRIATE, SPAM, OFFENSIVE
+  description           String?          // Additional details from reporter
+  status                ReportStatus     @default(PENDING)
+  resolvedBy            User?            @relation("PostReportsResolvedBy", fields: [resolvedById], references: [id], onDelete: SetNull)
+  resolvedById          String?
+  resolutionNotes       String?          // Admin notes on resolution
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  
+  @@index([postId])
+  @@index([reporterId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  RESOLVED
+  DISMISSED
 }
 
 model Follow {
@@ -914,6 +945,11 @@ enum NotificationType {
   MONTHLY_PAYMENT_DELAY_REJECTED
   MONTHLY_PAYMENT_EXEMPT_GRANTED
   MONTHLY_PAYMENT_EXEMPT_REVOKED
+
+  // Community
+  POST_REPORT_NEW
+  POST_REPORT_STATUS
+  POST_ACTION
 
   // Legacy (retained for existing DB rows — no longer issued by new code)
   COIN_ENDORSED

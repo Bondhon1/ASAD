@@ -356,6 +356,7 @@ export default function CommunityPage() {
                   key={post.id}
                   post={post}
                   currentUserId={currentUserId}
+                  currentUserRole={_commRole}
                   onDelete={deletePost}
                   onEdit={editPost}
                   onReact={reactPost}

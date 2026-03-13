@@ -389,6 +389,7 @@ export default function UserProfilePage() {
                   key={post.id}
                   post={post}
                   currentUserId={currentUserId}
+                  currentUserRole={currentUserRole}
                   onDelete={deletePost}
                   onEdit={editPost}
                   onReact={reactPost}

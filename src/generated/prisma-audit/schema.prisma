@@ -36,3 +36,29 @@ model AuditLog {
   @@index([createdAt])
   @@index([action])
 }
+
+model PostActionLog {
+  id String @id @default(cuid())
+
+  // Post info — denormalised snapshot at the time the event was recorded
+  postId         String
+  postAuthorId   String
+  postAuthorName String?
+  postContent    String? // Backup of deleted/edited content
+
+  // Actor info — denormalised snapshot at the time the event was recorded
+  actorUserId String
+  actorName   String?
+  actorEmail  String?
+  actorRole   String?
+
+  action    String // DELETE, EDIT, REPORT
+  reason    String? // Why the action was taken
+  metadata  String? // Additional JSON data
+  createdAt DateTime @default(now())
+
+  @@index([postId])
+  @@index([actorUserId])
+  @@index([action])
+  @@index([createdAt])
+}

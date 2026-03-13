@@ -6,6 +6,8 @@ import Image from "next/image";
 import { MentionTextarea, renderMentionContent } from "./MentionTextarea";
 import UserMonthlyExemptBadge from "@/components/dashboard/UserMonthlyExemptBadge";
 import UserMonthlyOverdueIndicator from "@/components/dashboard/UserMonthlyOverdueIndicator";
+import { PostMenu } from "./PostMenu";
+import { ReportPostModal } from "./ReportPostModal";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -301,12 +303,14 @@ export function CommentItem({
 export function PostCard({
   post,
   currentUserId,
+  currentUserRole = "VOLUNTEER",
   onDelete,
   onEdit,
   onReact,
 }: {
   post: Post;
   currentUserId: string;
+  currentUserRole?: string;
   onDelete: (id: string) => void;
   onEdit: (id: string, content: string) => Promise<void>;
   onReact: (id: string, currentReacted: boolean) => void;
@@ -318,6 +322,8 @@ export function PostCard({
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editContent, setEditContent] = useState(post.content);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
 
   const loadComments = useCallback(async () => {
@@ -434,6 +440,73 @@ export function PostCard({
   };
 
   const isAuthor = post.authorId === currentUserId;
+  const isAdmin = ["MASTER", "ADMIN"].includes(currentUserRole);
+
+  const handleReport = async (reason: string, description: string) => {
+    setReportLoading(true);
+    try {
+      const res = await fetch(`/api/community/posts/${post.id}/report`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          reason, 
+          description: description || "Reported via community menu" 
+        }),
+      });
+      if (res.ok) {
+        setReportModalOpen(false);
+        alert("Thank you for reporting. Our team will review this post.");
+      } else {
+        const error = await res.json();
+        alert(error.error || "Failed to report post");
+      }
+    } catch (err) {
+      alert("Error reporting post");
+    }
+    setReportLoading(false);
+  };
+
+  // Build menu options based on user role
+  const menuOptions = [];
+
+  if (isAuthor) {
+    // Post owner: Edit and Delete
+    menuOptions.push({
+      label: "Edit",
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      ),
+      onClick: () => setEditing(!editing),
+    });
+    menuOptions.push({
+      label: "Delete",
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+      ),
+      onClick: () => onDelete(post.id),
+      className: "text-red-600 hover:text-red-700 hover:bg-red-50",
+    });
+  } else if (isAdmin) {
+    // Admin: Delete only
+    menuOptions.push({
+      label: "Delete (Admin)",
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+      ),
+      onClick: () => onDelete(post.id),
+      className: "text-red-600 hover:text-red-700 hover:bg-red-50",
+    });
+  } else {
+    // Other users: Report
+    menuOptions.push({
+      label: "Report",
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+      ),
+      onClick: () => setReportModalOpen(true),
+      className: "text-amber-600 hover:text-amber-700 hover:bg-amber-50",
+    });
+  }
 
   return (
     <div id={`post-${post.id}`} className="bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-200">
@@ -464,22 +537,9 @@ export function PostCard({
           </div>
         </div>
 
-        {isAuthor && (
-          <div className="flex items-center gap-1 flex-shrink-0">
-            <button
-              onClick={() => setEditing(!editing)}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-[#1E3A5F] hover:bg-[#1E3A5F]/10 transition-all"
-              title="Edit"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
-            </button>
-            <button
-              onClick={() => onDelete(post.id)}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
-              title="Delete"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-            </button>
+        {menuOptions.length > 0 && (
+          <div className="flex-shrink-0">
+            <PostMenu options={menuOptions} />
           </div>
         )}
       </div>
@@ -594,6 +654,14 @@ export function PostCard({
           )}
         </div>
       )}
+
+      {/* Report Modal */}
+      <ReportPostModal
+        isOpen={reportModalOpen}
+        onClose={() => setReportModalOpen(false)}
+        onSubmit={handleReport}
+        isLoading={reportLoading}
+      />
     </div>
   );
 }

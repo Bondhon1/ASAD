@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import { prismaAudit } from "@/lib/prisma-audit";
 import { computeOverdueMap } from "@/lib/computeOverdueMap";
 
 export const dynamic = "force-dynamic";
@@ -116,21 +117,44 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
-      select: { id: true, role: true },
+      select: { id: true, role: true, fullName: true, email: true },
     });
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const post = await prisma.post.findUnique({ where: { id } });
+    const post = await prisma.post.findUnique({
+      where: { id },
+      include: {
+        author: { select: { id: true, fullName: true } },
+      },
+    });
     if (!post) return NextResponse.json({ error: "Post not found" }, { status: 404 });
 
     const isAdmin = ["MASTER", "ADMIN"].includes(user.role);
     if (post.authorId !== user.id && !isAdmin)
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+    // Update post
     await prisma.post.update({ where: { id }, data: { isDeleted: true } });
+
+    // Create audit log in audit database (denormalized)
+    await prismaAudit.postActionLog.create({
+      data: {
+        postId: id,
+        postAuthorId: post.authorId,
+        postAuthorName: post.author.fullName,
+        postContent: post.content,
+        actorUserId: user.id,
+        actorName: user.fullName,
+        actorEmail: user.email,
+        actorRole: user.role,
+        action: "DELETE",
+        reason: isAdmin && post.authorId !== user.id ? "Admin deletion" : "Author deletion",
+      },
+    });
 
     return NextResponse.json({ success: true });
   } catch (err) {
+    console.error("DELETE /api/community/posts/[id] error", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

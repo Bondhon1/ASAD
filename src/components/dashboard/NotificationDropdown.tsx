@@ -37,6 +37,12 @@ function getNotificationIcon(type: string): string {
       return "🛡️";
     case "MONTHLY_PAYMENT_EXEMPT_REVOKED":
       return "🔔";
+    case "POST_REPORT_NEW":
+      return "🚩";
+    case "POST_REPORT_STATUS":
+      return "📌";
+    case "POST_ACTION":
+      return "⚠️";
     case "SYSTEM_ANNOUNCEMENT":
       return "📢";
     default:
