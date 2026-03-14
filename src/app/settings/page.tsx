@@ -1305,16 +1305,16 @@ export default function SettingsPage() {
                 <p className="text-xs text-gray-600 mb-3 bg-blue-50 border border-blue-100 rounded p-3">
                   Contact the developer for: <span className="font-medium">technical issues, bugs, app errors, feature requests, or system troubleshooting.</span>
                 </p>
-                <div className="grid grid-cols-1 gap-2">
-                  <a href="mailto:bondhon0101@gmail.com" className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">
+                <div className="flex gap-2 flex-wrap">
+                  <a href="mailto:bondhon0101@gmail.com" className="flex-1 min-w-32 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm hover:shadow-md">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
                     Email
                   </a>
-                  <a href="https://www.facebook.com/samiul1haque2bondhon" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors">
+                  <a href="https://www.facebook.com/samiul1haque2bondhon" target="_blank" rel="noopener noreferrer" className="flex-1 min-w-32 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm hover:shadow-md">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
                     Messenger
                   </a>
-                  <a href="https://wa.me/8801707591003" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors">
+                  <a href="https://wa.me/8801707591003" target="_blank" rel="noopener noreferrer" className="flex-1 min-w-32 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm hover:shadow-md">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.272-.099-.47-.148-.67.15-.23.297-.921.967-.129 1.226.792.259 1.693.849 1.928 1.049.234.2.374.346.374.647 0 .305-.189.713-.385 1.006-.196.292-.385.585-.792.585h-.001c-.404 0-1.584-.211-2.409-.654-.823-.443-1.577-1.041-2.078-1.614-.501-.572-.805-1.237-.971-1.902-.166-.665-.123-1.232.114-1.728.237-.496.655-.922 1.161-1.147.506-.225 1.075-.243 1.583-.054.509.189.961.565 1.279 1.128.318.563.496 1.24.517 1.918.021.678-.127 1.351-.326 1.971-.2.62-.559 1.179-.994 1.646-.435.467-.968.868-1.577 1.133-.608.265-1.286.421-1.993.405-.707-.016-1.378-.178-2.002-.488z"/></svg>
                     WhatsApp
                   </a>
