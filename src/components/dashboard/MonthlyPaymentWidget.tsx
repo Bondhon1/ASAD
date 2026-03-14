@@ -79,6 +79,11 @@ export default function MonthlyPaymentWidget() {
     setPopupDismissed(true);
   };
 
+  const clearPopupDismissal = () => {
+    localStorage.removeItem("monthly_popup_dismissed");
+    setPopupDismissed(false);
+  };
+
   if (loading || !status) return null;
   if (status.exempt) return null;
 
@@ -168,32 +173,53 @@ export default function MonthlyPaymentWidget() {
                   Your monthly donation for <strong>{getDonationPeriodLabel(currentMonthSummary.month)}</strong> is due by the <strong>{currentMonthSummary.deadlineDay}{getDaySuffix(currentMonthSummary.deadlineDay)}</strong>.
                 </p>
               )}
-              <div className={`mt-3 rounded-lg p-3 ${overdueTotal > 0 ? "bg-orange-50" : currentMonthSummary.fineApplies ? "bg-red-50" : "bg-blue-50"}`}>
-                {overdueTotal > 0 && (
-                  <div className="space-y-0.5 mb-2 text-xs">
-                    <div className="flex justify-between text-gray-600">
-                      <span>{getDonationPeriodLabel(currentMonthSummary.month)}</span>
-                      <span>৳{currentMonthSummary.dueAmount}</span>
-                    </div>
-                    {unpaidMonths
-                      .filter(m => !(m.month === currentMonthSummary.month && m.year === currentMonthSummary.year))
-                      .map(m => (
-                      <div key={`${m.month}-${m.year}`} className="flex justify-between text-red-600">
-                        <span>{getDonationPeriodLabel(m.month)} <span className="text-[10px]">(overdue)</span></span>
-                        <span>৳{m.dueAmount}</span>
-                      </div>
-                    ))}
-                    <div className="border-t border-orange-200 pt-1 mt-1" />
+              <div className={`mt-3 rounded-lg p-4 ${overdueTotal > 0 ? "bg-orange-50 border border-orange-200" : currentMonthSummary.fineApplies ? "bg-red-50 border border-red-200" : "bg-blue-50 border border-blue-200"}`}>
+                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2">{getDonationPeriodLabel(currentMonthSummary.month)} {currentMonthSummary.year}</p>
+                
+                <div className="space-y-1">
+                  {/* Base amount */}
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-600">Base amount</span>
+                    <span className="font-semibold">৳{currentMonthSummary.amount}</span>
                   </div>
-                )}
-                <div className="text-center">
-                  <span className={`text-2xl font-bold ${overdueTotal > 0 ? "text-orange-700" : currentMonthSummary.fineApplies ? "text-red-700" : "text-[#0b2545]"}`}>
-                    ৳{combinedTotal}
-                  </span>
-                  {overdueTotal > 0 && <p className="text-xs text-orange-600 mt-0.5">Includes {unpaidMonths.length} overdue month{unpaidMonths.length > 1 ? "s" : ""}</p>}
-                  {overdueTotal === 0 && currentMonthSummary.fineApplies && (
-                    <p className="text-xs text-red-500 mt-0.5">Includes ৳{currentMonthSummary.fine} late fine</p>
+                  
+                  {/* Fine if applies */}
+                  {currentMonthSummary.fineApplies && (
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-red-600 flex items-center gap-1">
+                        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        Late fine
+                      </span>
+                      <span className="font-semibold text-red-600">+৳{currentMonthSummary.fine}</span>
+                    </div>
                   )}
+                  
+                  {/* Overdue months */}
+                  {overdueTotal > 0 && (
+                    <>
+                      <div className={`border-t my-2 ${overdueTotal > 0 ? "border-orange-200" : currentMonthSummary.fineApplies ? "border-red-200" : "border-blue-200"}`} />
+                      <p className="text-[11px] font-semibold text-red-500 uppercase tracking-wide mb-1">Overdue months included</p>
+                      {unpaidMonths
+                        .filter(m => !(m.month === currentMonthSummary.month && m.year === currentMonthSummary.year))
+                        .map(m => (
+                        <div key={`${m.month}-${m.year}`} className="flex justify-between items-center text-sm">
+                          <span className="text-gray-700">
+                            {getDonationPeriodLabel(m.month)} {m.year}
+                            {m.fineApplies && <span className="text-xs text-red-500 ml-1">(+৳{m.fine} fine)</span>}
+                          </span>
+                          <span className="font-semibold text-red-600">৳{m.dueAmount}</span>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                </div>
+                
+                {/* Total */}
+                <div className={`flex justify-between items-center mt-3 pt-2 border-t ${overdueTotal > 0 ? "border-orange-200" : currentMonthSummary.fineApplies ? "border-red-200" : "border-blue-200"}`}>
+                  <span className="font-bold text-gray-800">Total due</span>
+                  <span className={`font-bold text-lg ${overdueTotal > 0 ? "text-orange-700" : currentMonthSummary.fineApplies ? "text-red-600" : "text-[#0b2545]"}`}>৳{combinedTotal}</span>
                 </div>
               </div>
               <div className="mt-4 flex gap-2">
@@ -227,10 +253,11 @@ export default function MonthlyPaymentWidget() {
           delayApproved={submitTarget.delayApproved}
           bkashNumber={submitTarget.bkashNumber}
           nagadNumber={submitTarget.nagadNumber}
-          overdueMonths={unpaidMonths}
+          overdueMonths={unpaidMonths.filter(m => !(m.month === submitTarget.month && m.year === submitTarget.year))}
           onClose={() => setSubmitTarget(null)}
           onSuccess={() => {
             setSubmitTarget(null);
+            clearPopupDismissal(); // Clear to show updated status
             refresh();
             alert("Payment submitted successfully! It will be reviewed by an admin.");
           }}
