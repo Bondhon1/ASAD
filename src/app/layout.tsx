@@ -26,7 +26,7 @@ const rawSiteUrl =
   process.env.VERCEL_PROJECT_PRODUCTION_URL ||
   "https://amarsomoyamardesh.org";
 const siteUrl = rawSiteUrl.startsWith("http") ? rawSiteUrl : `https://${rawSiteUrl}`;
-const socialPreviewImage = `${siteUrl.replace(/\/$/, "")}/banner.jpg`;
+const socialPreviewImage = new URL("/banner.jpg", siteUrl).toString();
 
 export const viewport: Viewport = {
   width: "device-width",
