@@ -55,6 +55,7 @@ export default function CommunityReportsPage() {
   const [statusFilter, setStatusFilter] = useState<"ALL" | "PENDING" | "REVIEWED" | "RESOLVED" | "DISMISSED">("PENDING");
   const [processing, setProcessing] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
   const { confirm, prompt, toast } = useModal();
 
@@ -97,31 +98,109 @@ export default function CommunityReportsPage() {
     setLoading(false);
   };
 
-  const handleResolve = async (reportId: string, postId: string) => {
-    const notes = await prompt(
-      "Resolution notes (optional):",
-      "Resolve Report",
-      "info",
-      ""
-    );
-    if (notes === null) return;
+  const handleResolve = async (reportId: string, postId: string, action: "delete" | "ban" | "deletePost", userId: string) => {
+    if (action === "delete") {
+      const ok = await confirm(
+        "Are you sure you want to DELETE this user? All their data will be permanently removed.",
+        "Delete User",
+        "warning"
+      );
+      if (!ok) return;
 
-    setProcessing(reportId);
-    try {
-      const res = await fetch(`/api/admin/community/reports/${reportId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "RESOLVED", notes }),
-      });
+      setProcessing(reportId);
+      try {
+        // Delete the user
+        const deleteRes = await fetch(`/api/hr/users/${userId}`, {
+          method: "DELETE",
+        });
 
-      if (!res.ok) throw new Error("Failed to resolve report");
+        if (!deleteRes.ok) throw new Error("Failed to delete user");
 
-      toast("Report resolved", { type: "success" });
-      fetchReports();
-    } catch (error) {
-      toast((error as Error).message || "Failed to resolve report", { type: "error" });
+        // Mark report as resolved
+        const reportRes = await fetch(`/api/admin/community/reports/${reportId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "RESOLVED", notes: "User deleted - violating post removed" }),
+        });
+
+        if (!reportRes.ok) throw new Error("Failed to update report");
+
+        toast("User deleted and report resolved", { type: "success" });
+        fetchReports();
+      } catch (error) {
+        toast((error as Error).message || "Failed to delete user", { type: "error" });
+      }
+      setProcessing(null);
+      setOpenDropdown(null);
+    } else if (action === "ban") {
+      const ok = await confirm(
+        "Are you sure you want to BAN this user? They will not be able to log in.",
+        "Ban User",
+        "warning"
+      );
+      if (!ok) return;
+
+      setProcessing(reportId);
+      try {
+        // Ban the user
+        const banRes = await fetch(`/api/hr/users/${userId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "BANNED" }),
+        });
+
+        if (!banRes.ok) throw new Error("Failed to ban user");
+
+        // Mark report as resolved
+        const reportRes = await fetch(`/api/admin/community/reports/${reportId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "RESOLVED", notes: "User banned - violating post removed" }),
+        });
+
+        if (!reportRes.ok) throw new Error("Failed to update report");
+
+        toast("User banned and report resolved", { type: "success" });
+        fetchReports();
+      } catch (error) {
+        toast((error as Error).message || "Failed to ban user", { type: "error" });
+      }
+      setProcessing(null);
+      setOpenDropdown(null);
+    } else if (action === "deletePost") {
+      const ok = await confirm(
+        "Are you sure you want to DELETE this post? It will be permanently removed.",
+        "Delete Post",
+        "warning"
+      );
+      if (!ok) return;
+
+      setProcessing(reportId);
+      try {
+        // Delete the post
+        const postRes = await fetch(`/api/community/posts/${postId}`, {
+          method: "DELETE",
+        });
+
+        if (!postRes.ok) throw new Error("Failed to delete post");
+
+        // Mark report as resolved
+        const reportRes = await fetch(`/api/admin/community/reports/${reportId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "RESOLVED", notes: "Post deleted" }),
+        });
+
+        if (!reportRes.ok) throw new Error("Failed to update report");
+
+        toast("Post deleted and report resolved", { type: "success" });
+        fetchReports();
+      } catch (error) {
+        toast((error as Error).message || "Failed to delete post", { type: "error" });
+      }
+      setProcessing(null);
+      setOpenDropdown(null);
     }
-    setProcessing(null);
   };
 
   const handleDismiss = async (reportId: string) => {
@@ -193,10 +272,10 @@ export default function CommunityReportsPage() {
                 Community Post Reports
               </h1>
               <Link
-                href="/dashboard/admin"
+                href="/dashboard/community"
                 className="text-sm text-slate-500 hover:text-slate-700 transition-colors"
               >
-                ← Back to Admin
+                ← Back to Community
               </Link>
             </div>
             <p className="text-sm text-slate-600">
@@ -381,13 +460,84 @@ export default function CommunityReportsPage() {
                       {/* Actions */}
                       {report.status === "PENDING" && (
                         <div className="flex gap-2 pt-2">
-                          <button
-                            onClick={() => handleResolve(report.id, report.postId)}
-                            disabled={processing === report.id}
-                            className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded transition-colors hover:bg-red-700 disabled:opacity-50"
-                          >
-                            {processing === report.id ? "Processing..." : "Resolve"}
-                          </button>
+                          {/* Resolve Dropdown */}
+                          <div className="relative flex-1">
+                            <button
+                              onClick={() =>
+                                setOpenDropdown(
+                                  openDropdown === report.id ? null : report.id
+                                )
+                              }
+                              disabled={processing === report.id}
+                              className="w-full px-4 py-2 bg-red-600 text-white text-sm font-medium rounded transition-colors hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                              Resolve
+                              <svg
+                                className={`w-4 h-4 transform transition-transform ${
+                                  openDropdown === report.id ? "rotate-180" : ""
+                                }`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M19 14l-7 7m0 0l-7-7m7 7V3"
+                                />
+                              </svg>
+                            </button>
+
+                            {/* Dropdown Menu */}
+                            {openDropdown === report.id && (
+                              <div className="absolute bottom-full left-0 mb-1 w-full bg-white border border-slate-200 rounded shadow-lg z-10">
+                                <button
+                                  onClick={() =>
+                                    handleResolve(
+                                      report.id,
+                                      report.postId,
+                                      "deletePost",
+                                      report.post.author.id
+                                    )
+                                  }
+                                  disabled={processing === report.id}
+                                  className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 disabled:opacity-50 border-b border-slate-100"
+                                >
+                                  Delete Post
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    handleResolve(
+                                      report.id,
+                                      report.postId,
+                                      "ban",
+                                      report.post.author.id
+                                    )
+                                  }
+                                  disabled={processing === report.id}
+                                  className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 disabled:opacity-50 border-b border-slate-100"
+                                >
+                                  Ban User
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    handleResolve(
+                                      report.id,
+                                      report.postId,
+                                      "delete",
+                                      report.post.author.id
+                                    )
+                                  }
+                                  disabled={processing === report.id}
+                                  className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+                                >
+                                  Delete User
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
                           <button
                             onClick={() => handleDismiss(report.id)}
                             disabled={processing === report.id}

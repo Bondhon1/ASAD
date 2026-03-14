@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
+import { createAuditLog } from '@/lib/prisma-audit';
 import { autoAssignServiceFromInstitute } from '@/lib/organizations';
 import { invalidateAll } from '@/lib/hrUsersCache';
 import { invalidateProfileCache } from '@/lib/profileCache';
@@ -101,7 +102,7 @@ export async function PATCH(req: Request, context: any) {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const requester = await prisma.user.findUnique({ where: { email: session.user.email }, select: { role: true, status: true } });
+    const requester = await prisma.user.findUnique({ where: { email: session.user.email }, select: { id: true, role: true, status: true } });
     if (!requester || requester.status === 'BANNED') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     // Allow Database Dept to call this endpoint for profile/points/rank edits; other operations are guarded below.
     if (!['HR', 'MASTER', 'ADMIN', 'DIRECTOR', 'DATABASE_DEPT'].includes(requester.role as string)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -181,6 +182,12 @@ export async function PATCH(req: Request, context: any) {
         // If user was banned, remove all active sessions so they are immediately logged out
         if (status === 'BANNED') {
           await prisma.session.deleteMany({ where: { userId: id } });
+          // Create audit log for ban action
+          await createAuditLog(requester.id, 'BAN_USER', {
+            targetUserId: id,
+            targetUserEmail: targetUser.email,
+            reason: 'Admin ban action from community report',
+          }, targetUser.email?.split('@')[0]);
         }
 
         // If user just became OFFICIAL, auto-assign service when possible
@@ -296,7 +303,7 @@ export async function DELETE(req: Request, context: any) {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const requester = await prisma.user.findUnique({ where: { email: session.user.email }, select: { role: true, status: true } });
+    const requester = await prisma.user.findUnique({ where: { email: session.user.email }, select: { id: true, role: true, status: true } });
     if (!requester || requester.status === 'BANNED') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     if (!['HR', 'MASTER', 'ADMIN', 'DIRECTOR'].includes(requester.role as string)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
@@ -314,8 +321,24 @@ export async function DELETE(req: Request, context: any) {
 
     if (!id) return NextResponse.json({ error: 'Missing user id' }, { status: 400 });
 
+    // Fetch user details before deletion for audit logging
+    const targetUserForDelete = await prisma.user.findUnique({
+      where: { id },
+      select: { email: true, fullName: true, volunteerId: true },
+    });
+
     // Delete user — Prisma cascade rules in schema will remove related rows as configured
     await prisma.user.delete({ where: { id } });
+
+    // Create audit log for delete action
+    if (targetUserForDelete) {
+      await createAuditLog(requester.id, 'DELETE_USER', {
+        targetUserId: id,
+        targetUserEmail: targetUserForDelete.email,
+        targetUserName: targetUserForDelete.fullName,
+        reason: 'Admin user deletion from community report',
+      }, targetUserForDelete.volunteerId);
+    }
 
     // Clear users cache so UI reflects the deletion immediately
     try { invalidateAll(); } catch (e) { /* ignore */ }
