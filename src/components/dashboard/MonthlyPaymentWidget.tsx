@@ -175,7 +175,9 @@ export default function MonthlyPaymentWidget() {
                       <span>{getDonationPeriodLabel(currentMonthSummary.month)}</span>
                       <span>৳{currentMonthSummary.dueAmount}</span>
                     </div>
-                    {unpaidMonths.map(m => (
+                    {unpaidMonths
+                      .filter(m => !(m.month === currentMonthSummary.month && m.year === currentMonthSummary.year))
+                      .map(m => (
                       <div key={`${m.month}-${m.year}`} className="flex justify-between text-red-600">
                         <span>{getDonationPeriodLabel(m.month)} <span className="text-[10px]">(overdue)</span></span>
                         <span>৳{m.dueAmount}</span>
