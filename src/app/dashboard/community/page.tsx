@@ -168,7 +168,7 @@ function ImagePicker({
   const inputRef = useRef<HTMLInputElement>(null);
   return (
     <div>
-      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Images (up to 10)</label>
+      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Images (up to 5)</label>
       <div className="flex flex-wrap gap-2 mt-2">
         {images.map((url, i) => (
           <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border border-slate-200 group">
@@ -182,7 +182,7 @@ function ImagePicker({
             </button>
           </div>
         ))}
-        {images.length < 10 && (
+        {images.length < 5 && (
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
@@ -239,7 +239,7 @@ function NoticeModal({
   const handleImages = async (files: FileList) => {
     setUploading(true);
     setError(null);
-    const toUpload = Array.from(files).slice(0, 10 - images.length);
+    const toUpload = Array.from(files).slice(0, 5 - images.length);
     const urls: string[] = [];
     for (const f of toUpload) {
       try {
@@ -351,7 +351,7 @@ function SponsoredAdModal({
   const handleImages = async (files: FileList) => {
     setUploading(true);
     setError(null);
-    const toUpload = Array.from(files).slice(0, 10 - images.length);
+    const toUpload = Array.from(files).slice(0, 5 - images.length);
     const urls: string[] = [];
     for (const f of toUpload) {
       try {
@@ -469,7 +469,7 @@ function EditPostModal({
   const handleImages = async (files: FileList) => {
     setUploading(true);
     setError(null);
-    const toUpload = Array.from(files).slice(0, 10 - images.length);
+    const toUpload = Array.from(files).slice(0, 5 - images.length);
     const urls: string[] = [];
     for (const f of toUpload) {
       try { urls.push(await uploadImageToBlob(f)); }

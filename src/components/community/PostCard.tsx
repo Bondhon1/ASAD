@@ -84,12 +84,12 @@ function PostImageGallery({ images }: { images: string[] }) {
   return (
     <>
       <div className={`grid ${gridClass} gap-1.5 mt-3 rounded-xl overflow-hidden`}>
-        {images.slice(0, 4).map((url, i) => (
+        {images.slice(0, 5).map((url, i) => (
           <div
             key={i}
             className={`relative overflow-hidden cursor-pointer group bg-slate-100 ${
               count === 3 && i === 0 ? "row-span-2" : ""
-            } ${count === 1 ? "max-h-80" : "h-40"}`}
+            } ${count === 1 ? "h-80" : "h-40"}`}
             onClick={() => setLightbox(i)}
           >
             <Image
@@ -97,11 +97,11 @@ function PostImageGallery({ images }: { images: string[] }) {
               alt={`Post image ${i + 1}`}
               fill
               className="object-cover group-hover:scale-105 transition-transform duration-200"
-              sizes="(max-width: 640px) 50vw, 300px"
+              sizes={count === 1 ? "100vw" : "(max-width: 640px) 50vw, 300px"}
             />
-            {i === 3 && count > 4 && (
+            {i === 4 && count > 5 && (
               <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                <span className="text-white text-2xl font-bold">+{count - 4}</span>
+                <span className="text-white text-2xl font-bold">+{count - 5}</span>
               </div>
             )}
           </div>
