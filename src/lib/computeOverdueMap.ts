@@ -8,9 +8,19 @@ import { getRelevantDonationMonths, DEFAULT_DEADLINE_DAY, isAfterDeadline } from
 export async function computeOverdueMap(userIds: string[]): Promise<Record<string, number>> {
   if (userIds.length === 0) return {};
 
-  const overduePairs = getRelevantDonationMonths(24).filter((p) =>
-    isAfterDeadline(p.month, p.year, DEFAULT_DEADLINE_DAY)
-  );
+  const relevantPairs = getRelevantDonationMonths(24);
+
+  // Fetch per-month deadline configs so we respect custom deadlines, not just the default
+  const configs = await prisma.monthlyPaymentConfig.findMany({
+    where: { OR: relevantPairs.map((p) => ({ month: p.month, year: p.year })) },
+    select: { month: true, year: true, deadline: true },
+  });
+
+  const overduePairs = relevantPairs.filter((p) => {
+    const config = configs.find((c) => c.month === p.month && c.year === p.year);
+    const deadlineDay = config?.deadline ?? DEFAULT_DEADLINE_DAY;
+    return isAfterDeadline(p.month, p.year, deadlineDay);
+  });
 
   if (overduePairs.length === 0) {
     return Object.fromEntries(userIds.map((id) => [id, 0]));
