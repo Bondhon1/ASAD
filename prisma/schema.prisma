@@ -546,6 +546,9 @@ model Post {
   content               String           @db.VarChar(2000)
   postType              PostType         @default(TEXT)
   metadata              String?          // JSON for gallery, event data
+  images                String[]         @default([]) // Uploaded image URLs for NOTICE/GALLERY/AD posts
+  priority              Int              @default(0)  // 0=normal, 1=sponsored_ad, 2=notice
+  targetAudience        String?          // JSON AudienceSpec for the notice — not user IDs
   isDeleted             Boolean          @default(false)
   comments              PostComment[]
   reactions             PostReaction[]
@@ -562,6 +565,8 @@ enum PostType {
   TEXT
   GALLERY
   EVENT
+  NOTICE
+  SPONSORED_AD
 }
 
 model PostReaction {
@@ -950,6 +955,7 @@ enum NotificationType {
   POST_REPORT_NEW
   POST_REPORT_STATUS
   POST_ACTION
+  NOTICE_PUBLISHED
 
   // Legacy (retained for existing DB rows — no longer issued by new code)
   COIN_ENDORSED

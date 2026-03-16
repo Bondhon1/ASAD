@@ -53,11 +53,103 @@ export interface Post {
   authorId: string;
   author: Author;
   content: string;
+  postType?: string;
+  images?: string[];
+  priority?: number;
+  targetAudience?: string | null;
   createdAt: string;
   updatedAt: string;
   reactionCount: number;
   userReacted: boolean;
   commentCount: number;
+}
+
+// ─── Image Gallery ─────────────────────────────────────────────────────────────
+
+function PostImageGallery({ images }: { images: string[] }) {
+  const [lightbox, setLightbox] = useState<number | null>(null);
+
+  if (!images || images.length === 0) return null;
+
+  const count = images.length;
+  const gridClass =
+    count === 1
+      ? "grid-cols-1"
+      : count === 2
+      ? "grid-cols-2"
+      : count >= 3
+      ? "grid-cols-2"
+      : "grid-cols-2";
+
+  return (
+    <>
+      <div className={`grid ${gridClass} gap-1.5 mt-3 rounded-xl overflow-hidden`}>
+        {images.slice(0, 4).map((url, i) => (
+          <div
+            key={i}
+            className={`relative overflow-hidden cursor-pointer group bg-slate-100 ${
+              count === 3 && i === 0 ? "row-span-2" : ""
+            } ${count === 1 ? "max-h-80" : "h-40"}`}
+            onClick={() => setLightbox(i)}
+          >
+            <Image
+              src={url}
+              alt={`Post image ${i + 1}`}
+              fill
+              className="object-cover group-hover:scale-105 transition-transform duration-200"
+              sizes="(max-width: 640px) 50vw, 300px"
+            />
+            {i === 3 && count > 4 && (
+              <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                <span className="text-white text-2xl font-bold">+{count - 4}</span>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Lightbox */}
+      {lightbox !== null && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+          onClick={() => setLightbox(null)}
+        >
+          <button
+            className="absolute top-4 right-4 text-white/80 hover:text-white text-3xl font-light leading-none"
+            onClick={() => setLightbox(null)}
+          >
+            ×
+          </button>
+          {lightbox > 0 && (
+            <button
+              className="absolute left-4 text-white/80 hover:text-white text-4xl font-light"
+              onClick={(e) => { e.stopPropagation(); setLightbox((l) => (l !== null && l > 0 ? l - 1 : l)); }}
+            >
+              ‹
+            </button>
+          )}
+          {lightbox < images.length - 1 && (
+            <button
+              className="absolute right-4 text-white/80 hover:text-white text-4xl font-light"
+              onClick={(e) => { e.stopPropagation(); setLightbox((l) => (l !== null && l < images.length - 1 ? l + 1 : l)); }}
+            >
+              ›
+            </button>
+          )}
+          <div className="relative max-w-4xl max-h-[85vh] w-full h-full mx-8" onClick={(e) => e.stopPropagation()}>
+            <Image
+              src={images[lightbox]}
+              alt={`Image ${lightbox + 1}`}
+              fill
+              className="object-contain"
+              sizes="90vw"
+            />
+          </div>
+          <span className="absolute bottom-4 text-white/60 text-sm">{lightbox + 1} / {images.length}</span>
+        </div>
+      )}
+    </>
+  );
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -640,7 +732,29 @@ export function PostCard({
   }
 
   return (
-    <div id={`post-${post.id}`} className="bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-200">
+    <div id={`post-${post.id}`} className={`bg-white border rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-200 ${
+      post.postType === "NOTICE" ? "border-amber-300 ring-1 ring-amber-200" :
+      post.postType === "SPONSORED_AD" ? "border-blue-300 ring-1 ring-blue-200" :
+      "border-slate-200"
+    }`}>
+      {/* Special post type banner */}
+      {post.postType === "NOTICE" && (
+        <div className="flex items-center gap-2 px-4 pt-3 pb-1">
+          <span className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-800 text-xs font-semibold px-2.5 py-1 rounded-full border border-amber-200">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+            NOTICE
+          </span>
+        </div>
+      )}
+      {post.postType === "SPONSORED_AD" && (
+        <div className="flex items-center gap-2 px-4 pt-3 pb-1">
+          <span className="inline-flex items-center gap-1.5 bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-1 rounded-full border border-blue-200">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l7.59-7.59L21 8l-9 9z"/></svg>
+            SPONSORED
+          </span>
+        </div>
+      )}
+
       {/* Post Header */}
       <div className="p-4 pb-3 flex items-start justify-between gap-3">
         <div className="flex items-start gap-3 min-w-0">
@@ -706,6 +820,10 @@ export function PostCard({
           <p className="text-slate-700 leading-relaxed whitespace-pre-wrap break-words text-sm sm:text-base">
             {renderMentionContent(post.content)}
           </p>
+        )}
+        {/* Image Gallery */}
+        {post.images && post.images.length > 0 && (
+          <PostImageGallery images={post.images} />
         )}
       </div>
 

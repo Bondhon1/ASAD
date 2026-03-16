@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useSearchParams, useRouter } from "next/navigation";
+import Image from "next/image";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { useCachedUserProfile } from "@/hooks/useCachedUserProfile";
 import { MentionTextarea } from "@/components/community/MentionTextarea";
@@ -13,6 +14,420 @@ import {
   type Author,
 } from "@/components/community/PostCard";
 import CommunityLeaderboard from "@/components/community/Leaderboard";
+
+// ─── Audience Picker (mirrors task creation pattern) ──────────────────────────
+
+interface AudienceSpec {
+  all?: boolean;
+  services?: string[];
+  sectors?: string[];
+  clubs?: string[];
+}
+
+interface AudiencePickerProps {
+  services: { id: string; name: string }[];
+  sectors: { id: string; name: string }[];
+  clubs: { id: string; name: string }[];
+  audience: AudienceSpec;
+  onChange: (a: AudienceSpec) => void;
+}
+
+function AudiencePicker({ services, sectors, clubs, audience, onChange }: AudiencePickerProps) {
+  const toggle = (kind: "services" | "sectors" | "clubs", id: string) => {
+    const list = (audience[kind] || []) as string[];
+    const next = list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
+    onChange({ ...audience, all: false, [kind]: next });
+  };
+
+  return (
+    <div className="space-y-3">
+      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Target Audience</label>
+      <button
+        type="button"
+        onClick={() => onChange({ all: !audience.all })}
+        className={`w-full text-left px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+          audience.all ? "bg-amber-50 border-amber-300 text-amber-800" : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+        }`}
+      >
+        {audience.all ? "✓ " : ""}All Official Members
+      </button>
+
+      {!audience.all && (
+        <>
+          {services.length > 0 && (
+            <div>
+              <p className="text-xs text-slate-400 mb-1.5">Services</p>
+              <div className="flex flex-wrap gap-1.5">
+                {services.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => toggle("services", s.id)}
+                    className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                      audience.services?.includes(s.id)
+                        ? "bg-amber-100 border-amber-400 text-amber-800"
+                        : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+                    }`}
+                  >
+                    {s.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {sectors.length > 0 && (
+            <div>
+              <p className="text-xs text-slate-400 mb-1.5">Sectors</p>
+              <div className="flex flex-wrap gap-1.5">
+                {sectors.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => toggle("sectors", s.id)}
+                    className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                      audience.sectors?.includes(s.id)
+                        ? "bg-amber-100 border-amber-400 text-amber-800"
+                        : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+                    }`}
+                  >
+                    {s.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {clubs.length > 0 && (
+            <div>
+              <p className="text-xs text-slate-400 mb-1.5">Clubs</p>
+              <div className="flex flex-wrap gap-1.5">
+                {clubs.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => toggle("clubs", c.id)}
+                    className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                      audience.clubs?.includes(c.id)
+                        ? "bg-amber-100 border-amber-400 text-amber-800"
+                        : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+                    }`}
+                  >
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── Image Upload Helper ───────────────────────────────────────────────────────
+
+async function uploadImageToBlob(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const base64 = (e.target?.result as string).split(",")[1];
+        const res = await fetch("/api/community/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fileName: file.name.replace(/[^a-zA-Z0-9._-]/g, "_"),
+            mimeType: file.type,
+            data: base64,
+          }),
+        });
+        const d = await res.json();
+        if (!res.ok) reject(new Error(d.error || "Upload failed"));
+        else resolve(d.url);
+      } catch (err) {
+        reject(err);
+      }
+    };
+    reader.onerror = () => reject(new Error("Failed to read file"));
+    reader.readAsDataURL(file);
+  });
+}
+
+// ─── Image Picker ──────────────────────────────────────────────────────────────
+
+function ImagePicker({
+  images,
+  uploading,
+  onAdd,
+  onRemove,
+}: {
+  images: string[];
+  uploading: boolean;
+  onAdd: (files: FileList) => void;
+  onRemove: (i: number) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  return (
+    <div>
+      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Images (up to 10)</label>
+      <div className="flex flex-wrap gap-2 mt-2">
+        {images.map((url, i) => (
+          <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border border-slate-200 group">
+            <Image src={url} alt="" fill className="object-cover" sizes="80px" />
+            <button
+              type="button"
+              onClick={() => onRemove(i)}
+              className="absolute top-0.5 right-0.5 bg-black/60 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              ×
+            </button>
+          </div>
+        ))}
+        {images.length < 10 && (
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={uploading}
+            className="w-20 h-20 rounded-lg border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400 hover:border-slate-400 transition-colors text-xs gap-1 disabled:opacity-50"
+          >
+            {uploading ? (
+              <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                Add
+              </>
+            )}
+          </button>
+        )}
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={(e) => e.target.files && onAdd(e.target.files)}
+      />
+    </div>
+  );
+}
+
+// ─── Notice Creation Modal ─────────────────────────────────────────────────────
+
+function NoticeModal({
+  isOpen,
+  onClose,
+  onSubmit,
+  services,
+  sectors,
+  clubs,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (data: { content: string; images: string[]; targetAudience: AudienceSpec | null }) => Promise<void>;
+  services: { id: string; name: string }[];
+  sectors: { id: string; name: string }[];
+  clubs: { id: string; name: string }[];
+}) {
+  const [content, setContent] = useState("");
+  const [images, setImages] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [audience, setAudience] = useState<AudienceSpec>({ all: true });
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleImages = async (files: FileList) => {
+    setUploading(true);
+    setError(null);
+    const toUpload = Array.from(files).slice(0, 10 - images.length);
+    const urls: string[] = [];
+    for (const f of toUpload) {
+      try {
+        const url = await uploadImageToBlob(f);
+        urls.push(url);
+      } catch (e: any) {
+        setError(e.message || "Upload failed");
+      }
+    }
+    setImages((prev) => [...prev, ...urls]);
+    setUploading(false);
+  };
+
+  const handleSubmit = async () => {
+    if (!content.trim()) { setError("Content is required"); return; }
+    setSubmitting(true);
+    setError(null);
+    try {
+      const hasAudience =
+        audience.all ||
+        (audience.services?.length ?? 0) > 0 ||
+        (audience.sectors?.length ?? 0) > 0 ||
+        (audience.clubs?.length ?? 0) > 0;
+      await onSubmit({ content: content.trim(), images, targetAudience: hasAudience ? audience : null });
+      setContent("");
+      setImages([]);
+      setAudience({ all: true });
+      onClose();
+    } catch (e: any) {
+      setError(e.message || "Failed to post");
+    }
+    setSubmitting(false);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-4 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <span className="bg-amber-100 text-amber-800 text-xs font-semibold px-2.5 py-1 rounded-full border border-amber-200">📢 NOTICE</span>
+            <h3 className="font-semibold text-slate-800">Create Notice</h3>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl leading-none">×</button>
+        </div>
+
+        <div className="p-4 space-y-4">
+          <div>
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Content</label>
+            <MentionTextarea
+              value={content}
+              onChange={setContent}
+              placeholder="Write the notice here…"
+              className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-amber-400 focus:bg-white transition-all"
+              rows={5}
+              maxLength={2000}
+            />
+            <div className="text-right text-xs text-slate-400 mt-1">{content.length}/2000</div>
+          </div>
+
+          <ImagePicker images={images} uploading={uploading} onAdd={handleImages} onRemove={(i) => setImages((p) => p.filter((_, j) => j !== i))} />
+
+          <AudiencePicker
+            services={services}
+            sectors={sectors}
+            clubs={clubs}
+            audience={audience}
+            onChange={setAudience}
+          />
+
+          {error && <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+        </div>
+
+        <div className="flex gap-2 p-4 border-t border-slate-100">
+          <button onClick={onClose} className="flex-1 px-4 py-2 bg-white border border-slate-200 text-sm rounded-xl text-slate-600 hover:bg-slate-50 transition-colors">
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={submitting || !content.trim()}
+            className="flex-1 px-4 py-2 bg-amber-500 text-white text-sm font-semibold rounded-xl hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {submitting ? "Publishing…" : "Publish Notice"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Sponsored AD Creation Modal ───────────────────────────────────────────────
+
+function SponsoredAdModal({
+  isOpen,
+  onClose,
+  onSubmit,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (data: { content: string; images: string[] }) => Promise<void>;
+}) {
+  const [content, setContent] = useState("");
+  const [images, setImages] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleImages = async (files: FileList) => {
+    setUploading(true);
+    setError(null);
+    const toUpload = Array.from(files).slice(0, 10 - images.length);
+    const urls: string[] = [];
+    for (const f of toUpload) {
+      try {
+        const url = await uploadImageToBlob(f);
+        urls.push(url);
+      } catch (e: any) {
+        setError(e.message || "Upload failed");
+      }
+    }
+    setImages((prev) => [...prev, ...urls]);
+    setUploading(false);
+  };
+
+  const handleSubmit = async () => {
+    if (!content.trim()) { setError("Content is required"); return; }
+    setSubmitting(true);
+    setError(null);
+    try {
+      await onSubmit({ content: content.trim(), images });
+      setContent("");
+      setImages([]);
+      onClose();
+    } catch (e: any) {
+      setError(e.message || "Failed to post");
+    }
+    setSubmitting(false);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-4 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-1 rounded-full border border-blue-200">✓ SPONSORED</span>
+            <h3 className="font-semibold text-slate-800">Create Sponsored AD</h3>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl leading-none">×</button>
+        </div>
+
+        <div className="p-4 space-y-4">
+          <div>
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Content</label>
+            <MentionTextarea
+              value={content}
+              onChange={setContent}
+              placeholder="Write the sponsored ad content…"
+              className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-400 focus:bg-white transition-all"
+              rows={5}
+              maxLength={2000}
+            />
+            <div className="text-right text-xs text-slate-400 mt-1">{content.length}/2000</div>
+          </div>
+
+          <ImagePicker images={images} uploading={uploading} onAdd={handleImages} onRemove={(i) => setImages((p) => p.filter((_, j) => j !== i))} />
+
+          {error && <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+        </div>
+
+        <div className="flex gap-2 p-4 border-t border-slate-100">
+          <button onClick={onClose} className="flex-1 px-4 py-2 bg-white border border-slate-200 text-sm rounded-xl text-slate-600 hover:bg-slate-50 transition-colors">
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={submitting || !content.trim()}
+            className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {submitting ? "Publishing…" : "Publish Sponsored AD"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
@@ -36,12 +451,39 @@ export default function CommunityPage() {
 
   const [view, setView] = useState<"feed" | "timeline">("feed");
 
+  // Special post modals
+  const [noticeModalOpen, setNoticeModalOpen] = useState(false);
+  const [adModalOpen, setAdModalOpen] = useState(false);
+
+  // Audience data for notice targeting
+  const [servicesList, setServicesList] = useState<{ id: string; name: string }[]>([]);
+  const [sectorsList, setSectorsList] = useState<{ id: string; name: string }[]>([]);
+  const [clubsList, setClubsList] = useState<{ id: string; name: string }[]>([]);
+
   const currentUserId = (user as any)?.id || (session as any)?.user?.id || "";
 
   const _commStatus = (session as any)?.user?.status;
   const _commRole = (session as any)?.user?.role || '';
   const _COMM_STAFF = ['HR', 'MASTER', 'ADMIN', 'DIRECTOR', 'DATABASE_DEPT', 'SECRETARIES'];
   const isOfficialOrStaff = _COMM_STAFF.includes(_commRole) || _commStatus === 'OFFICIAL';
+
+  const canCreateNotice = ['ADMIN', 'MASTER', 'SECRETARIES'].includes(_commRole);
+  const canCreateAd = _commRole === 'MASTER';
+
+  // Load audience data when notice modal might be opened
+  useEffect(() => {
+    if (!canCreateNotice) return;
+    (async () => {
+      try {
+        const res = await fetch("/api/orgs");
+        if (!res.ok) return;
+        const d = await res.json();
+        setServicesList(d.services || []);
+        setSectorsList(d.sectors || []);
+        setClubsList(d.clubs || []);
+      } catch {}
+    })();
+  }, [canCreateNotice]);
 
   const loadPosts = useCallback(
     async (cursor?: string, replace = false) => {
@@ -144,6 +586,33 @@ export default function CommunityPage() {
     }
   };
 
+  const submitNotice = async ({ content, images, targetAudience }: { content: string; images: string[]; targetAudience: AudienceSpec | null }) => {
+    const res = await fetch("/api/community/posts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        content,
+        images,
+        postType: "NOTICE",
+        ...(targetAudience ? { targetAudience } : {}),
+      }),
+    });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error || "Failed to publish notice");
+    setPosts((prev) => [d.post, ...prev]);
+  };
+
+  const submitAd = async ({ content, images }: { content: string; images: string[] }) => {
+    const res = await fetch("/api/community/posts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content, images, postType: "SPONSORED_AD" }),
+    });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error || "Failed to publish sponsored ad");
+    setPosts((prev) => [d.post, ...prev]);
+  };
+
   const deletePost = async (postId: string) => {
     try {
       const res = await fetch(`/api/community/posts/${postId}`, { method: "DELETE" });
@@ -244,6 +713,7 @@ export default function CommunityPage() {
   }
 
   return (
+    <>
     <DashboardLayout
       userRole={userRole}
       userName={userName}
@@ -326,6 +796,31 @@ export default function CommunityPage() {
                 )}
               </div>
             </div>
+
+            {/* Special post type actions for staff */}
+            {(canCreateNotice || canCreateAd) && (
+              <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100">
+                <span className="text-xs text-slate-400 mr-1">Staff:</span>
+                {canCreateNotice && (
+                  <button
+                    onClick={() => setNoticeModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold rounded-lg hover:bg-amber-100 transition-colors"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                    Post Notice
+                  </button>
+                )}
+                {canCreateAd && (
+                  <button
+                    onClick={() => setAdModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-200 text-blue-800 text-xs font-semibold rounded-lg hover:bg-blue-100 transition-colors"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+                    Post Sponsored AD
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Feed */}
@@ -396,5 +891,21 @@ export default function CommunityPage() {
         </div>
       </div>
     </DashboardLayout>
+
+    {/* Notice & AD Modals */}
+    <NoticeModal
+      isOpen={noticeModalOpen}
+      onClose={() => setNoticeModalOpen(false)}
+      onSubmit={submitNotice}
+      services={servicesList}
+      sectors={sectorsList}
+      clubs={clubsList}
+    />
+    <SponsoredAdModal
+      isOpen={adModalOpen}
+      onClose={() => setAdModalOpen(false)}
+      onSubmit={submitAd}
+    />
+    </>
   );
 }
