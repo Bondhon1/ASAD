@@ -303,12 +303,13 @@ function ExternalShareTab({ post }: { post: Post }) {
       ),
     },
     {
-      name: "Messenger",
-      url: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(postUrl)}`,
-      bg: "bg-[#0084FF]",
+      name: "Email",
+      url: `mailto:?subject=${encodeURIComponent(`Check out this post by ${post.author.fullName || "a volunteer"}`)}&body=${encodeURIComponent(`${shareText}\n\n${postUrl}`)}`,
+      bg: "bg-slate-600",
       icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 0C5.373 0 0 4.974 0 11.111c0 3.498 1.744 6.614 4.469 8.654V24l4.088-2.242c1.092.3 2.246.464 3.443.464 6.627 0 12-4.975 12-11.111C24 4.974 18.627 0 12 0zm1.191 14.963l-3.055-3.26-5.963 3.26L10.732 8l3.131 3.26L19.752 8l-6.561 6.963z"/>
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+          <polyline points="22,6 12,13 2,6"/>
         </svg>
       ),
     },
@@ -326,7 +327,8 @@ function ExternalShareTab({ post }: { post: Post }) {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-3 gap-3">
+      {/* Desktop: 3 cols (WhatsApp, Telegram, Email). Mobile: 2x2 grid with Messenger added */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {platforms.map((p) => (
           <a
             key={p.name}
@@ -339,6 +341,17 @@ function ExternalShareTab({ post }: { post: Post }) {
             <span className="text-xs font-medium">{p.name}</span>
           </a>
         ))}
+
+        {/* Messenger: mobile only (fb-messenger:// deep link works when app is installed) */}
+        <a
+          href={`fb-messenger://share/?link=${encodeURIComponent(postUrl)}`}
+          className="sm:hidden flex flex-col items-center gap-2 py-4 rounded-xl text-white bg-[#0084FF] hover:opacity-90 transition-opacity"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0C5.373 0 0 4.974 0 11.111c0 3.498 1.744 6.614 4.469 8.654V24l4.088-2.242c1.092.3 2.246.464 3.443.464 6.627 0 12-4.975 12-11.111C24 4.974 18.627 0 12 0zm1.191 14.963l-3.055-3.26-5.963 3.26L10.732 8l3.131 3.26L19.752 8l-6.561 6.963z"/>
+          </svg>
+          <span className="text-xs font-medium">Messenger</span>
+        </a>
       </div>
       <p className="text-xs text-slate-400 text-center">
         Opens in a new tab. Only members with access can view the post.
