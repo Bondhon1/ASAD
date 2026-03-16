@@ -58,6 +58,26 @@ export async function GET(
         toUserId: true,
         readAt: true,
         createdAt: true,
+        sharedPostId: true,
+        sharedPost: {
+          select: {
+            id: true,
+            content: true,
+            images: true,
+            createdAt: true,
+            isDeleted: true,
+            author: {
+              select: {
+                id: true,
+                fullName: true,
+                volunteerId: true,
+                profilePicUrl: true,
+                role: true,
+                status: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -131,9 +151,24 @@ export async function POST(
 
     const body = await req.json();
     const text = (body.body ?? "").trim();
+    const sharedPostId: string | undefined = body.sharedPostId ?? undefined;
 
-    if (!text || text.length > 1000) {
+    if (!text && !sharedPostId) {
       return NextResponse.json({ error: "Invalid message" }, { status: 400 });
+    }
+    if (text.length > 1000) {
+      return NextResponse.json({ error: "Invalid message" }, { status: 400 });
+    }
+
+    // Validate sharedPostId
+    if (sharedPostId) {
+      const postExists = await prisma.post.findFirst({
+        where: { id: sharedPostId, isDeleted: false },
+        select: { id: true },
+      });
+      if (!postExists) {
+        return NextResponse.json({ error: "Shared post not found" }, { status: 404 });
+      }
     }
 
     const toUserId = conv.user1Id === me.id ? conv.user2Id : conv.user1Id;
@@ -145,6 +180,7 @@ export async function POST(
           fromUserId: me.id,
           toUserId,
           body: text,
+          ...(sharedPostId ? { sharedPostId } : {}),
         },
         select: {
           id: true,
@@ -153,6 +189,26 @@ export async function POST(
           toUserId: true,
           readAt: true,
           createdAt: true,
+          sharedPostId: true,
+          sharedPost: {
+            select: {
+              id: true,
+              content: true,
+              images: true,
+              createdAt: true,
+              isDeleted: true,
+              author: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  volunteerId: true,
+                  profilePicUrl: true,
+                  role: true,
+                  status: true,
+                },
+              },
+            },
+          },
         },
       }),
       prisma.conversation.update({

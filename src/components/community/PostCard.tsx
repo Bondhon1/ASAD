@@ -48,6 +48,16 @@ export interface Comment {
   replies: Reply[];
 }
 
+export interface SharedPost {
+  id: string;
+  authorId: string;
+  author: Author;
+  content: string;
+  images?: string[];
+  createdAt: string;
+  isDeleted?: boolean;
+}
+
 export interface Post {
   id: string;
   authorId: string;
@@ -62,6 +72,9 @@ export interface Post {
   reactionCount: number;
   userReacted: boolean;
   commentCount: number;
+  shareCount?: number;
+  sharedPostId?: string | null;
+  sharedPost?: SharedPost | null;
 }
 
 // ─── Image Gallery ─────────────────────────────────────────────────────────────
@@ -189,6 +202,78 @@ export function Avatar({ user, size = 40 }: { user: Author; size?: number }) {
       style={{ width: size, height: size, fontSize: size * 0.4 }}
     >
       {initials}
+    </div>
+  );
+}
+
+// ─── Shared Post Embed ────────────────────────────────────────────────────────
+
+function SharedPostEmbed({ sharedPost }: { sharedPost: SharedPost }) {
+  const contentPreview = sharedPost.content.length > 300
+    ? sharedPost.content.slice(0, 300) + "…"
+    : sharedPost.content;
+
+  if (sharedPost.isDeleted) {
+    return (
+      <div className="mt-3 border border-slate-200 rounded-xl p-3 bg-slate-50 text-sm text-slate-400 italic">
+        This post has been deleted.
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 border border-slate-200 rounded-xl overflow-hidden bg-slate-50 hover:bg-slate-100 transition-colors">
+      {/* Original post author */}
+      <div className="flex items-center gap-2 px-3 pt-2.5 pb-1">
+        <div className="flex-shrink-0">
+          {sharedPost.author.profilePicUrl ? (
+            <Image
+              src={sharedPost.author.profilePicUrl}
+              alt={sharedPost.author.fullName || "User"}
+              width={24}
+              height={24}
+              className="rounded-full object-cover border border-slate-200"
+              style={{ width: 24, height: 24 }}
+            />
+          ) : (
+            <div className="w-6 h-6 rounded-full bg-[#1E3A5F] text-white flex items-center justify-center text-[10px] font-bold">
+              {(sharedPost.author.fullName || "U").charAt(0).toUpperCase()}
+            </div>
+          )}
+        </div>
+        <Link
+          href={`/dashboard/community/profile/${sharedPost.author.id}`}
+          className="text-xs font-semibold text-slate-700 hover:text-[#1E3A5F] truncate"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {sharedPost.author.fullName || "Volunteer"}
+        </Link>
+        <span className="text-[10px] text-slate-400 ml-auto flex-shrink-0">{timeAgo(sharedPost.createdAt)}</span>
+      </div>
+
+      {/* Original post content */}
+      <div className="px-3 pb-2.5">
+        <p className="text-sm text-slate-700 whitespace-pre-wrap break-words leading-relaxed">
+          {contentPreview}
+        </p>
+        {/* Original post images (show first only) */}
+        {sharedPost.images && sharedPost.images.length > 0 && (
+          <div className="mt-2 relative h-36 rounded-lg overflow-hidden">
+            <Image
+              src={sharedPost.images[0]}
+              alt="Post image"
+              fill
+              className="object-cover"
+              sizes="(max-width: 640px) 90vw, 400px"
+            />
+            {sharedPost.images.length > 1 && (
+              <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                <span className="text-white text-sm font-semibold">+{sharedPost.images.length - 1} more</span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -537,7 +622,7 @@ export function PostCard({
   onEdit: (id: string, content: string) => Promise<void>;
   onEditSpecial?: (post: Post) => void;
   onReact: (id: string, currentReacted: boolean) => void;
-  onShareAsPost?: (content: string) => Promise<void>;
+  onShareAsPost?: (content: string, sharedPostId: string) => Promise<void>;
 }) {
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -824,6 +909,10 @@ export function PostCard({
             {renderMentionContent(post.content)}
           </p>
         )}
+        {/* Shared post embed */}
+        {post.sharedPost && !editing && (
+          <SharedPostEmbed sharedPost={post.sharedPost} />
+        )}
         {/* Image Gallery */}
         {post.images && post.images.length > 0 && (
           <PostImageGallery images={post.images} />
@@ -857,6 +946,9 @@ export function PostCard({
           className="flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-[#1E3A5F] transition-colors ml-auto"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          {(post.shareCount ?? 0) > 0 && (
+            <span className="font-semibold">{post.shareCount}</span>
+          )}
           <span>Share</span>
         </button>
       </div>

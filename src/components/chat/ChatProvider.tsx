@@ -18,6 +18,22 @@ export interface OtherUser {
   status?: string;
 }
 
+export interface SharedPostPreview {
+  id: string;
+  content: string;
+  images?: string[];
+  createdAt: string;
+  isDeleted?: boolean;
+  author: {
+    id: string;
+    fullName: string | null;
+    volunteerId: string | null;
+    profilePicUrl: string | null;
+    role: string;
+    status: string;
+  };
+}
+
 export interface ChatMessage {
   id: string;
   body: string;
@@ -26,6 +42,8 @@ export interface ChatMessage {
   readAt: string | null;
   createdAt: string;
   conversationId?: string;
+  sharedPostId?: string | null;
+  sharedPost?: SharedPostPreview | null;
 }
 
 export interface ConversationPreview {

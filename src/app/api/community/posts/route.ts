@@ -70,6 +70,12 @@ export async function GET(request: NextRequest) {
           author: { select: AUTHOR_SELECT },
           reactions: { where: { userId: user.id }, select: { type: true }, take: 1 },
           _count: { select: { reactions: true, comments: { where: { isDeleted: false, parentCommentId: null } } } },
+          sharedPost: {
+            include: {
+              author: { select: AUTHOR_SELECT },
+              _count: { select: { reactions: true, comments: { where: { isDeleted: false, parentCommentId: null } } } },
+            },
+          },
         },
       });
 
@@ -116,6 +122,12 @@ export async function GET(request: NextRequest) {
         author: { select: AUTHOR_SELECT },
         reactions: { where: { userId: user.id }, select: { type: true }, take: 1 },
         _count: { select: { reactions: true, comments: { where: { isDeleted: false, parentCommentId: null } } } },
+        sharedPost: {
+          include: {
+            author: { select: AUTHOR_SELECT },
+            _count: { select: { reactions: true, comments: { where: { isDeleted: false, parentCommentId: null } } } },
+          },
+        },
       },
     });
 
@@ -213,8 +225,20 @@ export async function POST(request: NextRequest) {
     }
 
     const content = (body.content || "").trim();
-    if (!content) return NextResponse.json({ error: "Post content cannot be empty" }, { status: 400 });
+    if (!content && !body.sharedPostId) return NextResponse.json({ error: "Post content cannot be empty" }, { status: 400 });
     if (content.length > 2000) return NextResponse.json({ error: "Post content exceeds 2000 characters" }, { status: 400 });
+
+    // Validate sharedPostId if provided
+    let originalPost: { id: string; authorId: string; content: string } | null = null;
+    if (body.sharedPostId) {
+      originalPost = await prisma.post.findFirst({
+        where: { id: body.sharedPostId, isDeleted: false },
+        select: { id: true, authorId: true, content: true },
+      });
+      if (!originalPost) {
+        return NextResponse.json({ error: "Original post not found" }, { status: 404 });
+      }
+    }
 
     const images: string[] = Array.isArray(body.images)
       ? body.images.filter((u: unknown) => typeof u === "string" && u.startsWith("http")).slice(0, 10)
@@ -263,13 +287,45 @@ export async function POST(request: NextRequest) {
         images,
         priority,
         ...(targetAudience ? { targetAudience } : {}),
+        ...(originalPost ? { sharedPostId: originalPost.id } : {}),
       },
       include: {
         author: { select: AUTHOR_SELECT },
         reactions: { select: { userId: true, type: true } },
         _count: { select: { comments: { where: { isDeleted: false, parentCommentId: null } } } },
+        sharedPost: {
+          include: {
+            author: { select: AUTHOR_SELECT },
+            _count: { select: { reactions: true, comments: { where: { isDeleted: false, parentCommentId: null } } } },
+          },
+        },
       },
     });
+
+    // Increment shareCount on original post and notify original author
+    if (originalPost) {
+      await prisma.post.update({
+        where: { id: originalPost.id },
+        data: { shareCount: { increment: 1 } },
+      });
+
+      // Notify original post author (not if sharing own post)
+      if (originalPost.authorId !== user.id) {
+        const preview = originalPost.content.length > 80 ? originalPost.content.slice(0, 77) + "…" : originalPost.content;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (prisma.notification.create as any)({
+          data: {
+            userId: originalPost.authorId,
+            type: "POST_SHARED",
+            title: "🔁 Your post was shared",
+            message: `${user.fullName || "Someone"} shared your post: "${preview}"`,
+            link: `/dashboard/community?post=${post.id}`,
+            groupKey: `post_shared:${originalPost.id}`,
+            actorIds: [user.id],
+          },
+        });
+      }
+    }
 
     // Notify mentioned users
     await notifyMentions({ content, actorId: user.id, actorName: user.fullName, postId: post.id });
@@ -314,6 +370,7 @@ export async function POST(request: NextRequest) {
         reactionCount: 0,
         userReacted: false,
         commentCount: 0,
+        shareCount: 0,
       },
     });
   } catch (error) {

@@ -772,11 +772,11 @@ export default function CommunityPage() {
     setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, ...updates } : p)));
   };
 
-  const sharePost = async (content: string) => {
+  const sharePost = async (content: string, sharedPostId: string) => {
     const res = await fetch("/api/community/posts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ content, sharedPostId }),
     });
     if (res.ok) {
       const d = await res.json();

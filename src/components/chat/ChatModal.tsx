@@ -7,8 +7,9 @@ import React, {
   useCallback,
 } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { X, ArrowLeft, Send, Loader2 } from "lucide-react";
-import { useChatContext, ChatMessage } from "./ChatProvider";
+import { useChatContext, ChatMessage, SharedPostPreview } from "./ChatProvider";
 
 function UserAvatar({
   user,
@@ -46,6 +47,74 @@ function formatMsgTime(dateStr: string) {
 
 function formatRole(role: string) {
   return role.replace(/_/g, " ");
+}
+
+// ─── Shared Post Card (link preview) ────────────────────────────────────────
+
+function SharedPostCard({ sharedPost, isMe }: { sharedPost: SharedPostPreview; isMe: boolean }) {
+  const postUrl = `/dashboard/community?post=${sharedPost.id}`;
+  const contentPreview = sharedPost.content.length > 180
+    ? sharedPost.content.slice(0, 180) + "…"
+    : sharedPost.content;
+
+  if (sharedPost.isDeleted) {
+    return (
+      <div className={`text-xs italic mt-1 ${isMe ? "text-blue-200" : "text-slate-400"}`}>
+        Original post was deleted.
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href={postUrl}
+      className={`block mt-1.5 rounded-xl overflow-hidden border transition-opacity hover:opacity-90 ${
+        isMe ? "border-white/20 bg-white/10" : "border-slate-200 bg-white"
+      }`}
+    >
+      {/* Author row */}
+      <div className="flex items-center gap-2 px-2.5 pt-2 pb-1">
+        {sharedPost.author.profilePicUrl ? (
+          <Image
+            src={sharedPost.author.profilePicUrl}
+            alt={sharedPost.author.fullName || "User"}
+            width={20}
+            height={20}
+            className="rounded-full object-cover flex-shrink-0"
+            style={{ width: 20, height: 20 }}
+          />
+        ) : (
+          <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0 ${isMe ? "bg-white/20 text-white" : "bg-[#1E3A5F] text-white"}`}>
+            {(sharedPost.author.fullName || "U").charAt(0).toUpperCase()}
+          </div>
+        )}
+        <span className={`text-[11px] font-semibold truncate ${isMe ? "text-blue-100" : "text-slate-700"}`}>
+          {sharedPost.author.fullName || "Volunteer"}
+        </span>
+      </div>
+      {/* Content */}
+      <div className="px-2.5 pb-2">
+        <p className={`text-xs leading-relaxed whitespace-pre-wrap break-words ${isMe ? "text-blue-50" : "text-slate-600"}`}>
+          {contentPreview}
+        </p>
+        {sharedPost.images && sharedPost.images.length > 0 && (
+          <div className="mt-1.5 relative h-24 rounded-lg overflow-hidden">
+            <Image
+              src={sharedPost.images[0]}
+              alt="Post image"
+              fill
+              className="object-cover"
+              sizes="200px"
+            />
+          </div>
+        )}
+      </div>
+      {/* View link */}
+      <div className={`px-2.5 py-1.5 border-t text-[10px] font-medium ${isMe ? "border-white/10 text-blue-200" : "border-slate-100 text-[#1E3A5F]"}`}>
+        View post →
+      </div>
+    </Link>
+  );
 }
 
 export function ChatModal() {
@@ -226,7 +295,10 @@ export function ChatModal() {
                       : "bg-white border border-gray-200 text-gray-800 rounded-bl-sm shadow-sm"
                   }`}
                 >
-                  {msg.body}
+                  {msg.body && <p>{msg.body}</p>}
+                  {msg.sharedPost && (
+                    <SharedPostCard sharedPost={msg.sharedPost} isMe={isMe} />
+                  )}
                   <div className={`text-[10px] mt-0.5 ${isMe ? "text-blue-200" : "text-gray-400"} text-right`}>
                     {formatMsgTime(msg.createdAt)}
                   </div>
@@ -304,7 +376,10 @@ export function ChatModal() {
                       : "bg-white border border-gray-200 text-gray-800 rounded-bl-sm shadow-sm"
                   }`}
                 >
-                  {msg.body}
+                  {msg.body && <p>{msg.body}</p>}
+                  {msg.sharedPost && (
+                    <SharedPostCard sharedPost={msg.sharedPost} isMe={isMe} />
+                  )}
                   <div className={`text-[10px] mt-0.5 ${isMe ? "text-blue-200" : "text-gray-400"} text-right`}>
                     {formatMsgTime(msg.createdAt)}
                   </div>

@@ -21,7 +21,7 @@ interface PostShareModalProps {
   isOpen: boolean;
   onClose: () => void;
   /** Called after successfully sharing as a new post, so parent can prepend it to the feed */
-  onShareAsPost?: (content: string) => Promise<void>;
+  onShareAsPost?: (content: string, sharedPostId: string) => Promise<void>;
 }
 
 // ─── Small Avatar ─────────────────────────────────────────────────────────────
@@ -55,31 +55,22 @@ function ShareAsPostTab({
 }: {
   post: Post;
   onClose: () => void;
-  onShareAsPost?: (content: string) => Promise<void>;
+  onShareAsPost?: (content: string, sharedPostId: string) => Promise<void>;
 }) {
-  const contentPreview = post.content.length > 280
-    ? post.content.slice(0, 280) + "…"
-    : post.content;
-
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
 
   const submit = async () => {
-    const quotedContent = `↩ Reposting from ${post.author.fullName || "Volunteer"}:\n"${contentPreview}"`;
-    const fullContent = message.trim()
-      ? `${message.trim()}\n\n${quotedContent}`
-      : quotedContent;
-
     setLoading(true);
     try {
       if (onShareAsPost) {
-        await onShareAsPost(fullContent);
+        await onShareAsPost(message.trim(), post.id);
       } else {
         await fetch("/api/community/posts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content: fullContent }),
+          body: JSON.stringify({ content: message.trim(), sharedPostId: post.id }),
         });
       }
       setDone(true);
@@ -99,25 +90,61 @@ function ShareAsPostTab({
 
   return (
     <div className="space-y-3">
-      {/* Quoted post preview */}
-      <div className="border border-slate-200 rounded-xl p-3 bg-slate-50">
-        <p className="text-xs text-slate-400 font-medium mb-1">
-          ↩ {post.author.fullName || "Volunteer"}&apos;s post
-        </p>
-        <p className="text-sm text-slate-600 line-clamp-3 whitespace-pre-wrap break-words">
-          {post.content}
-        </p>
-      </div>
-
-      {/* Optional message */}
+      {/* Optional message textarea */}
       <textarea
         value={message}
         onChange={(e) => setMessage(e.target.value)}
-        placeholder="Add your thoughts… (optional)"
+        placeholder="Say something about this post… (optional)"
         className="w-full p-3 border border-slate-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#1E3A5F] bg-white"
         rows={3}
         maxLength={500}
       />
+
+      {/* Embedded post preview — Facebook-style */}
+      <div className="border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
+        {/* Author row */}
+        <div className="flex items-center gap-2 px-3 pt-2.5 pb-1.5">
+          {post.author.profilePicUrl ? (
+            <Image
+              src={post.author.profilePicUrl}
+              alt={post.author.fullName || "User"}
+              width={28}
+              height={28}
+              className="rounded-full object-cover border border-slate-200 flex-shrink-0"
+              style={{ width: 28, height: 28 }}
+            />
+          ) : (
+            <div className="w-7 h-7 rounded-full bg-[#1E3A5F] text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+              {(post.author.fullName || "U").charAt(0).toUpperCase()}
+            </div>
+          )}
+          <span className="text-xs font-semibold text-slate-700 truncate">
+            {post.author.fullName || "Volunteer"}
+          </span>
+        </div>
+        {/* Post content preview */}
+        <div className="px-3 pb-2.5">
+          <p className="text-sm text-slate-600 line-clamp-4 whitespace-pre-wrap break-words leading-relaxed">
+            {post.content}
+          </p>
+          {post.images && post.images.length > 0 && (
+            <div className="mt-2 relative h-28 rounded-lg overflow-hidden">
+              <Image
+                src={post.images[0]}
+                alt="Post image"
+                fill
+                className="object-cover"
+                sizes="400px"
+              />
+              {post.images.length > 1 && (
+                <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                  <span className="text-white text-xs font-semibold">+{post.images.length - 1} more</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
 
       <button
         onClick={submit}
@@ -173,17 +200,11 @@ function ShareViaChatTab({ post, onClose }: { post: Post; onClose: () => void })
       if (!convRes.ok) { setSendingTo(null); return; }
       const { conversationId } = await convRes.json();
 
-      // Build share message
-      const postUrl = `${window.location.origin}/dashboard/community?post=${post.id}`;
-      const preview = post.content.length > 120
-        ? post.content.slice(0, 120) + "…"
-        : post.content;
-      const body = `📌 Shared a post by ${post.author.fullName || "Volunteer"}:\n"${preview}"\n\n${postUrl}`;
-
+      // Send message with sharedPostId for rich link preview
       await fetch(`/api/chat/${conversationId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body }),
+        body: JSON.stringify({ body: "", sharedPostId: post.id }),
       });
 
       setSentTo(targetUserId);

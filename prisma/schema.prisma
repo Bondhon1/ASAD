@@ -550,6 +550,12 @@ model Post {
   priority              Int              @default(0)  // 0=normal, 1=sponsored_ad, 2=notice
   targetAudience        String?          // JSON AudienceSpec for the notice — not user IDs
   isDeleted             Boolean          @default(false)
+  // Share tracking
+  shareCount            Int              @default(0)
+  sharedPostId          String?          // Reference to original post when this is a share
+  sharedPost            Post?            @relation("SharedPosts", fields: [sharedPostId], references: [id], onDelete: SetNull)
+  sharedByPosts         Post[]           @relation("SharedPosts")
+  sharedInMessages      Message[]        @relation("SharedPostMessages")
   comments              PostComment[]
   reactions             PostReaction[]
   reports               PostReport[]
@@ -559,6 +565,7 @@ model Post {
   @@index([authorId])
   @@index([createdAt])
   @@index([isDeleted])
+  @@index([sharedPostId])
 }
 
 enum PostType {
@@ -718,11 +725,15 @@ model Message {
   toUserId              String
   body                  String
   readAt                DateTime?
+  // Shared post link preview
+  sharedPostId          String?
+  sharedPost            Post?            @relation("SharedPostMessages", fields: [sharedPostId], references: [id], onDelete: SetNull)
   createdAt             DateTime         @default(now())
   
   @@index([conversationId])
   @@index([fromUserId])
   @@index([toUserId])
+  @@index([sharedPostId])
 }
 
 // ============================================================================
@@ -956,6 +967,7 @@ enum NotificationType {
   POST_REPORT_STATUS
   POST_ACTION
   NOTICE_PUBLISHED
+  POST_SHARED
 
   // Legacy (retained for existing DB rows — no longer issued by new code)
   COIN_ENDORSED
