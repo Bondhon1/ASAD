@@ -5,6 +5,29 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
+// GET /api/community/comments/[id]/react — list users who reacted
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email)
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const reactions = await prisma.commentReaction.findMany({
+      where: { commentId: id },
+      select: {
+        user: { select: { id: true, fullName: true, profilePicUrl: true, volunteerId: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    });
+
+    return NextResponse.json({ reactions: reactions.map((r) => r.user) });
+  } catch (err) {
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
+  }
+}
+
 // POST /api/community/comments/[id]/react — toggle reaction on comment
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {

@@ -6,7 +6,7 @@ import { publishNotification } from "@/lib/ably";
 
 export const dynamic = "force-dynamic";
 
-// GET /api/community/follow/[userId] — check follow status + counts
+// GET /api/community/follow/[userId] — check follow status + counts, or list followers/following
 export async function GET(req: NextRequest, { params }: { params: Promise<{ userId: string }> }) {
   try {
     const { userId } = await params;
@@ -19,6 +19,28 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ user
       select: { id: true },
     });
     if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const type = req.nextUrl.searchParams.get("type");
+
+    if (type === "followers") {
+      const rows = await prisma.follow.findMany({
+        where: { followingId: userId },
+        select: { follower: { select: { id: true, fullName: true, profilePicUrl: true, volunteerId: true } } },
+        orderBy: { createdAt: "desc" },
+        take: 100,
+      });
+      return NextResponse.json({ users: rows.map((r) => r.follower) });
+    }
+
+    if (type === "following") {
+      const rows = await prisma.follow.findMany({
+        where: { followerId: userId },
+        select: { following: { select: { id: true, fullName: true, profilePicUrl: true, volunteerId: true } } },
+        orderBy: { createdAt: "desc" },
+        take: 100,
+      });
+      return NextResponse.json({ users: rows.map((r) => r.following) });
+    }
 
     const [isFollowing, followerCount, followingCount] = await Promise.all([
       prisma.follow.findUnique({

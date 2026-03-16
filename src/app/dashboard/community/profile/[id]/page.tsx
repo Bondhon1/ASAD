@@ -38,11 +38,99 @@ interface UserProfile {
   };
 }
 
-function StatBadge({ label, value }: { label: string; value: number | string }) {
+function StatBadge({ label, value, onClick }: { label: string; value: number | string; onClick?: () => void }) {
   return (
-    <div className="text-center">
+    <div
+      className={`text-center ${onClick ? "cursor-pointer hover:opacity-70 transition-opacity" : ""}`}
+      onClick={onClick}
+    >
       <div className="text-xl font-bold text-slate-800">{value}</div>
-      <div className="text-xs text-slate-500">{label}</div>
+      <div className={`text-xs ${onClick ? "text-[#1E3A5F] underline underline-offset-2" : "text-slate-500"}`}>{label}</div>
+    </div>
+  );
+}
+
+interface FollowUser {
+  id: string;
+  fullName: string | null;
+  profilePicUrl: string | null;
+  volunteerId: string | null;
+}
+
+function FollowListModal({
+  profileId,
+  type,
+  onClose,
+}: {
+  profileId: string;
+  type: "followers" | "following";
+  onClose: () => void;
+}) {
+  const [users, setUsers] = useState<FollowUser[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`/api/community/follow/${profileId}?type=${type}`);
+        if (res.ok) {
+          const d = await res.json();
+          setUsers(d.users || []);
+        }
+      } catch {}
+      setLoading(false);
+    })();
+  }, [profileId, type]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-xl w-full max-w-sm max-h-[70vh] flex flex-col overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+          <h2 className="font-semibold text-slate-800 capitalize">{type}</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div className="overflow-y-auto flex-1 p-3">
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <div className="w-6 h-6 border-2 border-[#1E3A5F] border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : users.length === 0 ? (
+            <p className="text-center text-sm text-slate-400 py-8">No {type} yet.</p>
+          ) : (
+            <ul className="space-y-1">
+              {users.map((u) => (
+                <li key={u.id}>
+                  <Link
+                    href={`/dashboard/community/profile/${u.id}`}
+                    className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-slate-50 transition-colors"
+                    onClick={onClose}
+                  >
+                    {u.profilePicUrl ? (
+                      <Image src={u.profilePicUrl} alt={u.fullName || "User"} width={36} height={36} className="rounded-full object-cover border border-slate-200 flex-shrink-0" style={{ width: 36, height: 36 }} />
+                    ) : (
+                      <div className="w-9 h-9 rounded-full bg-[#1E3A5F] text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
+                        {(u.fullName || "U").charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium text-slate-800 truncate">{u.fullName || "Volunteer"}</div>
+                      {u.volunteerId && <div className="text-xs text-slate-400 font-mono">#{u.volunteerId}</div>}
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -59,6 +147,7 @@ export default function UserProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [followLoading, setFollowLoading] = useState(false);
+  const [followModal, setFollowModal] = useState<"followers" | "following" | null>(null);
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [postsLoading, setPostsLoading] = useState(false);
@@ -357,11 +446,19 @@ export default function UserProfilePage() {
               {/* Stats */}
               <div className="flex gap-6 mt-4 pt-4 border-t border-slate-100">
                 <StatBadge label="Posts" value={profile._count.posts} />
-                <StatBadge label="Followers" value={profile._count.followers} />
-                <StatBadge label="Following" value={profile._count.following} />
+                <StatBadge label="Followers" value={profile._count.followers} onClick={() => setFollowModal("followers")} />
+                <StatBadge label="Following" value={profile._count.following} onClick={() => setFollowModal("following")} />
               </div>
             </div>
           </div>
+
+          {followModal && (
+            <FollowListModal
+              profileId={profile.id}
+              type={followModal}
+              onClose={() => setFollowModal(null)}
+            />
+          )}
 
           {/* Posts */}
           <h2 className="text-lg font-bold text-slate-700 px-1">

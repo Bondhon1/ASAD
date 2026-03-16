@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { MentionTextarea, renderMentionContent } from "./MentionTextarea";
@@ -97,6 +97,133 @@ export function Avatar({ user, size = 40 }: { user: Author; size?: number }) {
     >
       {initials}
     </div>
+  );
+}
+
+// ─── Reaction Count with Tooltip ──────────────────────────────────────────────
+
+interface ReactorUser {
+  id: string;
+  fullName: string | null;
+  profilePicUrl: string | null;
+  volunteerId: string | null;
+}
+
+function ReactionCount({
+  count,
+  postId,
+  commentId,
+}: {
+  count: number;
+  postId?: string;
+  commentId?: string;
+}) {
+  const [visible, setVisible] = useState(false);
+  const [reactors, setReactors] = useState<ReactorUser[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [fetched, setFetched] = useState(false);
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const fetchReactors = useCallback(async () => {
+    if (fetched) return;
+    setLoading(true);
+    try {
+      const url = postId
+        ? `/api/community/posts/${postId}/react`
+        : `/api/community/comments/${commentId}/react`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const d = await res.json();
+        setReactors(d.reactions || []);
+        setFetched(true);
+      }
+    } catch {}
+    setLoading(false);
+  }, [postId, commentId, fetched]);
+
+  const show = useCallback(() => {
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    setVisible(true);
+    fetchReactors();
+  }, [fetchReactors]);
+
+  const hide = useCallback(() => {
+    hideTimer.current = setTimeout(() => setVisible(false), 200);
+  }, []);
+
+  // Mobile long-press
+  const onTouchStart = useCallback(() => {
+    longPressTimer.current = setTimeout(() => {
+      show();
+    }, 400);
+  }, [show]);
+
+  const onTouchEnd = useCallback(() => {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+  }, []);
+
+  // Close on outside tap (mobile)
+  useEffect(() => {
+    if (!visible) return;
+    const handler = () => setVisible(false);
+    document.addEventListener("touchstart", handler, { passive: true });
+    return () => document.removeEventListener("touchstart", handler);
+  }, [visible]);
+
+  if (count <= 0) return null;
+
+  return (
+    <span
+      className="relative cursor-default select-none"
+      onMouseEnter={show}
+      onMouseLeave={hide}
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+    >
+      <span className="underline decoration-dotted underline-offset-2">{count}</span>
+
+      {visible && (
+        <div
+          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 bg-white border border-slate-200 rounded-xl shadow-lg p-2 min-w-[160px] max-w-[220px]"
+          onMouseEnter={show}
+          onMouseLeave={hide}
+          onTouchStart={(e) => e.stopPropagation()}
+        >
+          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide px-1 mb-1">
+            ❤️ Loved by
+          </p>
+          {loading ? (
+            <div className="flex justify-center py-2">
+              <div className="w-4 h-4 border-2 border-rose-300 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : reactors.length === 0 ? (
+            <p className="text-xs text-slate-400 px-1">No reactions yet</p>
+          ) : (
+            <ul className="max-h-40 overflow-y-auto space-y-1">
+              {reactors.map((u) => (
+                <li key={u.id}>
+                  <Link
+                    href={`/dashboard/community/profile/${u.id}`}
+                    className="flex items-center gap-2 px-1 py-0.5 rounded-lg hover:bg-rose-50 transition-colors"
+                    onClick={() => setVisible(false)}
+                  >
+                    {u.profilePicUrl ? (
+                      <Image src={u.profilePicUrl} alt={u.fullName || "User"} width={22} height={22} className="rounded-full object-cover border border-slate-200" style={{ width: 22, height: 22 }} />
+                    ) : (
+                      <div className="w-[22px] h-[22px] rounded-full bg-[#1E3A5F] text-white flex items-center justify-center text-[10px] font-bold flex-shrink-0">
+                        {(u.fullName || "U").charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <span className="text-xs text-slate-700 truncate">{u.fullName || "Volunteer"}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </span>
   );
 }
 
@@ -225,7 +352,7 @@ export function CommentItem({
             }`}
           >
             <HeartIcon filled={comment.userReacted} />
-            {comment.reactionCount > 0 && <span>{comment.reactionCount}</span>}
+            <ReactionCount count={comment.reactionCount} commentId={comment.id} />
           </button>
           {!isReply && onReply && (
             <button
@@ -587,7 +714,7 @@ export function PostCard({
           }`}
         >
           <HeartIcon filled={post.userReacted} />
-          <span>{post.reactionCount > 0 ? post.reactionCount : ""}</span>
+          <ReactionCount count={post.reactionCount} postId={post.id} />
           <span className="ml-0.5">{post.userReacted ? "Loved" : "Love"}</span>
         </button>
 
