@@ -429,7 +429,131 @@ function SponsoredAdModal({
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// ─── Edit Post Modal (for NOTICE and SPONSORED_AD posts) ──────────────────────
+
+function EditPostModal({
+  post,
+  onClose,
+  onSave,
+  services,
+  sectors,
+  clubs,
+}: {
+  post: { id: string; content: string; postType?: string; images?: string[]; targetAudience?: string | null } | null;
+  onClose: () => void;
+  onSave: (id: string, updates: { content: string; images?: string[]; targetAudience?: string | null }) => Promise<void>;
+  services: { id: string; name: string }[];
+  sectors: { id: string; name: string }[];
+  clubs: { id: string; name: string }[];
+}) {
+  const [content, setContent] = useState(post?.content || "");
+  const [images, setImages] = useState<string[]>(post?.images || []);
+  const [uploading, setUploading] = useState(false);
+  const [audience, setAudience] = useState<AudienceSpec>(() => {
+    try { return post?.targetAudience ? JSON.parse(post.targetAudience) : { all: true }; }
+    catch { return { all: true }; }
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (post) {
+      setContent(post.content);
+      setImages(post.images || []);
+      try { setAudience(post.targetAudience ? JSON.parse(post.targetAudience) : { all: true }); }
+      catch { setAudience({ all: true }); }
+      setError(null);
+    }
+  }, [post?.id]);
+
+  const handleImages = async (files: FileList) => {
+    setUploading(true);
+    setError(null);
+    const toUpload = Array.from(files).slice(0, 10 - images.length);
+    const urls: string[] = [];
+    for (const f of toUpload) {
+      try { urls.push(await uploadImageToBlob(f)); }
+      catch (e: any) { setError(e.message || "Upload failed"); }
+    }
+    setImages((prev) => [...prev, ...urls]);
+    setUploading(false);
+  };
+
+  const handleSave = async () => {
+    if (!post || !content.trim()) { setError("Content is required"); return; }
+    setSubmitting(true);
+    setError(null);
+    try {
+      const updates: { content: string; images?: string[]; targetAudience?: string | null } = {
+        content: content.trim(),
+        images,
+      };
+      if (post.postType === "NOTICE") {
+        const hasAudience = audience.all || (audience.services?.length ?? 0) > 0 || (audience.sectors?.length ?? 0) > 0 || (audience.clubs?.length ?? 0) > 0;
+        updates.targetAudience = hasAudience ? JSON.stringify(audience) : null;
+      }
+      await onSave(post.id, updates);
+      onClose();
+    } catch (e: any) {
+      setError(e.message || "Failed to save");
+    }
+    setSubmitting(false);
+  };
+
+  if (!post) return null;
+
+  const isNotice = post.postType === "NOTICE";
+  const accentClass = isNotice ? "ring-amber-400 bg-amber-500 hover:bg-amber-600" : "ring-blue-400 bg-blue-600 hover:bg-blue-700";
+  const label = isNotice ? "📢 Edit Notice" : "✓ Edit Sponsored AD";
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-4 border-b border-slate-100">
+          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${isNotice ? "bg-amber-100 text-amber-800 border-amber-200" : "bg-blue-100 text-blue-800 border-blue-200"}`}>{label}</span>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl leading-none">×</button>
+        </div>
+
+        <div className="p-4 space-y-4">
+          <div>
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Content</label>
+            <MentionTextarea
+              value={content}
+              onChange={setContent}
+              className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-slate-400 focus:bg-white transition-all"
+              rows={5}
+              maxLength={2000}
+            />
+            <div className="text-right text-xs text-slate-400 mt-1">{content.length}/2000</div>
+          </div>
+
+          <ImagePicker images={images} uploading={uploading} onAdd={handleImages} onRemove={(i) => setImages((p) => p.filter((_, j) => j !== i))} />
+
+          {isNotice && (
+            <AudiencePicker services={services} sectors={sectors} clubs={clubs} audience={audience} onChange={setAudience} />
+          )}
+
+          {error && <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+        </div>
+
+        <div className="flex gap-2 p-4 border-t border-slate-100">
+          <button onClick={onClose} className="flex-1 px-4 py-2 bg-white border border-slate-200 text-sm rounded-xl text-slate-600 hover:bg-slate-50 transition-colors">
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={submitting || !content.trim()}
+            className={`flex-1 px-4 py-2 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${accentClass}`}
+          >
+            {submitting ? "Saving…" : "Save Changes"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 
 export default function CommunityPage() {
   const { data: session } = useSession();
@@ -454,6 +578,7 @@ export default function CommunityPage() {
   // Special post modals
   const [noticeModalOpen, setNoticeModalOpen] = useState(false);
   const [adModalOpen, setAdModalOpen] = useState(false);
+  const [editingSpecialPost, setEditingSpecialPost] = useState<Post | null>(null);
 
   // Audience data for notice targeting
   const [servicesList, setServicesList] = useState<{ id: string; name: string }[]>([]);
@@ -634,6 +759,17 @@ export default function CommunityPage() {
         setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, content: d.post.content } : p)));
       }
     } catch {}
+  };
+
+  const editSpecialPost = async (postId: string, updates: { content: string; images?: string[]; targetAudience?: string | null }) => {
+    const res = await fetch(`/api/community/posts/${postId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error || "Failed to save");
+    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, ...updates } : p)));
   };
 
   const sharePost = async (content: string) => {
@@ -866,6 +1002,7 @@ export default function CommunityPage() {
                   currentUserRole={_commRole}
                   onDelete={deletePost}
                   onEdit={editPost}
+                  onEditSpecial={(p) => setEditingSpecialPost(p)}
                   onReact={reactPost}
                   onShareAsPost={sharePost}
                 />
@@ -905,6 +1042,14 @@ export default function CommunityPage() {
       isOpen={adModalOpen}
       onClose={() => setAdModalOpen(false)}
       onSubmit={submitAd}
+    />
+    <EditPostModal
+      post={editingSpecialPost}
+      onClose={() => setEditingSpecialPost(null)}
+      onSave={editSpecialPost}
+      services={servicesList}
+      sectors={sectorsList}
+      clubs={clubsList}
     />
     </>
   );

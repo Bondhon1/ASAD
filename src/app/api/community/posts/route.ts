@@ -34,8 +34,6 @@ const AUTHOR_SELECT = {
   monthlyPaymentExemptReason: true,
 };
 
-type RawRow = { id: string; adjusted_time: Date };
-
 // GET /api/community/posts?cursor=...&limit=10
 export async function GET(request: NextRequest) {
   try {
@@ -90,89 +88,77 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ posts: enriched, nextCursor: hasMore ? items[items.length - 1].id : null });
     }
 
-    // ── Community feed: time-decay sort ──────────────────────────────────────
-    // adjusted_time = createdAt + (priority * BOOST hours)
-    // Sort by adjusted_time DESC, then id DESC for stable tie-breaking.
-    // Cursor = base64url({ t: ISO adjusted_time, id })
-    // The interval '6 hours' literal is inlined directly in the SQL string —
-    // Prisma parameterizes ${...} template values and PostgreSQL rejects a bound
-    // parameter inside interval arithmetic, so we avoid any ${} in that expression.
+    // ── Community feed: time-decay sort (done in JS to avoid raw SQL param issues) ──
+    // score = createdAt ms + priority * BOOST_MS
+    // NOTICE (priority=2) → +12h boost; SPONSORED_AD (priority=1) → +6h boost.
+    // After the boost window passes, special posts naturally sink below newer ones.
 
-    let cursorTime: Date | null = null;
+    const BOOST_MS = PRIORITY_BOOST_HOURS * 60 * 60 * 1000;
+    const MAX_FEED_POSTS = 300; // enough for ~30 pages of 10
+
+    let cursorScore: number | null = null;
     let cursorId: string | null = null;
     if (cursor) {
       try {
         const decoded = JSON.parse(Buffer.from(cursor, "base64url").toString());
-        cursorTime = new Date(decoded.t);
+        cursorScore = new Date(decoded.t).getTime();
         cursorId = decoded.id;
       } catch { /* invalid cursor → start from top */ }
     }
 
-    // Two concrete queries — avoids composing Prisma.sql fragments which can
-    // re-introduce parameter placeholders inside the interval expression.
-    const rawRows: RawRow[] = cursorTime && cursorId
-      ? await prisma.$queryRaw<RawRow[]>`
-          SELECT
-            p.id,
-            p."createdAt" + (p.priority * interval '6 hours') AS adjusted_time
-          FROM "Post" p
-          WHERE p."isDeleted" = false
-            AND (
-              (p."createdAt" + (p.priority * interval '6 hours')) < ${cursorTime}
-              OR (
-                (p."createdAt" + (p.priority * interval '6 hours')) = ${cursorTime}
-                AND p.id < ${cursorId}
-              )
-            )
-          ORDER BY adjusted_time DESC, p.id DESC
-          LIMIT ${limit + 1}
-        `
-      : await prisma.$queryRaw<RawRow[]>`
-          SELECT
-            p.id,
-            p."createdAt" + (p.priority * interval '6 hours') AS adjusted_time
-          FROM "Post" p
-          WHERE p."isDeleted" = false
-          ORDER BY adjusted_time DESC, p.id DESC
-          LIMIT ${limit + 1}
-        `;
+    // Single Prisma query — no raw SQL, no parameter issues
+    const allPosts = await prisma.post.findMany({
+      where: { isDeleted: false },
+      orderBy: { createdAt: "desc" },
+      take: MAX_FEED_POSTS,
+      include: {
+        author: { select: AUTHOR_SELECT },
+        reactions: { where: { userId: user.id }, select: { type: true }, take: 1 },
+        _count: { select: { reactions: true, comments: { where: { isDeleted: false, parentCommentId: null } } } },
+      },
+    });
 
-    const hasMore = rawRows.length > limit;
-    const pageRows = hasMore ? rawRows.slice(0, limit) : rawRows;
-    const pageIds = pageRows.map((r) => r.id);
+    // Score each post and sort by score DESC, id DESC (stable tie-break)
+    const withScore = allPosts.map((p) => ({
+      post: p,
+      score: new Date(p.createdAt).getTime() + (p.priority || 0) * BOOST_MS,
+    }));
+    withScore.sort((a, b) => b.score - a.score || b.post.id.localeCompare(a.post.id));
 
-    // Fetch full post data for the page IDs
-    const postMap = new Map(
-      (await prisma.post.findMany({
-        where: { id: { in: pageIds } },
-        include: {
-          author: { select: AUTHOR_SELECT },
-          reactions: { where: { userId: user.id }, select: { type: true }, take: 1 },
-          _count: { select: { reactions: true, comments: { where: { isDeleted: false, parentCommentId: null } } } },
-        },
-      })).map((p) => [p.id, p])
-    );
+    // Cursor-based keyset pagination
+    let startIdx = 0;
+    if (cursorScore !== null && cursorId !== null) {
+      const cs = cursorScore, ci = cursorId;
+      const idx = withScore.findIndex(({ score, post }) =>
+        score < cs || (score === cs && post.id < ci)
+      );
+      startIdx = idx === -1 ? withScore.length : idx;
+    }
 
-    // Restore the raw-query order
-    const items = pageIds.map((id) => postMap.get(id)!).filter(Boolean);
+    const page = withScore.slice(startIdx, startIdx + limit + 1);
+    const hasMore = page.length > limit;
+    const scoredItems = hasMore ? page.slice(0, limit) : page;
 
     const overdueMap = await computeOverdueMap(
-      [...new Set(items.filter((p) => p.author.status === "OFFICIAL" && !p.author.monthlyPaymentExempt).map((p) => p.author.id))]
+      [...new Set(scoredItems
+        .filter(({ post: p }) => p.author.status === "OFFICIAL" && !p.author.monthlyPaymentExempt)
+        .map(({ post: p }) => p.author.id)
+      )]
     );
 
-    const enriched = items.map((p) => ({
+    const enriched = scoredItems.map(({ post: p, score }) => ({
       ...p,
       author: { ...p.author, overdueMonthsCount: p.author.monthlyPaymentExempt ? 0 : (overdueMap[p.author.id] ?? 0) },
       reactionCount: p._count.reactions,
       userReacted: p.reactions.length > 0,
       commentCount: p._count.comments,
       reactions: undefined,
+      score: undefined, // strip internal field
     }));
 
-    // Next cursor = adjusted_time + id of last returned row
-    const lastRaw = hasMore ? pageRows[pageRows.length - 1] : null;
-    const nextCursor = lastRaw
-      ? Buffer.from(JSON.stringify({ t: lastRaw.adjusted_time.toISOString(), id: lastRaw.id })).toString("base64url")
+    const lastItem = hasMore ? scoredItems[scoredItems.length - 1] : null;
+    const nextCursor = lastItem
+      ? Buffer.from(JSON.stringify({ t: new Date(lastItem.score).toISOString(), id: lastItem.post.id })).toString("base64url")
       : null;
 
     return NextResponse.json({ posts: enriched, nextCursor });
@@ -267,17 +253,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const postType = rawType as "TEXT" | "GALLERY" | "EVENT" | "NOTICE" | "SPONSORED_AD";
-
-    const post = await prisma.post.create({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const post = await (prisma.post.create as any)({
       data: {
         authorId: user.id,
         content,
-        postType,
+        postType: rawType,
         images,
         priority,
         ...(targetAudience ? { targetAudience } : {}),
-        // noticeTargetUserIds intentionally NOT stored — too large, resolved transiently above
       },
       include: {
         author: { select: AUTHOR_SELECT },
@@ -297,7 +281,8 @@ export async function POST(request: NextRequest) {
           userId: user.id,
           broadcast: true,
           targetUserIds: notificationTargetIds, // stored on Notification, not on Post
-          type: "NOTICE_PUBLISHED",
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          type: "NOTICE_PUBLISHED" as any,
           title: "📢 New Notice",
           message: noticeTitle,
           link: `/dashboard/community?post=${post.id}`,

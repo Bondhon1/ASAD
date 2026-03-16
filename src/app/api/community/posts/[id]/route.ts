@@ -89,15 +89,33 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (post.authorId !== user.id)
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-    const { content } = await req.json();
+    const body = await req.json();
+    const { content, images, targetAudience } = body;
     if (!content?.trim())
       return NextResponse.json({ error: "Content cannot be empty" }, { status: 400 });
     if (content.length > 2000)
       return NextResponse.json({ error: "Content exceeds 2000 characters" }, { status: 400 });
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const updateData: any = { content: content.trim() };
+
+    // Allow updating images for NOTICE and SPONSORED_AD posts
+    if (images !== undefined && (post.postType === "NOTICE" || post.postType === "SPONSORED_AD")) {
+      updateData.images = Array.isArray(images)
+        ? images.filter((u: unknown) => typeof u === "string" && (u as string).startsWith("http")).slice(0, 10)
+        : [];
+    }
+
+    // Allow updating targetAudience for NOTICE posts
+    if (targetAudience !== undefined && post.postType === "NOTICE") {
+      updateData.targetAudience = targetAudience
+        ? (typeof targetAudience === "string" ? targetAudience : JSON.stringify(targetAudience))
+        : null;
+    }
+
     const updated = await prisma.post.update({
       where: { id },
-      data: { content: content.trim() },
+      data: updateData,
       include: { author: { select: AUTHOR_SELECT } },
     });
 

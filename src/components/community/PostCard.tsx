@@ -526,6 +526,7 @@ export function PostCard({
   currentUserRole = "VOLUNTEER",
   onDelete,
   onEdit,
+  onEditSpecial,
   onReact,
   onShareAsPost,
 }: {
@@ -534,6 +535,7 @@ export function PostCard({
   currentUserRole?: string;
   onDelete: (id: string) => void;
   onEdit: (id: string, content: string) => Promise<void>;
+  onEditSpecial?: (post: Post) => void;
   onReact: (id: string, currentReacted: boolean) => void;
   onShareAsPost?: (content: string) => Promise<void>;
 }) {
@@ -694,12 +696,13 @@ export function PostCard({
 
   if (isAuthor) {
     // Post owner: Edit and Delete
+    const isSpecialPost = post.postType === "NOTICE" || post.postType === "SPONSORED_AD";
     menuOptions.push({
       label: "Edit",
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
       ),
-      onClick: () => setEditing(!editing),
+      onClick: () => isSpecialPost && onEditSpecial ? onEditSpecial(post) : setEditing(!editing),
     });
     menuOptions.push({
       label: "Delete",
