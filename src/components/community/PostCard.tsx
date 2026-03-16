@@ -8,6 +8,7 @@ import UserMonthlyExemptBadge from "@/components/dashboard/UserMonthlyExemptBadg
 import UserMonthlyOverdueIndicator from "@/components/dashboard/UserMonthlyOverdueIndicator";
 import { PostMenu } from "./PostMenu";
 import { ReportPostModal } from "./ReportPostModal";
+import PostShareModal from "./PostShareModal";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -434,6 +435,7 @@ export function PostCard({
   onDelete,
   onEdit,
   onReact,
+  onShareAsPost,
 }: {
   post: Post;
   currentUserId: string;
@@ -441,6 +443,7 @@ export function PostCard({
   onDelete: (id: string) => void;
   onEdit: (id: string, content: string) => Promise<void>;
   onReact: (id: string, currentReacted: boolean) => void;
+  onShareAsPost?: (content: string) => Promise<void>;
 }) {
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -451,6 +454,7 @@ export function PostCard({
   const [editContent, setEditContent] = useState(post.content);
   const [reportLoading, setReportLoading] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
 
   const loadComments = useCallback(async () => {
@@ -726,7 +730,23 @@ export function PostCard({
           <span>{post.commentCount > 0 ? post.commentCount : ""}</span>
           <span>Comment{post.commentCount !== 1 ? "s" : ""}</span>
         </button>
+
+        <button
+          onClick={() => setShareModalOpen(true)}
+          className="flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-[#1E3A5F] transition-colors ml-auto"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          <span>Share</span>
+        </button>
       </div>
+
+      {/* Share Modal */}
+      <PostShareModal
+        post={post}
+        isOpen={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        onShareAsPost={onShareAsPost}
+      />
 
       {/* Comments Section */}
       {commentsOpen && (

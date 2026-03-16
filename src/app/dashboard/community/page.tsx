@@ -167,6 +167,18 @@ export default function CommunityPage() {
     } catch {}
   };
 
+  const sharePost = async (content: string) => {
+    const res = await fetch("/api/community/posts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content }),
+    });
+    if (res.ok) {
+      const d = await res.json();
+      setPosts((prev) => [d.post, ...prev]);
+    }
+  };
+
   const reactPost = async (postId: string, currentReacted: boolean) => {
     // Optimistic update
     setPosts((prev) =>
@@ -360,6 +372,7 @@ export default function CommunityPage() {
                   onDelete={deletePost}
                   onEdit={editPost}
                   onReact={reactPost}
+                  onShareAsPost={sharePost}
                 />
               ))}
             </div>
