@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { notifyMentions } from "@/lib/mentionUtils";
+import { createAuditLog } from "@/lib/prisma-audit";
 import { computeOverdueMap } from "@/lib/computeOverdueMap";
 import { resolveAudienceUserIds, parseAudience } from "@/lib/taskAudience";
 
@@ -272,6 +273,17 @@ export async function POST(request: NextRequest) {
 
     // Notify mentioned users
     await notifyMentions({ content, actorId: user.id, actorName: user.fullName, postId: post.id });
+
+    // Audit log for special post types
+    if (rawType === "NOTICE" || rawType === "SPONSORED_AD") {
+      const action = rawType === "NOTICE" ? "NOTICE_CREATED" : "SPONSORED_AD_CREATED";
+      await createAuditLog(user.id, action, {
+        postId: post.id,
+        contentPreview: content.length > 100 ? content.slice(0, 97) + "…" : content,
+        imageCount: images.length,
+        ...(rawType === "NOTICE" && targetAudience ? { targetAudience } : {}),
+      });
+    }
 
     // Send NOTICE_PUBLISHED broadcast notification to targeted users
     if (rawType === "NOTICE" && notificationTargetIds.length > 0) {
