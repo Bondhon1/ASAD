@@ -102,14 +102,16 @@ function PostImageGallery({ images }: { images: string[] }) {
             key={i}
             className={`relative overflow-hidden cursor-pointer group bg-slate-100 ${
               count === 3 && i === 0 ? "row-span-2" : ""
-            } ${count === 1 ? "h-80" : "h-40"}`}
+            } ${count === 1 ? "w-full" : "h-40"}`}
             onClick={() => setLightbox(i)}
           >
             <Image
               src={url}
               alt={`Post image ${i + 1}`}
-              fill
-              className="object-cover group-hover:scale-105 transition-transform duration-200"
+              width={count === 1 ? 800 : 0}
+              height={count === 1 ? 600 : 0}
+              {...(count === 1 ? {} : { fill: true })}
+              className={count === 1 ? "w-full h-auto" : "object-cover group-hover:scale-105 transition-transform duration-200"}
               sizes={count === 1 ? "100vw" : "(max-width: 640px) 50vw, 300px"}
             />
             {i === 4 && count > 5 && (
