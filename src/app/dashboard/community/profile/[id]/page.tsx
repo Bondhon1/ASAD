@@ -447,7 +447,7 @@ export default function UserProfilePage() {
               <div className="flex gap-6 mt-4 pt-4 border-t border-slate-100">
                 <StatBadge label="Posts" value={profile._count.posts} />
                 <StatBadge label="Followers" value={profile._count.followers} onClick={() => setFollowModal("followers")} />
-                <StatBadge label="Following" value={profile._count.following} onClick={() => setFollowModal("following")} />
+                <StatBadge label="Following" value={profile._count.following} onClick={profile.isMe ? () => setFollowModal("following") : undefined} />
               </div>
             </div>
           </div>

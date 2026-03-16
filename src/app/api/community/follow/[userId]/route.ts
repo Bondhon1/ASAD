@@ -33,6 +33,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ user
     }
 
     if (type === "following") {
+      if (me.id !== userId)
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       const rows = await prisma.follow.findMany({
         where: { followerId: userId },
         select: { following: { select: { id: true, fullName: true, profilePicUrl: true, volunteerId: true } } },
