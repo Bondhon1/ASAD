@@ -573,6 +573,15 @@ export default function CommunityPage() {
   const [postSubmitting, setPostSubmitting] = useState(false);
   const [postError, setPostError] = useState<string | null>(null);
 
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<{ users: any[]; posts: any[] } | null>(null);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [view, setView] = useState<"feed" | "timeline">("feed");
 
   // Special post modals
@@ -609,6 +618,45 @@ export default function CommunityPage() {
       } catch {}
     })();
   }, [canCreateNotice]);
+
+  // Search logic — debounced, queries users + posts in parallel
+  const handleSearchChange = useCallback((q: string) => {
+    setSearchQuery(q);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    if (!q.trim() || q.trim().length < 2) {
+      setSearchResults(null);
+      return;
+    }
+    searchTimerRef.current = setTimeout(async () => {
+      setSearchLoading(true);
+      try {
+        const [usersRes, postsRes] = await Promise.all([
+          fetch(`/api/community/users/mention-search?q=${encodeURIComponent(q.trim())}`),
+          fetch(`/api/community/posts?q=${encodeURIComponent(q.trim())}&limit=5`),
+        ]);
+        const usersData = usersRes.ok ? await usersRes.json() : { users: [] };
+        const postsData = postsRes.ok ? await postsRes.json() : { posts: [] };
+        setSearchResults({ users: usersData.users || [], posts: postsData.posts || [] });
+      } catch {
+        setSearchResults({ users: [], posts: [] });
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 350);
+  }, []);
+
+  // Close search dropdown when clicking outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setSearchResults(null);
+        setSearchQuery("");
+        setSearchOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   const loadPosts = useCallback(
     async (cursor?: string, replace = false) => {
@@ -866,7 +914,104 @@ export default function CommunityPage() {
               <h1 className="text-2xl sm:text-3xl font-bold text-slate-800">Community</h1>
               <p className="text-slate-500 text-sm">Share updates with your fellow volunteers</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2" ref={searchRef}>
+              {/* Expandable search */}
+              <div className="relative flex items-center">
+                {searchOpen ? (
+                  <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-full px-3 py-1.5 shadow-sm w-52 sm:w-64 transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400 flex-shrink-0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => handleSearchChange(e.target.value)}
+                      placeholder="Search members or posts…"
+                      className="flex-1 text-sm bg-transparent outline-none text-slate-700 placeholder-slate-400 min-w-0"
+                    />
+                    {searchLoading && (
+                      <div className="w-3.5 h-3.5 border-2 border-slate-300 border-t-[#0b2545] rounded-full animate-spin flex-shrink-0" />
+                    )}
+                    {searchQuery && !searchLoading && (
+                      <button onClick={() => { setSearchQuery(""); setSearchResults(null); }} className="text-slate-400 hover:text-slate-600 flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => { setSearchOpen(true); setTimeout(() => searchInputRef.current?.focus(), 50); }}
+                    className="p-2 rounded-full bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-[#0b2545] transition-colors shadow-sm"
+                    title="Search"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  </button>
+                )}
+
+                {/* Search Results Dropdown */}
+                {searchOpen && searchResults && (
+                  <div className="absolute top-full right-0 mt-1.5 w-72 sm:w-80 bg-white border border-slate-200 rounded-2xl shadow-lg z-50 overflow-hidden max-h-[420px] overflow-y-auto">
+                    {searchResults.users.length === 0 && searchResults.posts.length === 0 ? (
+                      <p className="px-4 py-6 text-center text-sm text-slate-400">No results found</p>
+                    ) : (
+                      <>
+                        {searchResults.users.length > 0 && (
+                          <div>
+                            <p className="px-4 pt-3 pb-1 text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Members</p>
+                            {searchResults.users.map((u: any) => (
+                              <button
+                                key={u.id}
+                                onClick={() => { router.push(`/profile/${u.volunteerId || u.id}`); setSearchResults(null); setSearchQuery(""); setSearchOpen(false); }}
+                                className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors text-left"
+                              >
+                                <div className="w-8 h-8 rounded-full bg-slate-200 flex-shrink-0 overflow-hidden">
+                                  {u.profilePicUrl ? (
+                                    <Image src={u.profilePicUrl} alt={u.fullName || ""} width={32} height={32} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <span className="w-full h-full flex items-center justify-center text-xs font-bold text-slate-500">
+                                      {(u.fullName || "?")[0].toUpperCase()}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium text-slate-800 truncate">{u.fullName}</p>
+                                  {u.volunteerId && <p className="text-xs text-slate-400">{u.volunteerId}</p>}
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        {searchResults.posts.length > 0 && (
+                          <div className={searchResults.users.length > 0 ? "border-t border-slate-100" : ""}>
+                            <p className="px-4 pt-3 pb-1 text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Posts</p>
+                            {searchResults.posts.map((p: any) => (
+                              <button
+                                key={p.id}
+                                onClick={() => { router.push(`/dashboard/community?post=${p.id}`); setSearchResults(null); setSearchQuery(""); setSearchOpen(false); }}
+                                className="w-full flex items-start gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors text-left"
+                              >
+                                <div className="w-8 h-8 rounded-full bg-slate-200 flex-shrink-0 overflow-hidden mt-0.5">
+                                  {p.author?.profilePicUrl ? (
+                                    <Image src={p.author.profilePicUrl} alt={p.author.fullName || ""} width={32} height={32} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <span className="w-full h-full flex items-center justify-center text-xs font-bold text-slate-500">
+                                      {(p.author?.fullName || "?")[0].toUpperCase()}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-xs font-medium text-slate-500 mb-0.5">{p.author?.fullName}</p>
+                                  <p className="text-sm text-slate-700 line-clamp-2">{p.content}</p>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <button
                 onClick={() => setView("feed")}
                 className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
@@ -919,44 +1064,39 @@ export default function CommunityPage() {
                   <span className={`text-xs ${newPostContent.length > 1800 ? "text-amber-600" : "text-slate-400"}`}>
                     {newPostContent.length}/2000
                   </span>
-                  <button
-                    onClick={submitPost}
-                    disabled={postSubmitting || !newPostContent.trim()}
-                    className="px-5 py-2 bg-[#0b2545] text-white text-sm font-semibold rounded-xl hover:bg-[#0d2d5a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-                  >
-                    {postSubmitting ? "Posting…" : "Post"}
-                  </button>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {canCreateNotice && (
+                      <button
+                        onClick={() => setNoticeModalOpen(true)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold rounded-lg hover:bg-amber-100 transition-colors"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                        Post Notice
+                      </button>
+                    )}
+                    {canCreateAd && (
+                      <button
+                        onClick={() => setAdModalOpen(true)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-200 text-blue-800 text-xs font-semibold rounded-lg hover:bg-blue-100 transition-colors"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+                        Post Sponsored AD
+                      </button>
+                    )}
+                    <button
+                      onClick={submitPost}
+                      disabled={postSubmitting || !newPostContent.trim()}
+                      className="px-5 py-2 bg-[#0b2545] text-white text-sm font-semibold rounded-xl hover:bg-[#0d2d5a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                    >
+                      {postSubmitting ? "Posting…" : "Post"}
+                    </button>
+                  </div>
                 </div>
                 {postError && (
                   <p className="mt-2 text-xs text-red-600 bg-red-50 px-3 py-1.5 rounded-lg">{postError}</p>
                 )}
               </div>
             </div>
-
-            {/* Special post type actions for staff */}
-            {(canCreateNotice || canCreateAd) && (
-              <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100">
-                <span className="text-xs text-slate-400 mr-1">Staff:</span>
-                {canCreateNotice && (
-                  <button
-                    onClick={() => setNoticeModalOpen(true)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold rounded-lg hover:bg-amber-100 transition-colors"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
-                    Post Notice
-                  </button>
-                )}
-                {canCreateAd && (
-                  <button
-                    onClick={() => setAdModalOpen(true)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-200 text-blue-800 text-xs font-semibold rounded-lg hover:bg-blue-100 transition-colors"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
-                    Post Sponsored AD
-                  </button>
-                )}
-              </div>
-            )}
           </div>
 
           {/* Feed */}

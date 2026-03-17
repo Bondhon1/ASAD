@@ -58,6 +58,31 @@ export async function GET(request: NextRequest) {
     const cursor = searchParams.get("cursor") || undefined;
     const limit = Math.min(parseInt(searchParams.get("limit") || "10"), 20);
     const authorId = searchParams.get("authorId") || undefined;
+    const q = (searchParams.get("q") || "").trim();
+
+    // For search queries — return top matching posts by relevance (recency)
+    if (q.length >= 2) {
+      const posts = await prisma.post.findMany({
+        where: { isDeleted: false, content: { contains: q, mode: "insensitive" } },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+        include: {
+          author: { select: AUTHOR_SELECT },
+          _count: { select: { reactions: true, comments: { where: { isDeleted: false, parentCommentId: null } } } },
+        },
+      });
+      const overdueMap = await computeOverdueMap(
+        [...new Set(posts.filter((p) => p.author.status === "OFFICIAL" && !p.author.monthlyPaymentExempt).map((p) => p.author.id))]
+      );
+      const enriched = posts.map((p) => ({
+        ...p,
+        author: { ...p.author, overdueMonthsCount: p.author.monthlyPaymentExempt ? 0 : (overdueMap[p.author.id] ?? 0) },
+        reactionCount: p._count.reactions,
+        userReacted: false,
+        commentCount: p._count.comments,
+      }));
+      return NextResponse.json({ posts: enriched, nextCursor: null });
+    }
 
     // For timeline view (own posts only), simple createdAt sort — no priority boost needed
     if (authorId) {
