@@ -151,6 +151,22 @@ exports.Prisma.PostActionLogScalarFieldEnum = {
   createdAt: 'createdAt'
 };
 
+exports.Prisma.ErrorLogScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  userEmail: 'userEmail',
+  endpoint: 'endpoint',
+  method: 'method',
+  errorType: 'errorType',
+  errorMessage: 'errorMessage',
+  stackTrace: 'stackTrace',
+  requestBody: 'requestBody',
+  userAgent: 'userAgent',
+  ipAddress: 'ipAddress',
+  metadata: 'metadata',
+  createdAt: 'createdAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -169,7 +185,8 @@ exports.Prisma.NullsOrder = {
 
 exports.Prisma.ModelName = {
   AuditLog: 'AuditLog',
-  PostActionLog: 'PostActionLog'
+  PostActionLog: 'PostActionLog',
+  ErrorLog: 'ErrorLog'
 };
 
 /**

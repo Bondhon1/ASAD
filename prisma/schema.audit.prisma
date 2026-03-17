@@ -62,3 +62,31 @@ model PostActionLog {
   @@index([action])
   @@index([createdAt])
 }
+
+model ErrorLog {
+  id          String   @id @default(cuid())
+  
+  // Request context
+  userId      String?  // User ID if authenticated
+  userEmail   String?  // User email if available
+  endpoint    String   // API endpoint where error occurred
+  method      String   // HTTP method (GET, POST, etc.)
+  
+  // Error details
+  errorType   String   // Error name/type
+  errorMessage String  // Error message
+  stackTrace  String?  @db.Text // Full stack trace
+  requestBody String?  @db.Text // Request body (sanitized)
+  
+  // Metadata
+  userAgent   String?
+  ipAddress   String?
+  metadata    String?  @db.Text // Additional JSON metadata
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([userId])
+  @@index([endpoint])
+  @@index([errorType])
+  @@index([createdAt])
+}

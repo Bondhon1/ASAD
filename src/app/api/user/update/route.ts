@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { logError, getRequestMetadata } from "@/lib/errorLogger";
 
 export const dynamic = "force-dynamic";
 
@@ -135,6 +136,30 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ user: updatedUser });
   } catch (error) {
     console.error(error);
+    
+    // Log error to audit database
+    try {
+      const session = await getServerSession(authOptions);
+      const body = await request.json().catch(() => ({}));
+      const { userAgent, ipAddress } = getRequestMetadata(request);
+      
+      await logError({
+        userId: session?.user?.email ? (await prisma.user.findUnique({ 
+          where: { email: session.user.email },
+          select: { id: true }
+        }))?.id : undefined,
+        userEmail: session?.user?.email || undefined,
+        endpoint: '/api/user/update',
+        method: 'POST',
+        error,
+        requestBody: body,
+        userAgent,
+        ipAddress,
+      });
+    } catch (logErr) {
+      console.error('Failed to log error:', logErr);
+    }
+    
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }

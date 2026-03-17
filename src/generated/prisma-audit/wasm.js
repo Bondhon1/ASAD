@@ -123,6 +123,22 @@ exports.Prisma.PostActionLogScalarFieldEnum = {
   createdAt: 'createdAt'
 };
 
+exports.Prisma.ErrorLogScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  userEmail: 'userEmail',
+  endpoint: 'endpoint',
+  method: 'method',
+  errorType: 'errorType',
+  errorMessage: 'errorMessage',
+  stackTrace: 'stackTrace',
+  requestBody: 'requestBody',
+  userAgent: 'userAgent',
+  ipAddress: 'ipAddress',
+  metadata: 'metadata',
+  createdAt: 'createdAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -141,7 +157,8 @@ exports.Prisma.NullsOrder = {
 
 exports.Prisma.ModelName = {
   AuditLog: 'AuditLog',
-  PostActionLog: 'PostActionLog'
+  PostActionLog: 'PostActionLog',
+  ErrorLog: 'ErrorLog'
 };
 /**
  * Create the Client
@@ -182,7 +199,6 @@ const config = {
     "db"
   ],
   "activeProvider": "postgresql",
-  "postinstall": false,
   "inlineDatasources": {
     "db": {
       "url": {
@@ -191,13 +207,13 @@ const config = {
       }
     }
   },
-  "inlineSchema": "// Audit-log database schema — completely isolated from the main DB.\n// Stores immutable system-level audit records so that even if the main\n// database is lost the audit trail is preserved independently.\n//\n// NOTE: There is intentionally NO foreign-key relation back to the main\n// database's User table.  Actor information is denormalised at write time\n// so records remain meaningful even if a user is later deleted.\n\ngenerator auditClient {\n  provider = \"prisma-client-js\"\n  output   = \"../src/generated/prisma-audit\"\n}\n\ndatasource db {\n  provider = \"postgresql\"\n  url      = env(\"AUDIT_DATABASE_URL\")\n}\n\nmodel AuditLog {\n  id String @id @default(cuid())\n\n  // Actor info — denormalised snapshot at the time the event was recorded\n  actorUserId      String\n  actorName        String?\n  actorEmail       String?\n  actorVolunteerId String?\n  actorRole        String?\n\n  action              String\n  meta                String? // JSON for additional info\n  affectedVolunteerId String? // volunteer ID affected by this action (if any)\n  points              Int? // points change associated with this action (if any)\n  createdAt           DateTime @default(now())\n\n  @@index([actorUserId])\n  @@index([createdAt])\n  @@index([action])\n}\n\nmodel PostActionLog {\n  id String @id @default(cuid())\n\n  // Post info — denormalised snapshot at the time the event was recorded\n  postId         String\n  postAuthorId   String\n  postAuthorName String?\n  postContent    String? // Backup of deleted/edited content\n\n  // Actor info — denormalised snapshot at the time the event was recorded\n  actorUserId String\n  actorName   String?\n  actorEmail  String?\n  actorRole   String?\n\n  action    String // DELETE, EDIT, REPORT\n  reason    String? // Why the action was taken\n  metadata  String? // Additional JSON data\n  createdAt DateTime @default(now())\n\n  @@index([postId])\n  @@index([actorUserId])\n  @@index([action])\n  @@index([createdAt])\n}\n",
-  "inlineSchemaHash": "069da4097be94c3396ec0f5f4cdc0e01b25aa9da259271290b5630a6ebdfe3eb",
+  "inlineSchema": "// Audit-log database schema — completely isolated from the main DB.\n// Stores immutable system-level audit records so that even if the main\n// database is lost the audit trail is preserved independently.\n//\n// NOTE: There is intentionally NO foreign-key relation back to the main\n// database's User table.  Actor information is denormalised at write time\n// so records remain meaningful even if a user is later deleted.\n\ngenerator auditClient {\n  provider = \"prisma-client-js\"\n  output   = \"../src/generated/prisma-audit\"\n}\n\ndatasource db {\n  provider = \"postgresql\"\n  url      = env(\"AUDIT_DATABASE_URL\")\n}\n\nmodel AuditLog {\n  id String @id @default(cuid())\n\n  // Actor info — denormalised snapshot at the time the event was recorded\n  actorUserId      String\n  actorName        String?\n  actorEmail       String?\n  actorVolunteerId String?\n  actorRole        String?\n\n  action              String\n  meta                String? // JSON for additional info\n  affectedVolunteerId String? // volunteer ID affected by this action (if any)\n  points              Int? // points change associated with this action (if any)\n  createdAt           DateTime @default(now())\n\n  @@index([actorUserId])\n  @@index([createdAt])\n  @@index([action])\n}\n\nmodel PostActionLog {\n  id String @id @default(cuid())\n\n  // Post info — denormalised snapshot at the time the event was recorded\n  postId         String\n  postAuthorId   String\n  postAuthorName String?\n  postContent    String? // Backup of deleted/edited content\n\n  // Actor info — denormalised snapshot at the time the event was recorded\n  actorUserId String\n  actorName   String?\n  actorEmail  String?\n  actorRole   String?\n\n  action    String // DELETE, EDIT, REPORT\n  reason    String? // Why the action was taken\n  metadata  String? // Additional JSON data\n  createdAt DateTime @default(now())\n\n  @@index([postId])\n  @@index([actorUserId])\n  @@index([action])\n  @@index([createdAt])\n}\n\nmodel ErrorLog {\n  id String @id @default(cuid())\n\n  // Request context\n  userId    String? // User ID if authenticated\n  userEmail String? // User email if available\n  endpoint  String // API endpoint where error occurred\n  method    String // HTTP method (GET, POST, etc.)\n\n  // Error details\n  errorType    String // Error name/type\n  errorMessage String // Error message\n  stackTrace   String? @db.Text // Full stack trace\n  requestBody  String? @db.Text // Request body (sanitized)\n\n  // Metadata\n  userAgent String?\n  ipAddress String?\n  metadata  String? @db.Text // Additional JSON metadata\n\n  createdAt DateTime @default(now())\n\n  @@index([userId])\n  @@index([endpoint])\n  @@index([errorType])\n  @@index([createdAt])\n}\n",
+  "inlineSchemaHash": "a83162040ad4366a59916c2b2691854ea3886ad50fb0b728ac85cdaf46446dab",
   "copyEngine": true
 }
 config.dirname = '/'
 
-config.runtimeDataModel = JSON.parse("{\"models\":{\"AuditLog\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"actorUserId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"actorName\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"actorEmail\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"actorVolunteerId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"actorRole\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"action\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"meta\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"affectedVolunteerId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"points\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"PostActionLog\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"postId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"postAuthorId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"postAuthorName\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"postContent\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"actorUserId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"actorName\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"actorEmail\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"actorRole\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"action\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"reason\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"metadata\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null}},\"enums\":{},\"types\":{}}")
+config.runtimeDataModel = JSON.parse("{\"models\":{\"AuditLog\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"actorUserId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"actorName\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"actorEmail\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"actorVolunteerId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"actorRole\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"action\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"meta\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"affectedVolunteerId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"points\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"PostActionLog\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"postId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"postAuthorId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"postAuthorName\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"postContent\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"actorUserId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"actorName\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"actorEmail\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"actorRole\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"action\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"reason\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"metadata\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"ErrorLog\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"userEmail\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"endpoint\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"method\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"errorType\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"errorMessage\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"stackTrace\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"requestBody\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"userAgent\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"ipAddress\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"metadata\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null}},\"enums\":{},\"types\":{}}")
 defineDmmfProperty(exports.Prisma, config.runtimeDataModel)
 config.engineWasm = {
   getRuntime: async () => require('./query_engine_bg.js'),
