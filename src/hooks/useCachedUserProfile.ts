@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState, useRef } from "react";
 
 const CACHE_KEY_PREFIX = "asad_user_profile_v2_";
-const DEFAULT_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const DEFAULT_TTL_MS = 30 * 1000; // 30 seconds — keep credit/coin/user info fresh
+const POLL_INTERVAL_MS = 30 * 1000; // re-fetch every 30 seconds in background
 
 // Global pending requests map for deduplication
 const pendingRequests = new Map<string, Promise<any>>();
@@ -123,12 +124,32 @@ export function useCachedUserProfile<T = any>(email?: string | null, ttlMs: numb
     if (cached) {
       setUser(cached);
       setLoading(false);
-      // Don't fetch in background - rely on explicit refresh() calls when needed
-      return;
+      // Still schedule a background refresh so stale data is updated quickly
+    } else {
+      refresh();
     }
-    
-    refresh();
   }, [email, ttlMs]); // Removed 'refresh' from dependencies to prevent infinite loop
+
+  // Periodic background polling — keeps credit/coin/user info up-to-date
+  useEffect(() => {
+    if (!email) return;
+    const interval = setInterval(() => {
+      refresh();
+    }, POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [email, refresh]);
+
+  // Refresh when the user navigates back to this tab
+  useEffect(() => {
+    if (!email) return;
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        refresh();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [email, refresh]);
 
   // Listen for rank update notifications and refresh cached profile
   useEffect(() => {

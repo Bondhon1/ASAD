@@ -1,6 +1,6 @@
 // Shared in-memory profile cache for server-side use
 const profileCache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_TTL = 30000; // 30 seconds - balanced with edge caching
+const CACHE_TTL = 10000; // 10 seconds — keeps credit/coin data fresh
 
 export function getCachedProfile(email: string): { data: any; timestamp: number } | undefined {
   return profileCache.get(email);
