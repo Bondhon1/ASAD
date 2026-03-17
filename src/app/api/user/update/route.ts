@@ -102,7 +102,15 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // update user (return institute relation)
+    // Update serviceId in volunteerProfile if provided (before user update)
+    if (serviceId && user.volunteerProfile) {
+      ops.push(prisma.volunteerProfile.update({
+        where: { userId: user.id },
+        data: { serviceId },
+      }));
+    }
+
+    // update user (return institute relation) - must be last to capture result
     ops.push(prisma.user.update({ where: { email }, data: {
       fullName: fullName ?? undefined,
       // username should not be editable by client; preserve existing if not provided
@@ -118,14 +126,6 @@ export async function POST(request: NextRequest) {
       guardianContact: guardianContact ?? undefined,
       birthdate: birthdate ? new Date(birthdate) : undefined,
     }, include: { institute: true, volunteerProfile: true, experiences: { orderBy: { startDate: 'desc' } } } }));
-
-    // Update serviceId in volunteerProfile if provided
-    if (serviceId && user.volunteerProfile) {
-      ops.push(prisma.volunteerProfile.update({
-        where: { userId: user.id },
-        data: { serviceId },
-      }));
-    }
 
     const results = await prisma.$transaction(ops);
 
