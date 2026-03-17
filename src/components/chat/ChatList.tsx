@@ -67,7 +67,13 @@ export function ChatList() {
     const handler = (e: MouseEvent) => {
       const target = e.target as Element;
       if (target.closest(`[${CHAT_TRIGGER_ATTR}]`)) return;
-      if (desktopPanelRef.current && !desktopPanelRef.current.contains(target)) {
+      
+      // Check if click is inside EITHER desktop OR mobile panel
+      const isInsideDesktop = desktopPanelRef.current?.contains(target);
+      const isInsideMobile = mobilePanelRef.current?.contains(target);
+      
+      // Only close if outside BOTH panels
+      if (!isInsideDesktop && !isInsideMobile) {
         closeList();
       }
     };
