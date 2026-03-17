@@ -51,7 +51,8 @@ export function ChatList() {
   const { isListOpen, closeList, openChat, isOfficialUser, conversations, conversationsLoading: loading } =
     useChatContext();
 
-  const panelRef = useRef<HTMLDivElement>(null);
+  const desktopPanelRef = useRef<HTMLDivElement>(null);
+  const mobilePanelRef = useRef<HTMLDivElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showNewChat, setShowNewChat] = useState(false);
   
@@ -66,7 +67,7 @@ export function ChatList() {
     const handler = (e: MouseEvent) => {
       const target = e.target as Element;
       if (target.closest(`[${CHAT_TRIGGER_ATTR}]`)) return;
-      if (panelRef.current && !panelRef.current.contains(target)) {
+      if (desktopPanelRef.current && !desktopPanelRef.current.contains(target)) {
         closeList();
       }
     };
@@ -80,7 +81,7 @@ export function ChatList() {
     <>
       {/* Desktop: dropdown panel anchored below topbar */}
       <div
-        ref={panelRef}
+        ref={desktopPanelRef}
         className="fixed top-16 right-6 z-50 bg-white shadow-2xl border border-gray-200 rounded-xl overflow-hidden hidden md:flex flex-col"
         style={{ width: 320, height: 440 }}
       >
@@ -165,7 +166,7 @@ export function ChatList() {
       </div>
 
       {/* Mobile: full-screen list */}
-      <div className="fixed inset-0 z-50 bg-white flex flex-col md:hidden">
+      <div ref={mobilePanelRef} className="fixed inset-0 z-50 bg-white flex flex-col md:hidden">
           <div className="flex items-center justify-between px-4 py-3 bg-[#1E3A5F] text-white flex-shrink-0">
             <span className="font-semibold">Messages</span>
             <div className="flex items-center gap-1">
