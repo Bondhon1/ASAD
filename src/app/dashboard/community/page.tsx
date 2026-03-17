@@ -905,7 +905,7 @@ export default function CommunityPage() {
       userId={userIdVal}
       initialUserStatus={userStatusVal}
     >
-      <div className="min-h-[calc(100vh-140px)] bg-slate-50/30 py-6 px-3 sm:px-4">
+      <div className="min-h-[calc(100vh-140px)] bg-slate-50/30 py-3 px-0 sm:py-6 sm:px-4">
         <div className="max-w-5xl mx-auto flex gap-6 items-start">
           <div className="flex-1 min-w-0">
           {/* Header */}

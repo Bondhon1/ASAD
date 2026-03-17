@@ -242,7 +242,7 @@ export default function DashboardLayout({
 
   if (shellMounted) {
     return (
-      <main className="p-6">
+      <main className="px-2 py-4 sm:p-6">
         {showStatusBanners && (
           <>
             {userStatus === "INTERVIEW_SCHEDULED" && scheduledInterview && (
@@ -612,7 +612,7 @@ export default function DashboardLayout({
 
       {/* Main Content */}
       <div className="pt-16 lg:pl-64">
-        <main className="p-6">
+        <main className="px-2 py-4 sm:p-6">
           {/* Rejection / payment banners */}
           {showStatusBanners && (
             <>

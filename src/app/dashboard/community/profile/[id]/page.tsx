@@ -326,7 +326,7 @@ export default function UserProfilePage() {
 
   return (
     <DashboardLayout userRole={currentUserRole} userName={currentUserName} userEmail={currentUserEmail} userId={currentUserId} initialUserStatus={currentUserStatus}>
-      <div className="min-h-[calc(100vh-140px)] bg-slate-50/30 py-6 px-3 sm:px-4">
+      <div className="min-h-[calc(100vh-140px)] bg-slate-50/30 py-3 px-0 sm:py-6 sm:px-4">
         <div className="max-w-2xl mx-auto space-y-4">
           {/* Back */}
           <Link
