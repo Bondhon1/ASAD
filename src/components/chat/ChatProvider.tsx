@@ -216,9 +216,11 @@ export function ChatProvider({
         });
         if (res.ok) {
           const data = await res.json();
+          // Set conversation FIRST so ChatModal renders, then close list
           setActiveConversationId(data.conversationId);
           setActiveOtherUser(targetUser ?? data.otherUser ?? null);
-          setIsListOpen(false); // close the list dropdown when a conversation opens
+          // Use setTimeout to ensure state update completes before closing list
+          setTimeout(() => setIsListOpen(false), 0);
         }
       } catch {}
     },
