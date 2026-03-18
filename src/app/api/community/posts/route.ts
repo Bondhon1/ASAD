@@ -6,6 +6,7 @@ import { notifyMentions } from "@/lib/mentionUtils";
 import { createAuditLog } from "@/lib/prisma-audit";
 import { computeOverdueMap } from "@/lib/computeOverdueMap";
 import { resolveAudienceUserIds, parseAudience } from "@/lib/taskAudience";
+import { getOfficialPostImageToggle } from "@/lib/communityPostImageToggle";
 
 export const dynamic = "force-dynamic";
 
@@ -265,9 +266,26 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const images: string[] = Array.isArray(body.images)
-      ? body.images.filter((u: unknown) => typeof u === "string" && u.startsWith("http")).slice(0, 10)
+    const rawImages: string[] = Array.isArray(body.images)
+      ? body.images.filter((u: unknown) => typeof u === "string" && u.startsWith("http"))
       : [];
+
+    let images: string[] = [];
+    if (rawType === "TEXT") {
+      const imageToggleEnabled = await getOfficialPostImageToggle();
+      const canAttachRegularPostImage = imageToggleEnabled && user.status === "OFFICIAL";
+
+      if (rawImages.length > 0 && !canAttachRegularPostImage) {
+        return NextResponse.json(
+          { error: "Image upload for regular posts is currently disabled" },
+          { status: 403 }
+        );
+      }
+
+      images = rawImages.slice(0, 1);
+    } else {
+      images = rawImages.slice(0, 10);
+    }
 
     const priority = rawType === "NOTICE" ? 2 : rawType === "SPONSORED_AD" ? 1 : 0;
 

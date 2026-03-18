@@ -125,7 +125,7 @@ function AudiencePicker({ services, sectors, clubs, audience, onChange }: Audien
 
 // ─── Image Upload Helper ───────────────────────────────────────────────────────
 
-async function uploadImageToBlob(file: File): Promise<string> {
+async function uploadImageToBlob(file: File, context?: "REGULAR_POST"): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = async (e) => {
@@ -138,6 +138,7 @@ async function uploadImageToBlob(file: File): Promise<string> {
             fileName: file.name.replace(/[^a-zA-Z0-9._-]/g, "_"),
             mimeType: file.type,
             data: base64,
+            ...(context ? { context } : {}),
           }),
         });
         const d = await res.json();
@@ -159,16 +160,20 @@ function ImagePicker({
   uploading,
   onAdd,
   onRemove,
+  maxImages = 5,
+  label,
 }: {
   images: string[];
   uploading: boolean;
   onAdd: (files: FileList) => void;
   onRemove: (i: number) => void;
+  maxImages?: number;
+  label?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   return (
     <div>
-      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Images (up to 5)</label>
+      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{label || `Images (up to ${maxImages})`}</label>
       <div className="flex flex-wrap gap-2 mt-2">
         {images.map((url, i) => (
           <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border border-slate-200 group">
@@ -182,7 +187,7 @@ function ImagePicker({
             </button>
           </div>
         ))}
-        {images.length < 5 && (
+        {images.length < maxImages && (
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
@@ -570,8 +575,13 @@ export default function CommunityPage() {
   const [hasMore, setHasMore] = useState(true);
 
   const [newPostContent, setNewPostContent] = useState("");
+  const [newPostImages, setNewPostImages] = useState<string[]>([]);
+  const [newPostUploading, setNewPostUploading] = useState(false);
   const [postSubmitting, setPostSubmitting] = useState(false);
   const [postError, setPostError] = useState<string | null>(null);
+  const [officialPostImageEnabled, setOfficialPostImageEnabled] = useState(false);
+  const [postImageToggleLoading, setPostImageToggleLoading] = useState(true);
+  const [postImageToggleSaving, setPostImageToggleSaving] = useState(false);
 
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
@@ -603,6 +613,7 @@ export default function CommunityPage() {
 
   const canCreateNotice = ['ADMIN', 'MASTER', 'SECRETARIES'].includes(_commRole);
   const canCreateAd = _commRole === 'MASTER';
+  const canManagePostImageToggle = _commRole === 'MASTER';
 
   // Load audience data when notice modal might be opened
   useEffect(() => {
@@ -618,6 +629,33 @@ export default function CommunityPage() {
       } catch {}
     })();
   }, [canCreateNotice]);
+
+  useEffect(() => {
+    if (!isOfficialOrStaff) {
+      setOfficialPostImageEnabled(false);
+      setPostImageToggleLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/community/post-image-toggle");
+        const d = await res.json();
+        if (!cancelled && res.ok) {
+          setOfficialPostImageEnabled(d.enabled === true);
+        }
+      } catch {
+        if (!cancelled) setOfficialPostImageEnabled(false);
+      } finally {
+        if (!cancelled) setPostImageToggleLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOfficialOrStaff]);
 
   // Search logic — debounced, queries users + posts in parallel
   const handleSearchChange = useCallback((q: string) => {
@@ -743,7 +781,10 @@ export default function CommunityPage() {
       const res = await fetch("/api/community/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: newPostContent.trim() }),
+        body: JSON.stringify({
+          content: newPostContent.trim(),
+          images: newPostImages.slice(0, 1),
+        }),
       });
       const d = await res.json();
       if (!res.ok) {
@@ -752,11 +793,55 @@ export default function CommunityPage() {
       }
       setPosts((prev) => [d.post, ...prev]);
       setNewPostContent("");
+      setNewPostImages([]);
     } catch {
       setPostError("Failed to post. Please try again.");
     } finally {
       setPostSubmitting(false);
     }
+  };
+
+  const updateOfficialPostImageToggle = async (enabled: boolean) => {
+    if (!canManagePostImageToggle || postImageToggleSaving) return;
+
+    setPostImageToggleSaving(true);
+    try {
+      const res = await fetch("/api/community/post-image-toggle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Failed to update setting");
+      setOfficialPostImageEnabled(d.enabled === true);
+      if (!d.enabled) setNewPostImages([]);
+    } catch (e: any) {
+      setPostError(e.message || "Failed to update image setting");
+    } finally {
+      setPostImageToggleSaving(false);
+    }
+  };
+
+  const handleRegularPostImages = async (files: FileList) => {
+    if (!officialPostImageEnabled) return;
+
+    setNewPostUploading(true);
+    setPostError(null);
+
+    const toUpload = Array.from(files).slice(0, 1 - newPostImages.length);
+    const urls: string[] = [];
+
+    for (const file of toUpload) {
+      try {
+        const url = await uploadImageToBlob(file, "REGULAR_POST");
+        urls.push(url);
+      } catch (e: any) {
+        setPostError(e.message || "Upload failed");
+      }
+    }
+
+    setNewPostImages((prev) => [...prev, ...urls].slice(0, 1));
+    setNewPostUploading(false);
   };
 
   const submitNotice = async ({ content, images, targetAudience }: { content: string; images: string[]; targetAudience: AudienceSpec | null }) => {
@@ -1065,6 +1150,19 @@ export default function CommunityPage() {
                     {newPostContent.length}/2000
                   </span>
                   <div className="flex items-center gap-2 flex-wrap">
+                    {canManagePostImageToggle && (
+                      <button
+                        type="button"
+                        onClick={() => updateOfficialPostImageToggle(!officialPostImageEnabled)}
+                        disabled={postImageToggleLoading || postImageToggleSaving}
+                        className={`inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${officialPostImageEnabled ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"}`}
+                      >
+                        <span className={`w-7 h-4 rounded-full transition-colors ${officialPostImageEnabled ? "bg-emerald-500" : "bg-slate-300"} relative`}>
+                          <span className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-transform ${officialPostImageEnabled ? "translate-x-3.5" : "translate-x-0.5"}`} />
+                        </span>
+                        {postImageToggleSaving ? "Saving…" : "Official Post Image"}
+                      </button>
+                    )}
                     {canCreateNotice && (
                       <button
                         onClick={() => setNoticeModalOpen(true)}
@@ -1094,6 +1192,19 @@ export default function CommunityPage() {
                 </div>
                 {postError && (
                   <p className="mt-2 text-xs text-red-600 bg-red-50 px-3 py-1.5 rounded-lg">{postError}</p>
+                )}
+
+                {officialPostImageEnabled && (
+                  <div className="mt-3">
+                    <ImagePicker
+                      images={newPostImages}
+                      uploading={newPostUploading}
+                      onAdd={handleRegularPostImages}
+                      onRemove={(i) => setNewPostImages((prev) => prev.filter((_, j) => j !== i))}
+                      maxImages={1}
+                      label="Image (optional, max 1)"
+                    />
+                  </div>
                 )}
               </div>
             </div>

@@ -2,10 +2,42 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { put } from "@vercel/blob";
+import { getOfficialPostImageToggle } from "@/lib/communityPostImageToggle";
 
 export const dynamic = "force-dynamic";
 
 const STAFF_ROLES = ["HR", "MASTER", "ADMIN", "DIRECTOR", "DATABASE_DEPT", "SECRETARIES"];
+
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const MAX_DIMENSION = 1600;
+const JPEG_QUALITY = 75;
+const WEBP_QUALITY = 72;
+
+async function compressImageBuffer(input: Buffer, mimeType?: string) {
+  const sharp = (await import("sharp")).default;
+
+  const image = sharp(input, { failOn: "none" });
+  const metadata = await image.metadata();
+
+  const basePipeline = image
+    .rotate()
+    .resize({
+      width: MAX_DIMENSION,
+      height: MAX_DIMENSION,
+      fit: "inside",
+      withoutEnlargement: true,
+    });
+
+  const hasAlpha = metadata.hasAlpha === true;
+
+  if (hasAlpha || mimeType === "image/png" || mimeType === "image/webp") {
+    const buffer = await basePipeline.webp({ quality: WEBP_QUALITY }).toBuffer();
+    return { buffer, contentType: "image/webp", extension: "webp" };
+  }
+
+  const buffer = await basePipeline.jpeg({ quality: JPEG_QUALITY, mozjpeg: true }).toBuffer();
+  return { buffer, contentType: "image/jpeg", extension: "jpg" };
+}
 
 // POST /api/community/upload
 // Uploads a post image to Vercel Blob and returns the public URL.
@@ -24,12 +56,27 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { fileName, mimeType, data } = body as { fileName?: string; mimeType?: string; data?: string };
+    const { fileName, mimeType, data, context } = body as {
+      fileName?: string;
+      mimeType?: string;
+      data?: string;
+      context?: string;
+    };
 
     if (!fileName || !data) return NextResponse.json({ error: "fileName and data required" }, { status: 400 });
 
     if (data.startsWith("http://") || data.startsWith("https://")) {
       return NextResponse.json({ url: data });
+    }
+
+    if (context === "REGULAR_POST") {
+      const enabled = await getOfficialPostImageToggle();
+      if (!enabled || sessionUser?.status !== "OFFICIAL") {
+        return NextResponse.json(
+          { error: "Image upload for regular posts is currently disabled" },
+          { status: 403 }
+        );
+      }
     }
 
     const blobToken =
@@ -43,14 +90,31 @@ export async function POST(request: NextRequest) {
     }
 
     const buffer = Buffer.from(data, "base64");
-    if (buffer.length > 8 * 1024 * 1024) {
+    if (buffer.length > MAX_IMAGE_BYTES) {
       return NextResponse.json({ error: "Image too large. Maximum size is 8 MB." }, { status: 413 });
     }
 
-    const blob = await put(`community/${fileName}`, buffer, {
+    const safeMimeType = mimeType || "image/jpeg";
+    if (!safeMimeType.startsWith("image/")) {
+      return NextResponse.json({ error: "Only image uploads are allowed" }, { status: 400 });
+    }
+
+    let compressed;
+    try {
+      compressed = await compressImageBuffer(buffer, safeMimeType);
+    } catch (error) {
+      console.error("Image compression failed:", error);
+      return NextResponse.json({ error: "Failed to compress image" }, { status: 400 });
+    }
+
+    const normalizedFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const baseName = normalizedFileName.replace(/\.[^.]+$/, "") || "image";
+    const uploadFileName = `${baseName}.${compressed.extension}`;
+
+    const blob = await put(`community/${uploadFileName}`, compressed.buffer, {
       access: "public",
       token: blobToken,
-      contentType: mimeType || "image/jpeg",
+      contentType: compressed.contentType,
       addRandomSuffix: true,
     });
 
