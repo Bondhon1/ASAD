@@ -4,10 +4,12 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import { useModal } from "@/components/ui/ModalProvider";
 
 export default function CreateDonationPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
+  const { toast } = useModal();
   const [purpose, setPurpose] = useState("");
   const [amountTarget, setAmountTarget] = useState<number | "">("");
   const [bkashNumber, setBkashNumber] = useState("");
@@ -45,9 +47,13 @@ export default function CreateDonationPage() {
       const res = await fetch("/api/donations/create", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Failed to create donation");
-      setStatusMsg("Created: " + (data?.id || "ok"));
+      const successMessage = "Donation campaign created successfully.";
+      setStatusMsg(successMessage);
+      toast(successMessage, { type: "success" });
     } catch (err: any) {
-      setStatusMsg("Error: " + (err?.message || "Unknown"));
+      const errorMessage = "Error: " + (err?.message || "Unknown");
+      setStatusMsg(errorMessage);
+      toast(errorMessage, { type: "error" });
     }
   };
 
