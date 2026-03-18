@@ -79,6 +79,8 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const imageUrl = typeof body?.imageUrl === "string" ? body.imageUrl.trim() : "";
+    const displayName = typeof body?.displayName === "string" ? body.displayName.trim() : "";
+    const info = typeof body?.info === "string" ? body.info.trim() : "";
 
     if (!imageUrl || (!imageUrl.startsWith("http://") && !imageUrl.startsWith("https://"))) {
       return NextResponse.json({ error: "A valid imageUrl is required" }, { status: 400 });
@@ -87,6 +89,8 @@ export async function POST(request: NextRequest) {
     const story = await prismaStory.create({
       data: {
         imageUrl,
+        displayName: displayName || null,
+        info: info || null,
         createdById: user.id,
       },
       include: {

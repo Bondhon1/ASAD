@@ -14,19 +14,9 @@ interface StoryItem {
   id: string;
   imageUrl: string;
   createdAt: string;
+  displayName: string | null;
+  info: string | null;
   createdBy: StoryAuthor;
-}
-
-function timeAgo(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const s = Math.floor(diff / 1000);
-  if (s < 60) return `${s}s ago`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  const d = Math.floor(h / 24);
-  return `${d}d ago`;
 }
 
 async function uploadStoryImage(file: File): Promise<string> {
@@ -73,6 +63,8 @@ export default function StoriesRail({ userRole }: { userRole: string }) {
   const [expanded, setExpanded] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPreviewPaused, setIsPreviewPaused] = useState(false);
+  const [customName, setCustomName] = useState("");
+  const [storyInfo, setStoryInfo] = useState("");
 
   const fetchStories = useCallback(async () => {
     try {
@@ -132,13 +124,19 @@ export default function StoriesRail({ userRole }: { userRole: string }) {
       const createRes = await fetch("/api/community/stories", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageUrl }),
+        body: JSON.stringify({
+          imageUrl,
+          displayName: customName.trim(),
+          info: storyInfo.trim(),
+        }),
       });
 
       const createData = await createRes.json();
       if (!createRes.ok) throw new Error(createData.error || "Failed to create story");
 
       setStories((prev) => [createData.story, ...prev]);
+      setCustomName("");
+      setStoryInfo("");
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Failed to upload story";
       setError(message);
@@ -151,8 +149,7 @@ export default function StoriesRail({ userRole }: { userRole: string }) {
     <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-3 sm:p-4 mb-5">
       <div className="flex items-center justify-between gap-3 mb-3">
         <div>
-          <h2 className="text-sm sm:text-base font-semibold text-slate-800">Stories</h2>
-          <p className="text-xs text-slate-500">Portrait stories from MASTER</p>
+          <h2 className="text-sm sm:text-base font-semibold text-slate-800">ASADIAN CONTENT CREATOR</h2>
         </div>
 
         {isMaster && (
@@ -172,10 +169,31 @@ export default function StoriesRail({ userRole }: { userRole: string }) {
         )}
       </div>
 
+      {isMaster && (
+        <div className="mb-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <input
+            type="text"
+            value={customName}
+            onChange={(e) => setCustomName(e.target.value)}
+            maxLength={120}
+            placeholder="Name"
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs sm:text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300"
+          />
+          <input
+            type="text"
+            value={storyInfo}
+            onChange={(e) => setStoryInfo(e.target.value)}
+            maxLength={220}
+            placeholder="Info"
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs sm:text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300"
+          />
+        </div>
+      )}
+
       {error && <p className="mb-3 text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
 
       {loading ? (
-        <div className="h-[188px] rounded-xl bg-slate-100 animate-pulse" />
+        <div className="h-[208px] rounded-xl bg-slate-100 animate-pulse" />
       ) : (
         <div className="relative overflow-hidden rounded-xl">
           <div className={`flex gap-3 w-max ${stories.length > 3 && !isPreviewPaused ? "animate-story-marquee" : ""}`}>
@@ -189,20 +207,20 @@ export default function StoriesRail({ userRole }: { userRole: string }) {
                   setActiveIndex(originalIndex);
                   setExpanded(true);
                 }}
-                className="relative w-[112px] sm:w-[124px] h-[188px] sm:h-[208px] rounded-xl overflow-hidden border border-slate-200 bg-slate-800 flex-shrink-0 group"
+                className="relative w-[124px] sm:w-[136px] h-[208px] sm:h-[228px] rounded-xl overflow-hidden border border-slate-200 bg-slate-800 flex-shrink-0 group"
               >
                 <Image
                   src={story.imageUrl}
-                  alt={story.createdBy.fullName || "Story"}
+                  alt={story.displayName || story.createdBy.fullName || "Story"}
                   fill
                   className="object-contain"
-                  sizes="(max-width: 640px) 112px, 124px"
+                  sizes="(max-width: 640px) 124px, 136px"
                 />
                 <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/70 to-transparent text-left">
                   <p className="text-[10px] sm:text-[11px] text-white font-semibold truncate">
-                    {story.createdBy.fullName || "MASTER"}
+                    {story.displayName || story.createdBy.fullName || "MASTER"}
                   </p>
-                  <p className="text-[9px] sm:text-[10px] text-white/80 truncate">{timeAgo(story.createdAt)}</p>
+                  {story.info ? <p className="text-[9px] sm:text-[10px] text-white/80 truncate">{story.info}</p> : null}
                 </div>
               </button>
             ))}
@@ -254,7 +272,7 @@ export default function StoriesRail({ userRole }: { userRole: string }) {
           <div className="relative w-[min(92vw,460px)] h-[min(86vh,760px)]" onClick={(e) => e.stopPropagation()}>
             <Image
               src={stories[activeIndex].imageUrl}
-              alt={stories[activeIndex].createdBy.fullName || "Story"}
+              alt={stories[activeIndex].displayName || stories[activeIndex].createdBy.fullName || "Story"}
               fill
               className="object-contain rounded-xl"
               sizes="92vw"
@@ -263,9 +281,9 @@ export default function StoriesRail({ userRole }: { userRole: string }) {
 
             <div className="absolute inset-x-0 bottom-0 p-3 rounded-b-xl bg-gradient-to-t from-black/80 to-transparent">
               <p className="text-sm text-white font-semibold truncate">
-                {stories[activeIndex].createdBy.fullName || "MASTER"}
+                {stories[activeIndex].displayName || stories[activeIndex].createdBy.fullName || "MASTER"}
               </p>
-              <p className="text-xs text-white/80">{timeAgo(stories[activeIndex].createdAt)}</p>
+              {stories[activeIndex].info ? <p className="text-xs text-white/80 truncate">{stories[activeIndex].info}</p> : null}
             </div>
           </div>
         </div>

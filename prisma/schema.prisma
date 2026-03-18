@@ -545,6 +545,8 @@ enum PaymentStatus {
 model Story {
   id                    String           @id @default(cuid())
   imageUrl              String
+  displayName           String?          @db.VarChar(120)
+  info                  String?          @db.VarChar(220)
   createdBy             User             @relation(fields: [createdById], references: [id], onDelete: Cascade)
   createdById           String
   createdAt             DateTime         @default(now())
