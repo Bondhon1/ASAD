@@ -571,7 +571,10 @@ function EditPostModal({
 export default function CommunityPage() {
   const { data: session } = useSession();
   const userEmail = session?.user?.email || "";
-  const { user } = useCachedUserProfile<any>(userEmail);
+  const { user } = useCachedUserProfile<any>(userEmail, undefined, {
+    pollIntervalMs: 0,
+    refreshOnVisibility: false,
+  });
   const searchParams = useSearchParams();
   const router = useRouter();
   const highlightPostId = searchParams.get("post");

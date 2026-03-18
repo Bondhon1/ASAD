@@ -4,6 +4,12 @@ const CACHE_KEY_PREFIX = "asad_user_profile_v2_";
 const DEFAULT_TTL_MS = 30 * 1000; // 30 seconds — keep credit/coin/user info fresh
 const POLL_INTERVAL_MS = 30 * 1000; // re-fetch every 30 seconds in background
 
+interface UseCachedUserProfileOptions {
+  pollIntervalMs?: number;
+  refreshOnVisibility?: boolean;
+  refreshOnNotification?: boolean;
+}
+
 // Global pending requests map for deduplication
 const pendingRequests = new Map<string, Promise<any>>();
 
@@ -49,7 +55,16 @@ function writeCachedUser<T>(email: string, user: T) {
   }
 }
 
-export function useCachedUserProfile<T = any>(email?: string | null, ttlMs: number = DEFAULT_TTL_MS) {
+export function useCachedUserProfile<T = any>(
+  email?: string | null,
+  ttlMs: number = DEFAULT_TTL_MS,
+  options: UseCachedUserProfileOptions = {}
+) {
+  const {
+    pollIntervalMs = POLL_INTERVAL_MS,
+    refreshOnVisibility = true,
+    refreshOnNotification = true,
+  } = options;
   const [user, setUser] = useState<T | null>(() => {
     if (!email) return null;
     return readCachedUser<T>(email, ttlMs);
@@ -58,11 +73,12 @@ export function useCachedUserProfile<T = any>(email?: string | null, ttlMs: numb
   const [error, setError] = useState<string | null>(null);
   const hasFetchedRef = useRef(false);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (forceFresh: boolean = false) => {
     if (!email) return null;
     
-    // Always bust cache when explicitly refreshing
-    const requestKey = `/api/user/profile?email=${encodeURIComponent(email)}&bustCache=1`;
+    const requestKey = forceFresh
+      ? `/api/user/profile?email=${encodeURIComponent(email)}&bustCache=1`
+      : `/api/user/profile?email=${encodeURIComponent(email)}`;
     const pending = pendingRequests.get(requestKey);
     if (pending) {
       try {
@@ -133,15 +149,17 @@ export function useCachedUserProfile<T = any>(email?: string | null, ttlMs: numb
   // Periodic background polling — keeps credit/coin/user info up-to-date
   useEffect(() => {
     if (!email) return;
+    if (pollIntervalMs <= 0) return;
     const interval = setInterval(() => {
       refresh();
-    }, POLL_INTERVAL_MS);
+    }, pollIntervalMs);
     return () => clearInterval(interval);
-  }, [email, refresh]);
+  }, [email, pollIntervalMs, refresh]);
 
   // Refresh when the user navigates back to this tab
   useEffect(() => {
     if (!email) return;
+    if (!refreshOnVisibility) return;
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
         refresh();
@@ -149,11 +167,12 @@ export function useCachedUserProfile<T = any>(email?: string | null, ttlMs: numb
     };
     document.addEventListener('visibilitychange', handleVisibility);
     return () => document.removeEventListener('visibilitychange', handleVisibility);
-  }, [email, refresh]);
+  }, [email, refresh, refreshOnVisibility]);
 
   // Listen for rank update notifications and refresh cached profile
   useEffect(() => {
     if (!email) return;
+    if (!refreshOnNotification) return;
     const handler = (e: any) => {
       try {
         const d = e?.detail;
@@ -161,7 +180,7 @@ export function useCachedUserProfile<T = any>(email?: string | null, ttlMs: numb
         const t = String(d.type || '').toUpperCase();
         // Refresh on rank updates or points updates
         if (t === 'RANK_UPDATE' || t === 'POINTS_UPDATE') {
-          refresh();
+          refresh(true);
         }
       } catch (err) {
         // ignore
@@ -169,7 +188,7 @@ export function useCachedUserProfile<T = any>(email?: string | null, ttlMs: numb
     };
     window.addEventListener('asad:notification', handler as EventListener);
     return () => window.removeEventListener('asad:notification', handler as EventListener);
-  }, [email, refresh]);
+  }, [email, refresh, refreshOnNotification]);
 
   return { user, loading, error, refresh, setUser } as const;
 }
