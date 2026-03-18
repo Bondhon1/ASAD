@@ -162,6 +162,7 @@ function ImagePicker({
   onRemove,
   maxImages = 5,
   label,
+  compact = false,
 }: {
   images: string[];
   uploading: boolean;
@@ -169,19 +170,26 @@ function ImagePicker({
   onRemove: (i: number) => void;
   maxImages?: number;
   label?: string;
+  compact?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const thumbClass = compact ? "w-14 h-14" : "w-20 h-20";
+  const thumbSize = compact ? "56px" : "80px";
+  const removeBtnClass = compact ? "w-4 h-4 text-[10px]" : "w-5 h-5 text-xs";
+  const addBtnClass = compact
+    ? "text-[10px] gap-0.5"
+    : "text-xs gap-1";
   return (
     <div>
-      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{label || `Images (up to ${maxImages})`}</label>
+      <label className={`${compact ? "text-[10px]" : "text-xs"} font-semibold text-slate-500 uppercase tracking-wide`}>{label || `Images (up to ${maxImages})`}</label>
       <div className="flex flex-wrap gap-2 mt-2">
         {images.map((url, i) => (
-          <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border border-slate-200 group">
-            <Image src={url} alt="" fill className="object-cover" sizes="80px" />
+          <div key={i} className={`relative ${thumbClass} rounded-lg overflow-hidden border border-slate-200 group`}>
+            <Image src={url} alt="" fill className="object-cover" sizes={thumbSize} />
             <button
               type="button"
               onClick={() => onRemove(i)}
-              className="absolute top-0.5 right-0.5 bg-black/60 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+              className={`absolute top-0.5 right-0.5 bg-black/60 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity ${removeBtnClass}`}
             >
               ×
             </button>
@@ -192,13 +200,13 @@ function ImagePicker({
             type="button"
             onClick={() => inputRef.current?.click()}
             disabled={uploading}
-            className="w-20 h-20 rounded-lg border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400 hover:border-slate-400 transition-colors text-xs gap-1 disabled:opacity-50"
+            className={`${thumbClass} rounded-lg border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400 hover:border-slate-400 transition-colors disabled:opacity-50 ${addBtnClass}`}
           >
             {uploading ? (
-              <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+              <div className={`${compact ? "w-3.5 h-3.5" : "w-4 h-4"} border-2 border-slate-400 border-t-transparent rounded-full animate-spin`} />
             ) : (
               <>
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width={compact ? "16" : "20"} height={compact ? "16" : "20"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                 Add
               </>
             )}
@@ -591,6 +599,7 @@ export default function CommunityPage() {
   const searchRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const regularPostImageInputRef = useRef<HTMLInputElement>(null);
 
   const [view, setView] = useState<"feed" | "timeline">("feed");
 
@@ -1149,16 +1158,16 @@ export default function CommunityPage() {
                   <span className={`text-xs ${newPostContent.length > 1800 ? "text-amber-600" : "text-slate-400"}`}>
                     {newPostContent.length}/2000
                   </span>
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-2 flex-wrap ml-auto">
                     {canManagePostImageToggle && (
                       <button
                         type="button"
                         onClick={() => updateOfficialPostImageToggle(!officialPostImageEnabled)}
                         disabled={postImageToggleLoading || postImageToggleSaving}
-                        className={`inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${officialPostImageEnabled ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"}`}
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-md border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${officialPostImageEnabled ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"}`}
                       >
-                        <span className={`w-7 h-4 rounded-full transition-colors ${officialPostImageEnabled ? "bg-emerald-500" : "bg-slate-300"} relative`}>
-                          <span className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-transform ${officialPostImageEnabled ? "translate-x-3.5" : "translate-x-0.5"}`} />
+                        <span className={`w-6 h-3.5 rounded-full transition-colors ${officialPostImageEnabled ? "bg-emerald-500" : "bg-slate-300"} relative`}>
+                          <span className={`absolute top-0.5 w-2.5 h-2.5 bg-white rounded-full transition-transform ${officialPostImageEnabled ? "translate-x-3" : "translate-x-0.5"}`} />
                         </span>
                         {postImageToggleSaving ? "Saving…" : "Official Post Image"}
                       </button>
@@ -1166,28 +1175,44 @@ export default function CommunityPage() {
                     {canCreateNotice && (
                       <button
                         onClick={() => setNoticeModalOpen(true)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold rounded-lg hover:bg-amber-100 transition-colors"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-semibold rounded-md hover:bg-amber-100 transition-colors"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
                         Post Notice
                       </button>
                     )}
                     {canCreateAd && (
                       <button
                         onClick={() => setAdModalOpen(true)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-200 text-blue-800 text-xs font-semibold rounded-lg hover:bg-blue-100 transition-colors"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 border border-blue-200 text-blue-800 text-[11px] font-semibold rounded-md hover:bg-blue-100 transition-colors"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
                         Post Sponsored AD
+                      </button>
+                    )}
+                    {officialPostImageEnabled && (
+                      <button
+                        type="button"
+                        onClick={() => regularPostImageInputRef.current?.click()}
+                        disabled={newPostUploading || newPostImages.length >= 1}
+                        title="Upload image"
+                        className="w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-[#0b2545] hover:border-slate-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                      >
+                        {newPostUploading ? (
+                          <div className="w-3.5 h-3.5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                        )}
                       </button>
                     )}
                     <button
                       onClick={submitPost}
                       disabled={postSubmitting || !newPostContent.trim()}
-                      className="px-5 py-2 bg-[#0b2545] text-white text-sm font-semibold rounded-xl hover:bg-[#0d2d5a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                      className="px-3 py-1.5 bg-[#0b2545] text-white text-xs font-semibold rounded-lg hover:bg-[#0d2d5a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                     >
                       {postSubmitting ? "Posting…" : "Post"}
                     </button>
+                    
                   </div>
                 </div>
                 {postError && (
@@ -1195,17 +1220,31 @@ export default function CommunityPage() {
                 )}
 
                 {officialPostImageEnabled && (
-                  <div className="mt-3">
-                    <ImagePicker
-                      images={newPostImages}
-                      uploading={newPostUploading}
-                      onAdd={handleRegularPostImages}
-                      onRemove={(i) => setNewPostImages((prev) => prev.filter((_, j) => j !== i))}
-                      maxImages={1}
-                      label="Image (optional, max 1)"
-                    />
+                  <div className="mt-2 flex items-center gap-2 justify-end">
+                    {newPostImages[0] && (
+                      <div className="relative w-8 h-8 rounded-md overflow-hidden border border-slate-200 group">
+                        <Image src={newPostImages[0]} alt="" fill className="object-cover" sizes="32px" />
+                        <button
+                          type="button"
+                          onClick={() => setNewPostImages([])}
+                          className="absolute top-0 right-0 w-4 h-4 bg-black/60 text-white text-[10px] leading-none flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
+                <input
+                  ref={regularPostImageInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files) void handleRegularPostImages(e.target.files);
+                    e.currentTarget.value = "";
+                  }}
+                />
               </div>
             </div>
           </div>
