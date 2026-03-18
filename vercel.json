@@ -66,6 +66,10 @@
     {
       "path": "/api/tasks/process-expired",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/donations/process-expired",
+      "schedule": "0 * * * *"
     }
   ]
 }

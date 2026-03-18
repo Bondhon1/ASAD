@@ -4,33 +4,81 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import { useModal } from "@/components/ui/ModalProvider";
 
 export default function DonationsListPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
+  const { toast } = useModal();
   const [donations, setDonations] = useState<Array<any>>([]);
+  const [manageData, setManageData] = useState<Array<any>>([]);
+  const [manageLoading, setManageLoading] = useState(false);
+  const [processingSubmissionId, setProcessingSubmissionId] = useState<string | null>(null);
 
   const userStatus = (session as any)?.user?.status;
   const role = (session as any)?.user?.role || '';
   const STAFF_ROLES = ['HR', 'MASTER', 'ADMIN', 'DIRECTOR', 'DATABASE_DEPT', 'SECRETARIES'];
   const isOfficialOrStaff = STAFF_ROLES.includes(role) || userStatus === 'OFFICIAL';
+  const canManage = role === 'ADMIN' || role === 'MASTER';
+
+  const loadDonations = async () => {
+    try {
+      const res = await fetch('/api/donations');
+      if (!res.ok) return;
+      const data = await res.json();
+      setDonations(data.donations || []);
+    } catch {
+      // ignore
+    }
+  };
+
+  const loadManageData = async () => {
+    if (!canManage) return;
+    setManageLoading(true);
+    try {
+      const res = await fetch('/api/donations/manage', { cache: 'no-store' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Failed to load manage data');
+      setManageData(data.campaigns || []);
+    } catch (e: any) {
+      toast(e?.message || 'Failed to load manage data', { type: 'error' });
+    } finally {
+      setManageLoading(false);
+    }
+  };
+
+  const verifySubmission = async (submissionId: string, action: 'APPROVE' | 'REJECT') => {
+    if (processingSubmissionId) return;
+    setProcessingSubmissionId(submissionId);
+    try {
+      const res = await fetch(`/api/donations/submissions/${submissionId}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || `Failed to ${action.toLowerCase()} submission`);
+      toast(`Submission ${action === 'APPROVE' ? 'approved' : 'rejected'} successfully`, { type: 'success' });
+      await Promise.all([loadDonations(), loadManageData()]);
+    } catch (e: any) {
+      toast(e?.message || 'Verification failed', { type: 'error' });
+    } finally {
+      setProcessingSubmissionId(null);
+    }
+  };
 
   useEffect(() => {
     if (status === "loading") return;
     // Skip donations API call for non-official, non-staff users
     if (!STAFF_ROLES.includes(role) && userStatus !== 'OFFICIAL') return;
     (async () => {
-      try {
-        const res = await fetch('/api/donations');
-        if (!res.ok) return;
-        const data = await res.json();
-        setDonations(data.donations || []);
-      } catch (e) {
-        // ignore
+      await loadDonations();
+      if (canManage) {
+        await loadManageData();
       }
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, userStatus, role]);
+  }, [status, userStatus, role, canManage]);
 
   const displayName = (session as any)?.user?.name || (session as any)?.user?.email || "User";
 
@@ -98,6 +146,17 @@ export default function DonationsListPage() {
                     </div>
                     
                     <h3 className="text-xl font-bold text-slate-800 mb-2 group-hover:text-blue-600 transition-colors">{d.purpose || d.title}</h3>
+
+                    <div className="mb-4 rounded-xl border border-slate-100 p-3 bg-slate-50">
+                      <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
+                        <span>Approved</span>
+                        <span>৳{Number(d.approvedAmount || 0).toLocaleString()} / ৳{Number(d.amountTarget || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-slate-200 overflow-hidden">
+                        <div className="h-full bg-blue-600" style={{ width: `${Math.min(100, d.amountTarget > 0 ? (Number(d.approvedAmount || 0) / Number(d.amountTarget)) * 100 : 0)}%` }} />
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-1.5">Remaining: ৳{Number(d.remainingAmount || 0).toLocaleString()}</p>
+                    </div>
                     
                     <div className="space-y-3 mb-6">
                       <div className="flex items-center gap-2 text-sm text-slate-600 font-medium">
@@ -129,6 +188,66 @@ export default function DonationsListPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {canManage && (
+            <div className="mt-10">
+              <h2 className="text-2xl font-black text-slate-800 tracking-tight">Manage Submissions</h2>
+              <p className="text-slate-500 mt-1">Verify pending donation submissions for each campaign.</p>
+
+              <div className="mt-4 space-y-4">
+                {manageLoading ? (
+                  <div className="bg-white border border-slate-200 rounded-2xl p-6 text-slate-500">Loading manage section...</div>
+                ) : manageData.length === 0 ? (
+                  <div className="bg-white border border-slate-200 rounded-2xl p-6 text-slate-500">No campaigns available for management.</div>
+                ) : (
+                  manageData.map((campaign: any) => (
+                    <div key={campaign.id} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                      <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                        <div>
+                          <h3 className="font-bold text-slate-800">{campaign.purpose || campaign.title}</h3>
+                          <p className="text-xs text-slate-500">Pending: {campaign.pendingCount} • Remaining: ৳{Number(campaign.remainingAmount || 0).toLocaleString()} • Status: {campaign.status}</p>
+                        </div>
+                        <a href={`/dashboard/donations/${campaign.id}`} className="text-sm font-semibold text-blue-700 hover:text-blue-800">Open Details</a>
+                      </div>
+
+                      {campaign.pendingSubmissions?.length ? (
+                        <div className="space-y-2">
+                          {campaign.pendingSubmissions.map((submission: any) => (
+                            <div key={submission.id} className="border border-slate-200 rounded-xl p-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-slate-700 truncate">{submission.user?.fullName || 'Volunteer'} {submission.user?.volunteerId ? `(#${submission.user.volunteerId})` : ''}</p>
+                                <p className="text-xs text-slate-500">TRXID: {submission.trxId} • Amount: ৳{Number(submission.amount || 0).toLocaleString()} • {new Date(submission.donatedAt).toLocaleString()}</p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  disabled={processingSubmissionId === submission.id}
+                                  onClick={() => verifySubmission(submission.id, 'APPROVE')}
+                                  className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold disabled:opacity-50"
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={processingSubmissionId === submission.id}
+                                  onClick={() => verifySubmission(submission.id, 'REJECT')}
+                                  className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold disabled:opacity-50"
+                                >
+                                  Reject
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-slate-500">No pending submissions for this campaign.</p>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           )}
         </div>
