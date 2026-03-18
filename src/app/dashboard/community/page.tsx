@@ -1172,7 +1172,7 @@ export default function CommunityPage() {
                         <span className={`w-6 h-3.5 rounded-full transition-colors ${officialPostImageEnabled ? "bg-emerald-500" : "bg-slate-300"} relative`}>
                           <span className={`absolute top-0.5 w-2.5 h-2.5 bg-white rounded-full transition-transform ${officialPostImageEnabled ? "translate-x-3" : "translate-x-0.5"}`} />
                         </span>
-                        {postImageToggleSaving ? "Saving…" : "Official Post Image"}
+                        {postImageToggleSaving ? "Saving…" : "Allow Image"}
                       </button>
                     )}
                     {canCreateNotice && (
@@ -1190,7 +1190,7 @@ export default function CommunityPage() {
                         className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 border border-blue-200 text-blue-800 text-[11px] font-semibold rounded-md hover:bg-blue-100 transition-colors"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
-                        Post Sponsored AD
+                        Post AD
                       </button>
                     )}
                     {officialPostImageEnabled && (
