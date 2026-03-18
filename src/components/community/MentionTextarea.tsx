@@ -367,7 +367,7 @@ export function MentionTextarea({
       {showDropdown && (
         <div
           ref={dropdownRef}
-          className="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden"
+          className="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden max-h-[280px] overflow-y-auto"
           style={{ top: "100%" }}
         >
           {loading && mentionUsers.length === 0 ? (

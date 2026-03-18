@@ -257,7 +257,7 @@ export default function CommunityLeaderboard() {
         <button
           onClick={() => setMobileOpen(true)}
           aria-label="Open leaderboard"
-          className="fixed bottom-6 right-4 z-40 w-13 h-13 flex items-center justify-center bg-[#0b2545] text-white rounded-full shadow-lg hover:bg-[#0d2d5a] active:scale-95 transition-all"
+          className="fixed bottom-6 right-4 z-30 w-13 h-13 flex items-center justify-center bg-[#0b2545] text-white rounded-full shadow-lg hover:bg-[#0d2d5a] active:scale-95 transition-all"
           style={{ width: 52, height: 52 }}
         >
           {/* Trophy icon */}
