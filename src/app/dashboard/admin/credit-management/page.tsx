@@ -549,16 +549,17 @@ export default function CreditManagementPage() {
         </div>
 
         {/* Summary cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-7">
+        <div className="flex gap-3 overflow-x-auto mb-7 sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {[
-            { label: "Total Credits Issued", value: (summary.totalCreditsIssued ?? 0).toLocaleString(), color: "blue" },
-            { label: "Total BDT Paid", value: `৳${(summary.totalBDTPaid ?? 0).toLocaleString()}`, color: "green" },
-            { label: "Pending Payouts", value: String(summary.totalPending ?? 0), color: "amber" },
-            { label: "This Month (BDT)", value: `৳${(summary.monthlyBDT ?? 0).toLocaleString()}`, color: "indigo" },
+            { label: "Total Credits Issued", value: (summary.totalCreditsIssued ?? 0).toLocaleString(), textClass: "text-blue-600" },
+            { label: "Manual Credits Given", value: (summary.manualCreditsTotal ?? 0).toLocaleString(), textClass: "text-cyan-600" },
+            { label: "Total BDT Paid", value: `৳${(summary.totalBDTPaid ?? 0).toLocaleString()}`, textClass: "text-green-600" },
+            { label: "Pending Payouts", value: String(summary.totalPending ?? 0), textClass: "text-amber-600" },
+            { label: "This Month (BDT)", value: `৳${(summary.monthlyBDT ?? 0).toLocaleString()}`, textClass: "text-indigo-600" },
           ].map((card) => (
-            <div key={card.label} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-              <div className="text-xs text-slate-500 mb-1">{card.label}</div>
-              <div className={`text-xl font-bold text-${card.color}-600`}>{card.value}</div>
+            <div key={card.label} className="min-w-[145px] sm:min-w-0 bg-white border border-slate-200 rounded-xl p-2 sm:p-4 shadow-sm">
+              <div className="text-[11px] sm:text-xs text-slate-500 mb-1">{card.label}</div>
+              <div className={`text-lg sm:text-xl font-bold ${card.textClass}`}>{card.value}</div>
             </div>
           ))}
         </div>
