@@ -6,6 +6,36 @@ import { logError, getRequestMetadata } from "@/lib/errorLogger";
 
 export const dynamic = "force-dynamic";
 
+async function resolveUniqueUsername(username: string, userId: string): Promise<string> {
+  const baseUsername = username.trim();
+  if (!baseUsername) return username;
+
+  const existing = await prisma.user.findFirst({
+    where: {
+      username: baseUsername,
+      id: { not: userId },
+    },
+    select: { id: true },
+  });
+
+  if (!existing) return baseUsername;
+
+  for (let attempt = 1; attempt <= 50; attempt++) {
+    const candidate = `${baseUsername}${attempt}`;
+    const candidateExists = await prisma.user.findFirst({
+      where: {
+        username: candidate,
+        id: { not: userId },
+      },
+      select: { id: true },
+    });
+    if (!candidateExists) return candidate;
+  }
+
+  // Last-resort fallback with timestamp for extreme collision cases
+  return `${baseUsername}${Date.now()}`;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -111,11 +141,17 @@ export async function POST(request: NextRequest) {
       }));
     }
 
+    let resolvedUsername: string | undefined = undefined;
+    if (typeof username === 'string') {
+      const trimmedUsername = username.trim();
+      resolvedUsername = trimmedUsername ? await resolveUniqueUsername(trimmedUsername, user.id) : undefined;
+    }
+
     // update user (return institute relation) - must be last to capture result
     ops.push(prisma.user.update({ where: { email }, data: {
       fullName: fullName ?? undefined,
       // username should not be editable by client; preserve existing if not provided
-      username: username ?? undefined,
+      username: resolvedUsername ?? undefined,
       profilePicUrl: profilePicUrl ?? undefined,
       instituteId: newInstituteId ?? undefined,
       division: address?.division ?? undefined,
