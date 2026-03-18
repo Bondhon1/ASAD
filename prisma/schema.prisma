@@ -68,6 +68,7 @@ model User {
   
   // Social features
   posts                 Post[]
+  storiesCreated        Story[]
   postReactions         PostReaction[]
   commentReactions      CommentReaction[]
   postComments          PostComment[]
@@ -540,6 +541,18 @@ enum PaymentStatus {
 // ============================================================================
 // SOCIAL FEATURES
 // ============================================================================
+
+model Story {
+  id                    String           @id @default(cuid())
+  imageUrl              String
+  createdBy             User             @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  createdById           String
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  @@index([createdAt])
+  @@index([createdById])
+}
 
 model Post {
   id                    String           @id @default(cuid())

@@ -14,6 +14,7 @@ import {
   type Author,
 } from "@/components/community/PostCard";
 import CommunityLeaderboard from "@/components/community/Leaderboard";
+import StoriesRail from "@/components/community/StoriesRail";
 
 // ─── Audience Picker (mirrors task creation pattern) ──────────────────────────
 
@@ -1131,6 +1132,8 @@ export default function CommunityPage() {
               </button>
             </div>
           </div>
+
+          <StoriesRail userRole={_commRole} />
 
           {/* Create Post Box */}
           <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 mb-5">

@@ -99,6 +99,15 @@ body {
   }
 }
 
+@keyframes story-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
 /* APC Credit Logo animations */
 @keyframes apc-coin-float {
   0%, 100% { transform: translateY(0px) scale(1); }
@@ -164,6 +173,10 @@ body {
 
   .pulse-soft {
     animation: pulse-soft 3.6s ease-in-out infinite;
+  }
+
+  .animate-story-marquee {
+    animation: story-marquee 48s linear infinite;
   }
 
   /* Stagger delays for sequential animations */
