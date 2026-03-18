@@ -101,6 +101,8 @@ export default function DonationDetailsPage() {
   }
 
   const campaign = data?.campaign;
+  const hasLockedSubmission = ["PENDING", "APPROVED"].includes(String(data?.mySubmission?.status || "").toUpperCase());
+  const canSubmitDonation = Boolean(campaign?.canAcceptSubmission) && !saving && !hasLockedSubmission;
 
   return (
     <DashboardLayout userRole={role} userName={displayName} userEmail={(session as any)?.user?.email || ""} userId={(session as any)?.user?.id || ""}>
@@ -156,6 +158,12 @@ export default function DonationDetailsPage() {
                   <h2 className="text-lg font-bold text-slate-800">Submit Donation</h2>
                   <p className="text-sm text-slate-500 mt-1">Submission fields: TRXID, amount, date & time. Admin will verify before counting it.</p>
 
+                  {hasLockedSubmission && (
+                    <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                      Submission is disabled because your latest submission is {String(data?.mySubmission?.status || "").toUpperCase()}.
+                    </div>
+                  )}
+
                   <form className="mt-5 space-y-4" onSubmit={submitDonation}>
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-1">TRXID</label>
@@ -164,7 +172,7 @@ export default function DonationDetailsPage() {
                         onChange={(e) => setTrxId(e.target.value)}
                         className="w-full px-3 py-2 rounded-lg border border-slate-200"
                         placeholder="Enter transaction ID"
-                        disabled={!campaign.canAcceptSubmission || saving}
+                        disabled={!canSubmitDonation}
                       />
                     </div>
                     <div>
@@ -176,7 +184,7 @@ export default function DonationDetailsPage() {
                         type="number"
                         min={1}
                         max={remainingAmount > 0 ? remainingAmount : undefined}
-                        disabled={!campaign.canAcceptSubmission || saving}
+                        disabled={!canSubmitDonation}
                       />
                     </div>
                     <div>
@@ -186,15 +194,15 @@ export default function DonationDetailsPage() {
                         onChange={(e) => setDonatedAt(e.target.value)}
                         className="w-full px-3 py-2 rounded-lg border border-slate-200"
                         type="datetime-local"
-                        disabled={!campaign.canAcceptSubmission || saving}
+                        disabled={!canSubmitDonation}
                       />
                     </div>
                     <button
                       type="submit"
-                      disabled={!campaign.canAcceptSubmission || saving}
+                      disabled={!canSubmitDonation}
                       className="px-5 py-2.5 rounded-lg bg-[#0b2545] text-white font-semibold disabled:opacity-50"
                     >
-                      {saving ? "Submitting..." : campaign.canAcceptSubmission ? "Submit for Verification" : "Campaign Closed"}
+                      {saving ? "Submitting..." : hasLockedSubmission ? "Submission Locked" : campaign.canAcceptSubmission ? "Submit for Verification" : "Campaign Closed"}
                     </button>
                   </form>
 
