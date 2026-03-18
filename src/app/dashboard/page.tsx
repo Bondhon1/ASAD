@@ -579,7 +579,19 @@ export default function DashboardPage() {
           <div className="text-sm text-gray-600">Loading…</div>
         ) : (campaigns && campaigns.length ? (
           campaigns.slice(0,6).map((d:any) => (
-            <div key={d.id || d.purpose} className="bg-white border border-gray-100 rounded-lg p-3.5 cursor-pointer hover:shadow-sm">
+            <div
+              key={d.id || d.purpose}
+              role="button"
+              tabIndex={0}
+              onClick={() => d.id && router.push(`/dashboard/donations/${d.id}`)}
+              onKeyDown={(e) => {
+                if ((e.key === 'Enter' || e.key === ' ') && d.id) {
+                  e.preventDefault();
+                  router.push(`/dashboard/donations/${d.id}`);
+                }
+              }}
+              className="bg-white border border-gray-100 rounded-lg p-3.5 cursor-pointer hover:shadow-sm"
+            >
               <div className="flex items-center justify-between">
                 <div className="pr-3 min-w-0">
                   <div className="text-sm font-semibold text-gray-900 truncate">{d.purpose || d.title || 'Campaign'}</div>
