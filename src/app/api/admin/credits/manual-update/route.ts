@@ -54,6 +54,18 @@ export async function POST(req: Request) {
           data: { credits: { increment: credits } },
         });
 
+        // Create credit transaction record
+        await prisma.creditTransaction.create({
+          data: {
+            userId: user.id,
+            amount: credits,
+            reason,
+            type: 'MANUAL_ADJUSTMENT',
+            adminUserId: requester.id,
+            balanceAfter: updatedUser.credits ?? 0,
+          },
+        });
+
         results.push({
           ident,
           ok: true,

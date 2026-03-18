@@ -107,6 +107,8 @@ model User {
   credits               Int                   @default(0) @map("coins")
   creditWithdrawals     CreditWithdrawal[]    @relation("UserWithdrawals")
   processedWithdrawals  CreditWithdrawal[]    @relation("ProcessedBy")
+  creditTransactions    CreditTransaction[]   @relation("UserCreditTransactions")
+  adminCreditTransactions CreditTransaction[] @relation("AdminCreditTransactions")
   orgJoinRequests       OrgJoinRequest[]      @relation("UserOrgJoinRequests")
   processedOrgJoinRequests OrgJoinRequest[]   @relation("ProcessedOrgJoinRequests")
   
@@ -1025,6 +1027,30 @@ enum WithdrawalStatus {
   PENDING
   COMPLETED
   REJECTED
+}
+
+// ============================================================================
+// CREDIT TRANSACTIONS (manual adjustments and distributions)
+// ============================================================================
+
+model CreditTransaction {
+  id                String   @id @default(cuid())
+  user              User     @relation("UserCreditTransactions", fields: [userId], references: [id], onDelete: Cascade)
+  userId            String
+  amount            Int      // Credits added (positive) or deducted (negative)
+  reason            String   // Reason for the transaction
+  type              String   // "MANUAL_ADJUSTMENT", "PAYOUT", "REWARD", etc.
+  adminUser         User?    @relation("AdminCreditTransactions", fields: [adminUserId], references: [id], onDelete: SetNull)
+  adminUserId       String?
+  balanceAfter      Int      // User's credit balance after this transaction
+  metadata          String?  // JSON string for additional data
+  createdAt         DateTime @default(now())
+
+  @@map("CreditTransaction")
+  @@index([userId])
+  @@index([adminUserId])
+  @@index([type])
+  @@index([createdAt])
 }
 
 // ============================================================================
