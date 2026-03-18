@@ -821,30 +821,25 @@ export function PostCard({
     });
   }
 
+  const specialTag =
+    post.postType === "NOTICE" ? (
+      <span className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-800 text-xs font-semibold px-2.5 py-1 rounded-full border border-amber-200">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+        NOTICE
+      </span>
+    ) : post.postType === "SPONSORED_AD" ? (
+      <span className="inline-flex items-center gap-1.5 bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-1 rounded-full border border-blue-200">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l7.59-7.59L21 8l-9 9z"/></svg>
+        SPONSORED
+      </span>
+    ) : null;
+
   return (
     <div id={`post-${post.id}`} className={`bg-white border rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-200 ${
       post.postType === "NOTICE" ? "border-amber-300 ring-1 ring-amber-200" :
       post.postType === "SPONSORED_AD" ? "border-blue-300 ring-1 ring-blue-200" :
       "border-slate-200"
     }`}>
-      {/* Special post type banner */}
-      {post.postType === "NOTICE" && (
-        <div className="flex items-center gap-2 px-4 pt-3 pb-1">
-          <span className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-800 text-xs font-semibold px-2.5 py-1 rounded-full border border-amber-200">
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
-            NOTICE
-          </span>
-        </div>
-      )}
-      {post.postType === "SPONSORED_AD" && (
-        <div className="flex items-center gap-2 px-4 pt-3 pb-1">
-          <span className="inline-flex items-center gap-1.5 bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-1 rounded-full border border-blue-200">
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l7.59-7.59L21 8l-9 9z"/></svg>
-            SPONSORED
-          </span>
-        </div>
-      )}
-
       {/* Post Header */}
       <div className="p-4 pb-3 flex items-start justify-between gap-3">
         <div className="flex items-start gap-3 min-w-0">
@@ -872,9 +867,10 @@ export function PostCard({
           </div>
         </div>
 
-        {menuOptions.length > 0 && (
-          <div className="flex-shrink-0">
-            <PostMenu options={menuOptions} />
+        {(specialTag || menuOptions.length > 0) && (
+          <div className="flex-shrink-0 flex items-center gap-2">
+            {specialTag}
+            {menuOptions.length > 0 && <PostMenu options={menuOptions} />}
           </div>
         )}
       </div>
