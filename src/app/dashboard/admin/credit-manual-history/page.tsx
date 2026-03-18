@@ -27,7 +27,7 @@ type ManualAdjustment = {
 export default function CreditManualHistoryPage() {
   const router = useRouter();
   const { data: session, status: sessionStatus } = useSession();
-  const { profile: viewer, isLoading: viewerLoading } = useCachedUserProfile();
+  const { user: viewer, loading: viewerLoading } = useCachedUserProfile<any>();
 
   const [adjustments, setAdjustments] = useState<ManualAdjustment[]>([]);
   const [loading, setLoading] = useState(true);
