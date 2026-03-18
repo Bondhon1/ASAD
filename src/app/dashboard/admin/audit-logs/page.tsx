@@ -182,7 +182,7 @@ export default function AuditLogsPage() {
       initialFinalPaymentStatus={user?.finalPayment?.status}
     >
       <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 sm:py-8">
-        <h1 className="text-3xl font-bold mb-6">Audit Logs</h1>
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-6">Audit Logs</h1>
 
         {/* Filters */}
         <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">

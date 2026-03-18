@@ -430,7 +430,7 @@ export default function UsersManagementPage() {
       ) : (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
           <div className="flex items-start justify-between mb-4">
-            <h2 className="text-2xl sm:text-3xl font-semibold text-[#0b2545]">User Management</h2>
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-semibold text-[#0b2545]">User Management</h2>
           </div>
 
           {/* Statistics Dashboard */}

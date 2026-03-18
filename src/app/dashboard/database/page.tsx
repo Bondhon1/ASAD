@@ -159,7 +159,7 @@ export default function DatabaseDeptPage() {
     <DashboardLayout userRole={displayRole} userName={displayName} userEmail={displayEmail} userId={viewer?.id || ""}>
       <div className="max-w-6xl mx-auto px-6 py-8">
         <div className="mb-10">
-          <h1 className="text-3xl font-bold text-slate-800">Database Administration</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-800">Database Administration</h1>
           <p className="text-slate-500">Manage user points, ranks, and thresholds.</p>
 
           <div className="mt-4 relative inline-block group">

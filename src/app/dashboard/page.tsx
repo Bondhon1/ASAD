@@ -446,7 +446,7 @@ export default function DashboardPage() {
   );
 
   const skeletonPage = (
-    <div className="max-w-6xl mx-auto px-0 py-3 sm:px-5 sm:py-6 space-y-8">
+    <div className="max-w-6xl mx-auto px-3 py-3 sm:px-5 sm:py-6 space-y-8">
       <div className="bg-white border border-gray-200 rounded-lg p-6 animate-pulse">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">

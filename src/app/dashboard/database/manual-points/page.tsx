@@ -437,7 +437,7 @@ export default function ManualPointsPage() {
               </svg>
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">Manual Point Adjustment</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Manual Point Adjustment</h1>
               <p className="text-sm text-slate-600">Batch update points for multiple volunteers</p>
             </div>
           </div>

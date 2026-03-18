@@ -219,7 +219,7 @@ export default function OrgRequestsPage() {
               </svg>
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
                 Sector/Club Management
               </h1>
               <p className="text-sm text-slate-600">

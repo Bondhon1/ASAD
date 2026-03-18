@@ -504,7 +504,7 @@ export default function CreditManagementPage() {
             <Image src="/icons/creditlogo.svg" alt="APC" width={44} height={44} unoptimized className="drop-shadow-lg" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Credit Management</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Credit Management</h1>
             <p className="text-sm text-slate-500">
               Manage APC (Asadian Performance Credit) assignments and payout requests
             </p>

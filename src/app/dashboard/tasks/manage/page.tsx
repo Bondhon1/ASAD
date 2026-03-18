@@ -37,7 +37,7 @@ export default function ManageTasksPage() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <p className="text-sm uppercase tracking-[0.2em] text-[#0b1c33]">Tasks</p>
-              <h1 className="text-3xl md:text-4xl font-semibold text-[#0b1c33]">Manage Tasks</h1>
+              <h1 className="text-2xl md:text-3xl lg:text-4xl font-semibold text-[#0b1c33]">Manage Tasks</h1>
               <p className="text-sm text-[#0b1c33]">Edit or view task details (placeholder page).</p>
             </div>
           </div>

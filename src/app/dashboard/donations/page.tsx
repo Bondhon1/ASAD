@@ -50,7 +50,7 @@ export default function DonationsListPage() {
 
   return (
     <DashboardLayout userRole={role || "VOLUNTEER"} userName={displayName} userEmail={(session as any)?.user?.email || ""} userId={(session as any)?.user?.id || ""}>
-      <div className="min-h-[calc(100vh-140px)] bg-slate-50/30 py-3 px-0 sm:py-10 sm:px-4">
+      <div className="min-h-[calc(100vh-140px)] bg-slate-50/30 py-3 px-3 sm:py-10 sm:px-4">
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-6">
             <div>

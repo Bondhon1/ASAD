@@ -216,7 +216,7 @@ async function getHrPayments() {
       initialFinalPaymentStatus={user?.finalPayment?.status}
     >
       <div className="max-w-6xl mx-auto p-6">
-        <h1 className="text-2xl font-bold mb-4">Payments Approvals</h1>
+        <h1 className="text-xl sm:text-2xl font-bold mb-4">Payments Approvals</h1>
 
         {/* Initial payments removed from approvals UI per request */}
 

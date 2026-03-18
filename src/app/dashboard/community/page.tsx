@@ -905,11 +905,11 @@ export default function CommunityPage() {
       userId={userIdVal}
       initialUserStatus={userStatusVal}
     >
-      <div className="min-h-[calc(100vh-140px)] bg-slate-50/30 py-3 px-0 sm:py-6 sm:px-4">
-        <div className="max-w-5xl mx-auto flex gap-6 items-start">
-          <div className="flex-1 min-w-0">
+      <div className="min-h-[calc(100vh-140px)] bg-slate-50/30 py-3 px-3 sm:py-6 sm:px-4">
+        <div className="max-w-5xl mx-auto flex gap-0 lg:gap-6 items-start">
+          <div className="flex-1 min-w-0 pb-20 lg:pb-0">
           {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5 px-4 sm:px-0">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
             <div>
               <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-800">Community</h1>
               <p className="text-slate-500 text-xs sm:text-sm">Share updates with your fellow volunteers</p>
@@ -949,7 +949,7 @@ export default function CommunityPage() {
 
                 {/* Search Results Dropdown */}
                 {searchOpen && searchResults && (
-                  <div className="absolute top-full left-0 right-0 sm:left-auto sm:right-0 mt-1.5 w-full sm:w-80 bg-white border border-slate-200 rounded-2xl shadow-lg z-50 overflow-hidden max-h-[420px] overflow-y-auto">
+                  <div className="absolute top-full left-0 right-0 sm:left-auto sm:right-0 mt-1.5 sm:w-96 bg-white border border-slate-200 rounded-2xl shadow-lg z-50 overflow-hidden max-h-[420px] overflow-y-auto">
                     {searchResults.users.length === 0 && searchResults.posts.length === 0 ? (
                       <p className="px-4 py-6 text-center text-sm text-slate-400">No results found</p>
                     ) : (
@@ -1036,7 +1036,7 @@ export default function CommunityPage() {
           </div>
 
           {/* Create Post Box */}
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 mb-5 mx-4 sm:mx-0">
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 mb-5">
             <div className="flex gap-3 items-start">
               <div className="flex-shrink-0 mt-0.5">
                 <Avatar
@@ -1101,7 +1101,7 @@ export default function CommunityPage() {
 
           {/* Feed */}
           {loading ? (
-            <div className="space-y-4 mx-4 sm:mx-0">
+            <div className="space-y-4">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="bg-white border border-slate-200 rounded-2xl p-4 animate-pulse">
                   <div className="flex gap-3">
@@ -1119,7 +1119,7 @@ export default function CommunityPage() {
               ))}
             </div>
           ) : posts.length === 0 ? (
-            <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center shadow-sm mx-4 sm:mx-0">
+            <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center shadow-sm">
               <div className="w-16 h-16 bg-[#1E3A5F]/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#1E3A5F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
               </div>
@@ -1133,7 +1133,7 @@ export default function CommunityPage() {
               </p>
             </div>
           ) : (
-            <div className="space-y-4 mx-4 sm:mx-0">
+            <div className="space-y-4">
               {posts.map((post) => (
                 <PostCard
                   key={post.id}

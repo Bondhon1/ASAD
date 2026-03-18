@@ -312,7 +312,7 @@ export default function NewRequestsPage() {
     >
     <div>
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">New Volunteer Requests</h1>
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">New Volunteer Requests</h1>
         <p className="text-gray-600 mt-2">Review and approve payment submissions</p>
         
         <div className="flex items-center gap-4 mt-4">

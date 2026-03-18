@@ -268,7 +268,7 @@ export default function CommunityReportsPage() {
           {/* Header */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-4">
-              <h1 className="text-2xl font-bold text-slate-900">
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
                 Community Post Reports
               </h1>
               <Link

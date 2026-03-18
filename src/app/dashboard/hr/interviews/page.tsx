@@ -383,7 +383,7 @@ function InterviewSlotsContent() {
         <div className="max-w-7xl mx-auto">
             <div className="mb-6 flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Interview Slots</h1>
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">Interview Slots</h1>
               <p className="text-gray-600 mt-2">Manage interview scheduling and Google Meet sessions</p>
             </div>
             <button

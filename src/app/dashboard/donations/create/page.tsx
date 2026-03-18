@@ -61,7 +61,7 @@ export default function CreateDonationPage() {
         <div className="max-w-4xl mx-auto">
           <div className="flex flex-col gap-3 mb-6">
             <p className="text-sm uppercase tracking-[0.2em] text-[#0b1c33]">Donations</p>
-            <h1 className="text-3xl md:text-4xl font-semibold leading-tight text-[#0b1c33]">Create Donation Campaign</h1>
+            <h1 className="text-2xl md:text-3xl lg:text-4xl font-semibold leading-tight text-[#0b1c33]">Create Donation Campaign</h1>
             <p className="text-[#0b1c33] text-sm md:text-base">Create a donation campaign for all volunteers.</p>
           </div>
 

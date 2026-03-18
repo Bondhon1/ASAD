@@ -534,7 +534,7 @@ export default function AdminMonthlyPaymentsPage() {
       <div className="max-w-5xl mx-auto px-4 py-6">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-[#0b2545]">Monthly Payments</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-[#0b2545]">Monthly Payments</h1>
           <p className="text-sm text-gray-500 mt-1">
             Manage monthly donation configuration and review submissions.
             Donation periods: Jan-Feb, Mar-Apr, May-Jun, Jul-Aug, Sep-Oct, Nov-Dec.
