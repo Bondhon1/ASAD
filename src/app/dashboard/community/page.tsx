@@ -949,7 +949,7 @@ export default function CommunityPage() {
 
                 {/* Search Results Dropdown */}
                 {searchOpen && searchResults && (
-                  <div className="absolute top-full left-0 right-0 sm:left-auto sm:right-0 mt-1.5 sm:w-96 bg-white border border-slate-200 rounded-2xl shadow-lg z-50 overflow-hidden max-h-[420px] overflow-y-auto">
+                  <div className="absolute top-full left-1/2 -translate-x-1/4 sm:left-auto sm:right-0 sm:translate-x-0 mt-1.5 w-[min(calc(100vw-32px),24rem)] sm:w-96 bg-white border border-slate-200 rounded-2xl shadow-lg z-50 overflow-hidden max-h-[420px] overflow-y-auto">
                     {searchResults.users.length === 0 && searchResults.posts.length === 0 ? (
                       <p className="px-4 py-6 text-center text-sm text-slate-400">No results found</p>
                     ) : (
