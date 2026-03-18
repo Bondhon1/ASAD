@@ -81,9 +81,14 @@ export async function POST(request: NextRequest) {
     const imageUrl = typeof body?.imageUrl === "string" ? body.imageUrl.trim() : "";
     const displayName = typeof body?.displayName === "string" ? body.displayName.trim() : "";
     const info = typeof body?.info === "string" ? body.info.trim() : "";
+    const externalLink = typeof body?.externalLink === "string" ? body.externalLink.trim() : "";
 
     if (!imageUrl || (!imageUrl.startsWith("http://") && !imageUrl.startsWith("https://"))) {
       return NextResponse.json({ error: "A valid imageUrl is required" }, { status: 400 });
+    }
+
+    if (externalLink && !externalLink.startsWith("http://") && !externalLink.startsWith("https://")) {
+      return NextResponse.json({ error: "externalLink must start with http:// or https://" }, { status: 400 });
     }
 
     const story = await prismaStory.create({
@@ -91,6 +96,7 @@ export async function POST(request: NextRequest) {
         imageUrl,
         displayName: displayName || null,
         info: info || null,
+        externalLink: externalLink || null,
         createdById: user.id,
       },
       include: {

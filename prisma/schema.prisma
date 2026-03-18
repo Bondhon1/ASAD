@@ -547,6 +547,7 @@ model Story {
   imageUrl              String
   displayName           String?          @db.VarChar(120)
   info                  String?          @db.VarChar(220)
+  externalLink          String?          @db.VarChar(500)
   createdBy             User             @relation(fields: [createdById], references: [id], onDelete: Cascade)
   createdById           String
   createdAt             DateTime         @default(now())
