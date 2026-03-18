@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
-import { createAuditLog } from '@/lib/prisma-audit';
+import { createAuditLog, prismaAudit } from '@/lib/prisma-audit';
 import { publishNotification } from '@/lib/ably';
 
 /** GET /api/admin/credits/payouts — List all payout requests */
@@ -42,14 +42,50 @@ export async function GET() {
     const allCompleted = payouts.filter((p) => p.status === 'COMPLETED');
     const thisMonthCompleted = allCompleted.filter((p) => p.processedAt && p.processedAt >= monthStart);
 
+    // Get manual credit adjustments from audit log
+    let manualCreditsTotal = 0;
+    let manualCreditsThisMonth = 0;
+    try {
+      const manualAdjustments = await prismaAudit.auditLog.findMany({
+        where: { action: 'MANUAL_CREDITS_ADJUSTMENT' },
+        select: { meta: true, createdAt: true },
+      });
+
+      for (const adj of manualAdjustments) {
+        if (adj.meta) {
+          try {
+            const parsed = JSON.parse(adj.meta);
+            const credits = Number(parsed.credits ?? 0);
+            // Only count positive adjustments (credits added)
+            if (credits > 0 && Array.isArray(parsed.results)) {
+              const successfulResults = parsed.results.filter((r: any) => r.ok === true);
+              const totalAdded = credits * successfulResults.length;
+              manualCreditsTotal += totalAdded;
+
+              // Check if within this month
+              if (adj.createdAt >= monthStart) {
+                manualCreditsThisMonth += totalAdded;
+              }
+            }
+          } catch (e) {
+            // Skip invalid JSON
+          }
+        }
+      }
+    } catch (auditErr) {
+      console.error('Failed to fetch manual adjustments:', auditErr);
+    }
+
     const summary = {
-      totalCreditsIssued: payouts.reduce((s, p) => s + (p.status === 'COMPLETED' ? (p.credits ?? 0) : 0), 0),
+      totalCreditsIssued: payouts.reduce((s, p) => s + (p.status === 'COMPLETED' ? (p.credits ?? 0) : 0), 0) + manualCreditsTotal,
       totalBDTPaid: allCompleted.reduce((s, p) => s + (p.bdtAmount ?? 0), 0),
       totalPending: payouts.filter((p) => p.status === 'PENDING').length,
       totalCompleted: allCompleted.length,
       totalRejected: payouts.filter((p) => p.status === 'REJECTED').length,
       monthlyBDT: thisMonthCompleted.reduce((s, p) => s + (p.bdtAmount ?? 0), 0),
       monthlyApproved: thisMonthCompleted.length,
+      manualCreditsTotal,
+      manualCreditsThisMonth,
     };
 
     return NextResponse.json({ payouts, summary });

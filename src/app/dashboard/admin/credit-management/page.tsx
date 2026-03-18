@@ -332,7 +332,13 @@ export default function CreditManagementPage() {
   const [payouts, setPayouts] = useState<Payout[]>([]);
   const [loadingPayouts, setLoadingPayouts] = useState(true);
   const [summary, setSummary] = useState<Record<string, number>>({});
-  const [activeTab, setActiveTab] = useState<"manual" | "payouts" | "history">("manual");
+  const [activeTab, setActiveTab] = useState<"manual" | "payouts" | "history" | "manual-history">("manual");
+
+  // Manual history state
+  const [manualAdjustments, setManualAdjustments] = useState<any[]>([]);
+  const [loadingManualHistory, setLoadingManualHistory] = useState(false);
+  const [manualHistorySearch, setManualHistorySearch] = useState("");
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
   // Pay modal
   const [payModal, setPayModal] = useState<Payout | null>(null);
@@ -348,12 +354,20 @@ export default function CreditManagementPage() {
   useEffect(() => {
     if (!viewer) return;
     if (viewer.role !== "MASTER") router.push("/dashboard");
-  }, [viewer, router]);
+  }, [viewer?.role, router]);
 
   useEffect(() => {
-    if (viewer) fetchPayouts();
+    if (viewer?.id) fetchPayouts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewer]);
+  }, [viewer?.id]);
+
+  // Fetch manual history when tab is opened
+  useEffect(() => {
+    if (activeTab === "manual-history" && manualAdjustments.length === 0) {
+      fetchManualHistory();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   const fetchPayouts = async () => {
     try {
@@ -368,6 +382,25 @@ export default function CreditManagementPage() {
       console.error("Failed to fetch payouts", e);
     } finally {
       setLoadingPayouts(false);
+    }
+  };
+
+  const fetchManualHistory = async () => {
+    try {
+      setLoadingManualHistory(true);
+      const res = await fetch("/api/admin/credits/manual-history");
+      const data = await res.json();
+      if (res.ok) {
+        setManualAdjustments(data.adjustments || []);
+      } else {
+        console.error("Failed to fetch manual history:", data.error);
+        toast(data.error || "Failed to load manual adjustment history", { type: "error" });
+      }
+    } catch (e) {
+      console.error("Failed to fetch manual history", e);
+      toast("Failed to load manual adjustment history", { type: "error" });
+    } finally {
+      setLoadingManualHistory(false);
     }
   };
 
@@ -411,6 +444,10 @@ export default function CreditManagementPage() {
       if (!res.ok) throw new Error(data?.error || "Failed");
       if (Array.isArray(data.results)) setUpdateResults(data.results);
       else toast("Credits updated successfully", { type: "success" });
+      // Refresh manual history if data exists
+      if (manualAdjustments.length > 0) {
+        fetchManualHistory();
+      }
     } catch (e: any) {
       toast(e?.message || "Operation failed", { type: "error" });
     } finally {
@@ -535,7 +572,8 @@ export default function CreditManagementPage() {
                 key: "payouts",
                 label: `Payout Requests${pendingPayouts.length > 0 ? ` (${pendingPayouts.length})` : ""}`,
               },
-              { key: "history", label: "Send History" },
+              { key: "history", label: "Payout History" },
+              { key: "manual-history", label: "Manual History" },
             ] as const
           ).map((tab) => (
             <button
@@ -780,6 +818,214 @@ export default function CreditManagementPage() {
                     </tbody>
                   </table>
                 </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── Tab: Manual Adjustment History ── */}
+        {activeTab === "manual-history" && (
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+            <div className="px-6 py-4 bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-600">
+                  <path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z" />
+                  <path d="M3 9V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2" />
+                </svg>
+                <h2 className="font-semibold text-slate-800">Manual Adjustment History</h2>
+              </div>
+              <button
+                onClick={() => fetchManualHistory()}
+                className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Refresh
+              </button>
+            </div>
+
+            <div className="p-6">
+              {/* Search */}
+              <div className="mb-4">
+                <input
+                  type="text"
+                  value={manualHistorySearch}
+                  onChange={(e) => setManualHistorySearch(e.target.value)}
+                  placeholder="Search by reason, admin name, email, or volunteer ID..."
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                />
+              </div>
+
+              {loadingManualHistory ? (
+                <div className="text-center py-10 bg-slate-50 rounded-xl text-slate-500 text-sm">
+                  Loading adjustments...
+                </div>
+              ) : manualAdjustments.length === 0 ? (
+                <div className="text-center py-10 bg-slate-50 rounded-xl text-slate-500 text-sm">
+                  No manual adjustments recorded yet
+                </div>
+              ) : (
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-xs text-slate-500 border-b border-slate-200">
+                          <th className="pb-3 pr-4 font-semibold">Date/Time</th>
+                          <th className="pb-3 pr-4 font-semibold">Admin</th>
+                          <th className="pb-3 pr-4 font-semibold">Reason</th>
+                          <th className="pb-3 pr-4 font-semibold text-right">Credits/User</th>
+                          <th className="pb-3 pr-4 font-semibold text-right">Affected</th>
+                          <th className="pb-3 pr-4 font-semibold text-right">Total Added</th>
+                          <th className="pb-3 font-semibold text-center">Details</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {manualAdjustments
+                          .filter((adj) => {
+                            const term = manualHistorySearch.toLowerCase();
+                            return (
+                              adj.reason.toLowerCase().includes(term) ||
+                              adj.actorName?.toLowerCase().includes(term) ||
+                              adj.actorEmail?.toLowerCase().includes(term) ||
+                              adj.actorVolunteerId?.toLowerCase().includes(term)
+                            );
+                          })
+                          .map((adj) => (
+                            <React.Fragment key={adj.id}>
+                              <tr className="hover:bg-slate-50 transition-colors">
+                                <td className="py-3 pr-4 text-slate-700">
+                                  {new Date(adj.createdAt).toLocaleString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })}
+                                </td>
+                                <td className="py-3 pr-4">
+                                  <div className="font-medium text-slate-900">{adj.actorName || 'Unknown'}</div>
+                                  <div className="text-xs text-slate-500">{adj.actorEmail}</div>
+                                </td>
+                                <td className="py-3 pr-4 text-slate-700">
+                                  <div className="max-w-xs truncate">{adj.reason}</div>
+                                </td>
+                                <td className="py-3 pr-4 text-right">
+                                  <span className={`font-mono font-semibold ${adj.credits > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                    {adj.credits > 0 ? '+' : ''}{adj.credits.toLocaleString()}
+                                  </span>
+                                </td>
+                                <td className="py-3 pr-4 text-right">
+                                  <div className="text-slate-900 font-medium">{adj.successCount} success</div>
+                                  {adj.failCount > 0 && (
+                                    <div className="text-xs text-red-600">{adj.failCount} failed</div>
+                                  )}
+                                </td>
+                                <td className="py-3 pr-4 text-right">
+                                  <span className="font-mono font-bold text-blue-600">
+                                    {adj.totalCreditsAdded > 0 ? '+' : ''}{adj.totalCreditsAdded.toLocaleString()}
+                                  </span>
+                                </td>
+                                <td className="py-3 text-center">
+                                  <button
+                                    onClick={() => {
+                                      const newExpanded = new Set(expandedRows);
+                                      if (newExpanded.has(adj.id)) {
+                                        newExpanded.delete(adj.id);
+                                      } else {
+                                        newExpanded.add(adj.id);
+                                      }
+                                      setExpandedRows(newExpanded);
+                                    }}
+                                    className="p-1.5 hover:bg-slate-200 rounded-lg transition-colors"
+                                  >
+                                    <svg
+                                      width="16"
+                                      height="16"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="2"
+                                      className={`transition-transform ${expandedRows.has(adj.id) ? 'rotate-180' : ''}`}
+                                    >
+                                      <path d="m6 9 6 6 6-6" />
+                                    </svg>
+                                  </button>
+                                </td>
+                              </tr>
+                              {expandedRows.has(adj.id) && adj.rawMeta?.results && (
+                                <tr>
+                                  <td colSpan={7} className="px-4 py-4 bg-slate-50">
+                                    <div className="text-xs font-semibold text-slate-600 mb-2 uppercase">Affected Users:</div>
+                                    <div className="space-y-1 max-h-60 overflow-y-auto">
+                                      {adj.rawMeta.results.map((result: any, idx: number) => (
+                                        <div
+                                          key={idx}
+                                          className={`p-2 rounded text-xs flex items-center justify-between ${
+                                            result.ok ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+                                          }`}
+                                        >
+                                          <div>
+                                            <span className="font-mono font-semibold">{result.ident}</span>
+                                            {result.ok && result.change !== undefined && (
+                                              <span className="ml-2 text-slate-600">
+                                                {result.change > 0 ? '+' : ''}{result.change.toLocaleString()} credits
+                                                {result.newCredits !== undefined && (
+                                                  <span className="text-slate-500"> (total: {result.newCredits.toLocaleString()})</span>
+                                                )}
+                                              </span>
+                                            )}
+                                            {!result.ok && result.error && (
+                                              <span className="ml-2 text-red-700">Error: {result.error}</span>
+                                            )}
+                                          </div>
+                                          <span className={`font-semibold ${result.ok ? 'text-green-600' : 'text-red-600'}`}>
+                                            {result.ok ? '✓' : '✗'}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Summary */}
+                  <div className="mt-6 bg-blue-50 border border-blue-200 rounded-xl p-4">
+                    <div className="text-sm text-slate-700">
+                      <span className="font-semibold">
+                        {manualAdjustments.filter((adj) => {
+                          const term = manualHistorySearch.toLowerCase();
+                          return (
+                            adj.reason.toLowerCase().includes(term) ||
+                            adj.actorName?.toLowerCase().includes(term) ||
+                            adj.actorEmail?.toLowerCase().includes(term) ||
+                            adj.actorVolunteerId?.toLowerCase().includes(term)
+                          );
+                        }).length}
+                      </span>{' '}
+                      adjustment(s) found
+                      {manualHistorySearch && <span> matching "{manualHistorySearch}"</span>}
+                      <span className="mx-2">·</span>
+                      <span className="font-semibold text-blue-600">
+                        {manualAdjustments
+                          .filter((adj) => {
+                            const term = manualHistorySearch.toLowerCase();
+                            return (
+                              adj.reason.toLowerCase().includes(term) ||
+                              adj.actorName?.toLowerCase().includes(term) ||
+                              adj.actorEmail?.toLowerCase().includes(term) ||
+                              adj.actorVolunteerId?.toLowerCase().includes(term)
+                            );
+                          })
+                          .reduce((sum, adj) => sum + adj.totalCreditsAdded, 0)
+                          .toLocaleString()}
+                      </span>{' '}
+                      total credits added
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           </div>
