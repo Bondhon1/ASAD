@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { syncCampaignStatus } from '@/lib/donationCampaign';
-import { createAuditLog } from '@/lib/prisma-audit';
 
 const STAFF_ROLES = ['HR', 'MASTER', 'ADMIN', 'DIRECTOR', 'DATABASE_DEPT', 'SECRETARIES'];
 
@@ -78,12 +77,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       }),
     ]);
 
-    await createAuditLog(requester!.id, 'DONATION_DETAILS_VIEWED', {
-      route: '/api/donations/[id]',
-      campaignId: id,
-      status: progress.status,
-      canAcceptSubmission: progress.canAcceptSubmission,
-    });
+    
 
     return NextResponse.json({
       campaign: {
