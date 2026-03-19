@@ -30,6 +30,9 @@ const UNSEEN_LATEST_BOOST_HOURS = 18; // newest unseen posts get an extra freshn
 const EXTRA_PRIORITY_PEAK_HOURS = 24; // initial special boost for sponsored/notice
 const EXTRA_PRIORITY_DECAY_TAU_HOURS = 24; // larger = slower decay
 const EXTRA_PRIORITY_FLOOR_HOURS = 0.75; // keeps a small persistent bonus
+const LOW_ENGAGEMENT_BONUS_HOURS = 2; // favor posts with fewer reactions/comments
+const REACTION_WEIGHT = 1;
+const COMMENT_WEIGHT = 1.5;
 const POST_SEEN_RETENTION_MONTHS = 1;
 const POST_SEEN_CLEANUP_INTERVAL_HOURS = 6;
 
@@ -37,6 +40,7 @@ const SEEN_RANDOM_WINDOW_MS = SEEN_RANDOM_WINDOW_HOURS * 60 * 60 * 1000;
 const UNSEEN_LATEST_BOOST_MS = UNSEEN_LATEST_BOOST_HOURS * 60 * 60 * 1000;
 const EXTRA_PRIORITY_PEAK_MS = EXTRA_PRIORITY_PEAK_HOURS * 60 * 60 * 1000;
 const EXTRA_PRIORITY_FLOOR_MS = EXTRA_PRIORITY_FLOOR_HOURS * 60 * 60 * 1000;
+const LOW_ENGAGEMENT_BONUS_MS = LOW_ENGAGEMENT_BONUS_HOURS * 60 * 60 * 1000;
 const POST_SEEN_CLEANUP_INTERVAL_MS = POST_SEEN_CLEANUP_INTERVAL_HOURS * 60 * 60 * 1000;
 
 let lastPostSeenCleanupAtMs = 0;
@@ -59,6 +63,12 @@ function getDecayedPriorityBoostMs(priority: number, ageHours: number): number {
   const decayedSpecialBoost = floorBoost + peakBoost * Math.exp(-ageHours / EXTRA_PRIORITY_DECAY_TAU_HOURS);
 
   return baselineBoost + decayedSpecialBoost;
+}
+
+function getLowEngagementBonusMs(reactionCount: number, commentCount: number): number {
+  const weightedEngagement =
+    reactionCount * REACTION_WEIGHT + commentCount * COMMENT_WEIGHT;
+  return LOW_ENGAGEMENT_BONUS_MS / (1 + weightedEngagement);
 }
 
 async function getSeenPostIdsForUser(userId: string, postIds: string[]): Promise<Set<string>> {
@@ -227,12 +237,18 @@ export async function GET(request: NextRequest) {
 
     let cursorScore: number | null = null;
     let cursorId: string | null = null;
+    let feedSeed: string | null = null;
     if (cursor) {
       try {
         const decoded = JSON.parse(Buffer.from(cursor, "base64url").toString());
         cursorScore = typeof decoded.s === "number" ? decoded.s : new Date(decoded.t).getTime();
         cursorId = decoded.id;
+        feedSeed = typeof decoded.r === "string" && decoded.r.trim() ? decoded.r : null;
       } catch { /* invalid cursor → start from top */ }
+    }
+
+    if (!feedSeed) {
+      feedSeed = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
     }
 
     // Single Prisma query — no raw SQL, no parameter issues
@@ -254,7 +270,6 @@ export async function GET(request: NextRequest) {
     });
 
     const nowMs = Date.now();
-    const daySeed = new Date(nowMs).toISOString().slice(0, 10);
     const seenPostIds = await getSeenPostIdsForUser(user.id, allPosts.map((p) => p.id));
 
     // Score each post and sort by score DESC, id DESC (stable tie-break)
@@ -262,19 +277,22 @@ export async function GET(request: NextRequest) {
       const createdAtMs = new Date(p.createdAt).getTime();
       const ageHours = Math.max(0, (nowMs - createdAtMs) / 3_600_000);
       const isSeenByUser = seenPostIds.has(p.id);
+      const reactionCount = p._count.reactions || 0;
+      const commentCount = p._count.comments || 0;
 
       const priorityBoost = getDecayedPriorityBoostMs(p.priority || 0, ageHours);
+      const lowEngagementBonus = getLowEngagementBonusMs(reactionCount, commentCount);
 
       let score = 0;
       if (isSeenByUser) {
-        const randomPart = stableRandom01(`${user.id}:${p.id}:${daySeed}`);
+        const randomPart = stableRandom01(`${user.id}:${p.id}:${feedSeed}`);
         score = randomPart * SEEN_RANDOM_WINDOW_MS;
       } else {
         const latestUnseenBoost = UNSEEN_LATEST_BOOST_MS / (1 + ageHours);
         score = createdAtMs + latestUnseenBoost;
       }
 
-      score += priorityBoost;
+      score += priorityBoost + lowEngagementBonus;
 
       return {
         post: p,
@@ -318,7 +336,7 @@ export async function GET(request: NextRequest) {
 
     const lastItem = hasMore ? scoredItems[scoredItems.length - 1] : null;
     const nextCursor = lastItem
-      ? Buffer.from(JSON.stringify({ s: lastItem.score, id: lastItem.post.id })).toString("base64url")
+      ? Buffer.from(JSON.stringify({ s: lastItem.score, id: lastItem.post.id, r: feedSeed })).toString("base64url")
       : null;
 
     return NextResponse.json({ posts: enriched, nextCursor });
