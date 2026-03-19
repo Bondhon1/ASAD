@@ -252,8 +252,8 @@ export default function StoriesRail({ userRole }: { userRole: string }) {
     }
   };
 
-  const shouldAnimate = stories.length > 3 && !isMaster;
-  const renderedStories = isMaster ? stories : trackStories;
+  const shouldAnimate = stories.length > 3;
+  const renderedStories = shouldAnimate ? trackStories : stories;
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-3 sm:p-4 mb-5">
