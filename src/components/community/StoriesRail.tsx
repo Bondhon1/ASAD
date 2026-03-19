@@ -54,7 +54,8 @@ async function uploadStoryImage(file: File): Promise<string> {
 }
 
 export default function StoriesRail({ userRole }: { userRole: string }) {
-  const isMaster = userRole === "MASTER";
+  const normalizedRole = (userRole || "").trim().toUpperCase();
+  const isMaster = normalizedRole === "MASTER";
 
   const [stories, setStories] = useState<StoryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -89,6 +90,10 @@ export default function StoriesRail({ userRole }: { userRole: string }) {
     if (stories.length > 3) return [...stories, ...stories];
     return stories;
   }, [stories]);
+
+  if (!loading && stories.length === 0 && !isMaster) {
+    return null;
+  }
 
   const handleUpload = async (fileList: FileList | null) => {
     if (!fileList || fileList.length === 0) return;
