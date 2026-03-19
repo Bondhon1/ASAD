@@ -28,7 +28,10 @@ export default function AuditLogsPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const userEmail = session?.user?.email || (typeof window !== "undefined" ? localStorage.getItem("userEmail") : null);
-  const { user, loading: userLoading, error: userError, refresh } = useCachedUserProfile<any>(userEmail);
+  const { user, loading: userLoading, error: userError, refresh } = useCachedUserProfile<any>(userEmail, undefined, {
+    pollIntervalMs: 0,
+    refreshOnVisibility: false,
+  });
   
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,6 +52,7 @@ export default function AuditLogsPage() {
   const displayName = user?.fullName || user?.username || session?.user?.name || "Admin";
   const displayEmail = user?.email || session?.user?.email || "";
   const displayRole = (session as any)?.user?.role || (user?.role as "VOLUNTEER" | "HR" | "MASTER" | "ADMIN" | "DIRECTOR" | "DATABASE_DEPT" | "SECRETARIES") || "ADMIN";
+  const canAccessAuditLogs = !!user && ['MASTER', 'ADMIN', 'DATABASE_DEPT'].includes(user.role);
 
   const { alert } = useModal();
 
@@ -70,11 +74,9 @@ export default function AuditLogsPage() {
   }, [status, user, userLoading, userError, refresh, router]);
 
   useEffect(() => {
-    if (!user || userLoading) return;
-    if (!['MASTER', 'ADMIN', 'DATABASE_DEPT'].includes(user.role)) return;
-
+    if (userLoading || !canAccessAuditLogs) return;
     fetchLogs();
-  }, [user, userLoading, page, pageSize, actionFilter, startDate, endDate]);
+  }, [userLoading, canAccessAuditLogs, page, pageSize, actionFilter, startDate, endDate]);
 
   const getVisiblePages = () => {
     const delta = 4;
