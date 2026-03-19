@@ -69,7 +69,7 @@
     },
     {
       "path": "/api/donations/process-expired",
-      "schedule": "0 * * * *"
+      "schedule": "0 0 * * *"
     },
     {
       "path": "/api/community/posts/cleanup-seen",
