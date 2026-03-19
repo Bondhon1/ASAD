@@ -20,10 +20,106 @@ const AD_ROLES = ["MASTER"];
 // Staff roles allowed in community
 const STAFF_ROLES = ["HR", "MASTER", "ADMIN", "DIRECTOR", "DATABASE_DEPT", "SECRETARIES"];
 
-// Priority boost: each priority point makes the post appear as if it's this many hours newer.
-// NOTICE (priority=2) → +12h boost; SPONSORED_AD (priority=1) → +6h boost.
-// The post decays naturally after that window.
+// Baseline priority boost keeps compatibility with existing ranking behavior.
+// Additional always-on special boost is applied below in seen-aware scoring.
 const PRIORITY_BOOST_HOURS = 6;
+
+// Seen-aware feed tuning
+const SEEN_RANDOM_WINDOW_HOURS = 6; // seen posts are shuffled inside this random window
+const UNSEEN_LATEST_BOOST_HOURS = 18; // newest unseen posts get an extra freshness lift
+const EXTRA_PRIORITY_PEAK_HOURS = 24; // initial special boost for sponsored/notice
+const EXTRA_PRIORITY_DECAY_TAU_HOURS = 24; // larger = slower decay
+const EXTRA_PRIORITY_FLOOR_HOURS = 0.75; // keeps a small persistent bonus
+const POST_SEEN_RETENTION_MONTHS = 1;
+const POST_SEEN_CLEANUP_INTERVAL_HOURS = 6;
+
+const SEEN_RANDOM_WINDOW_MS = SEEN_RANDOM_WINDOW_HOURS * 60 * 60 * 1000;
+const UNSEEN_LATEST_BOOST_MS = UNSEEN_LATEST_BOOST_HOURS * 60 * 60 * 1000;
+const EXTRA_PRIORITY_PEAK_MS = EXTRA_PRIORITY_PEAK_HOURS * 60 * 60 * 1000;
+const EXTRA_PRIORITY_FLOOR_MS = EXTRA_PRIORITY_FLOOR_HOURS * 60 * 60 * 1000;
+const POST_SEEN_CLEANUP_INTERVAL_MS = POST_SEEN_CLEANUP_INTERVAL_HOURS * 60 * 60 * 1000;
+
+let lastPostSeenCleanupAtMs = 0;
+
+function stableRandom01(seed: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    hash ^= seed.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0) / 0xffffffff;
+}
+
+function getDecayedPriorityBoostMs(priority: number, ageHours: number): number {
+  if (priority <= 0) return 0;
+
+  const baselineBoost = priority * PRIORITY_BOOST_HOURS * 60 * 60 * 1000;
+  const peakBoost = priority * EXTRA_PRIORITY_PEAK_MS;
+  const floorBoost = priority * EXTRA_PRIORITY_FLOOR_MS;
+  const decayedSpecialBoost = floorBoost + peakBoost * Math.exp(-ageHours / EXTRA_PRIORITY_DECAY_TAU_HOURS);
+
+  return baselineBoost + decayedSpecialBoost;
+}
+
+async function getSeenPostIdsForUser(userId: string, postIds: string[]): Promise<Set<string>> {
+  if (postIds.length === 0) return new Set<string>();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const postSeen = (prisma as any).postSeen;
+
+  const seenRows = await postSeen.findMany({
+    where: {
+      userId,
+      postId: { in: postIds },
+    },
+    select: { postId: true },
+  });
+
+  return new Set(seenRows.map((row: { postId: string }) => row.postId));
+}
+
+function getPostSeenCutoffDate(reference: Date = new Date()): Date {
+  const cutoff = new Date(reference);
+  cutoff.setMonth(cutoff.getMonth() - POST_SEEN_RETENTION_MONTHS);
+  return cutoff;
+}
+
+async function cleanupOldPostSeenIfDue(nowMs: number = Date.now()) {
+  if (nowMs - lastPostSeenCleanupAtMs < POST_SEEN_CLEANUP_INTERVAL_MS) return;
+
+  lastPostSeenCleanupAtMs = nowMs;
+  const cutoffDate = getPostSeenCutoffDate(new Date(nowMs));
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const postSeen = (prisma as any).postSeen;
+
+  try {
+    await postSeen.deleteMany({
+      where: { seenAt: { lt: cutoffDate } },
+    });
+  } catch (error) {
+    console.warn("PostSeen cleanup failed", error);
+  }
+}
+
+async function markPostsSeen(userId: string, postIds: string[]) {
+  if (postIds.length === 0) return;
+
+  const now = new Date();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const postSeen = (prisma as any).postSeen;
+  await Promise.all(
+    postIds.map((postId) =>
+      postSeen.upsert({
+        where: { postId_userId: { postId, userId } },
+        create: { postId, userId, seenAt: now },
+        update: { seenAt: now },
+      })
+    )
+  );
+
+  await cleanupOldPostSeenIfDue(now.getTime());
+}
 
 const AUTHOR_SELECT = {
   id: true,
@@ -121,12 +217,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ posts: enriched, nextCursor: hasMore ? items[items.length - 1].id : null });
     }
 
-    // ── Community feed: time-decay sort (done in JS to avoid raw SQL param issues) ──
-    // score = createdAt ms + priority * BOOST_MS
-    // NOTICE (priority=2) → +12h boost; SPONSORED_AD (priority=1) → +6h boost.
-    // After the boost window passes, special posts naturally sink below newer ones.
+    // ── Community feed: seen-aware ranking ───────────────────────────────────
+    // Rules:
+    // 1) Sponsored + Notice get extra priority with age decay.
+    // 2) Unseen + latest posts are boosted for each user.
+    // 3) Seen posts are shuffled using stable randomness.
 
-    const BOOST_MS = PRIORITY_BOOST_HOURS * 60 * 60 * 1000;
     const MAX_FEED_POSTS = 300; // enough for ~30 pages of 10
 
     let cursorScore: number | null = null;
@@ -134,7 +230,7 @@ export async function GET(request: NextRequest) {
     if (cursor) {
       try {
         const decoded = JSON.parse(Buffer.from(cursor, "base64url").toString());
-        cursorScore = new Date(decoded.t).getTime();
+        cursorScore = typeof decoded.s === "number" ? decoded.s : new Date(decoded.t).getTime();
         cursorId = decoded.id;
       } catch { /* invalid cursor → start from top */ }
     }
@@ -157,11 +253,34 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    const nowMs = Date.now();
+    const daySeed = new Date(nowMs).toISOString().slice(0, 10);
+    const seenPostIds = await getSeenPostIdsForUser(user.id, allPosts.map((p) => p.id));
+
     // Score each post and sort by score DESC, id DESC (stable tie-break)
-    const withScore = allPosts.map((p) => ({
-      post: p,
-      score: new Date(p.createdAt).getTime() + (p.priority || 0) * BOOST_MS,
-    }));
+    const withScore = allPosts.map((p) => {
+      const createdAtMs = new Date(p.createdAt).getTime();
+      const ageHours = Math.max(0, (nowMs - createdAtMs) / 3_600_000);
+      const isSeenByUser = seenPostIds.has(p.id);
+
+      const priorityBoost = getDecayedPriorityBoostMs(p.priority || 0, ageHours);
+
+      let score = 0;
+      if (isSeenByUser) {
+        const randomPart = stableRandom01(`${user.id}:${p.id}:${daySeed}`);
+        score = randomPart * SEEN_RANDOM_WINDOW_MS;
+      } else {
+        const latestUnseenBoost = UNSEEN_LATEST_BOOST_MS / (1 + ageHours);
+        score = createdAtMs + latestUnseenBoost;
+      }
+
+      score += priorityBoost;
+
+      return {
+        post: p,
+        score,
+      };
+    });
     withScore.sort((a, b) => b.score - a.score || b.post.id.localeCompare(a.post.id));
 
     // Cursor-based keyset pagination
@@ -177,6 +296,8 @@ export async function GET(request: NextRequest) {
     const page = withScore.slice(startIdx, startIdx + limit + 1);
     const hasMore = page.length > limit;
     const scoredItems = hasMore ? page.slice(0, limit) : page;
+
+    markPostsSeen(user.id, scoredItems.map(({ post }) => post.id));
 
     const overdueMap = await computeOverdueMap(
       [...new Set(scoredItems
@@ -197,7 +318,7 @@ export async function GET(request: NextRequest) {
 
     const lastItem = hasMore ? scoredItems[scoredItems.length - 1] : null;
     const nextCursor = lastItem
-      ? Buffer.from(JSON.stringify({ t: new Date(lastItem.score).toISOString(), id: lastItem.post.id })).toString("base64url")
+      ? Buffer.from(JSON.stringify({ s: lastItem.score, id: lastItem.post.id })).toString("base64url")
       : null;
 
     return NextResponse.json({ posts: enriched, nextCursor });

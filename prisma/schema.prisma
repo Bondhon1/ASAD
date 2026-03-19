@@ -68,6 +68,7 @@ model User {
   
   // Social features
   posts                 Post[]
+  postSeens             PostSeen[]
   storiesCreated        Story[]
   postReactions         PostReaction[]
   commentReactions      CommentReaction[]
@@ -576,6 +577,7 @@ model Post {
   sharedInMessages      Message[]        @relation("SharedPostMessages")
   comments              PostComment[]
   reactions             PostReaction[]
+  seenBy                PostSeen[]
   reports               PostReport[]
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
@@ -592,6 +594,21 @@ enum PostType {
   EVENT
   NOTICE
   SPONSORED_AD
+}
+
+model PostSeen {
+  id                    String           @id @default(cuid())
+  post                  Post             @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId                String
+  user                  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                String
+  seenAt                DateTime         @default(now())
+
+  @@unique([postId, userId])
+  @@index([userId])
+  @@index([postId])
+  @@index([seenAt])
+  @@index([userId, seenAt])
 }
 
 model PostReaction {

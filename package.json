@@ -13,7 +13,8 @@
     "start": "next start",
     "lint": "eslint",
     "postinstall": "npm run generate",
-    "seed": "tsx prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts",
+    "cleanup:post-seen": "tsx scripts/cleanup-post-seen.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
