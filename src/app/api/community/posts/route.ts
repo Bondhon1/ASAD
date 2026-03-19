@@ -20,16 +20,13 @@ const AD_ROLES = ["MASTER"];
 // Staff roles allowed in community
 const STAFF_ROLES = ["HR", "MASTER", "ADMIN", "DIRECTOR", "DATABASE_DEPT", "SECRETARIES"];
 
-// Baseline priority boost keeps compatibility with existing ranking behavior.
-// Additional always-on special boost is applied below in seen-aware scoring.
-const PRIORITY_BOOST_HOURS = 6;
-
 // Seen-aware feed tuning
 const SEEN_RANDOM_WINDOW_HOURS = 6; // seen posts are shuffled inside this random window
 const UNSEEN_LATEST_BOOST_HOURS = 18; // newest unseen posts get an extra freshness lift
-const EXTRA_PRIORITY_PEAK_HOURS = 24; // initial special boost for sponsored/notice
-const EXTRA_PRIORITY_DECAY_TAU_HOURS = 24; // larger = slower decay
-const EXTRA_PRIORITY_FLOOR_HOURS = 0.75; // keeps a small persistent bonus
+const EXTRA_PRIORITY_PEAK_HOURS = 16; // initial extra boost for sponsored/notice
+const EXTRA_PRIORITY_DECAY_TAU_HOURS = 12; // faster decay so priority does not stick forever
+const EXTRA_PRIORITY_FLOOR_HOURS = 0.2; // small long-tail bonus, not enough to pin on top
+const SEEN_PRIORITY_WEIGHT = 0.35; // after seen, priority still helps but is mostly randomized
 const LOW_ENGAGEMENT_BONUS_HOURS = 2; // favor posts with fewer reactions/comments
 const REACTION_WEIGHT = 1;
 const COMMENT_WEIGHT = 1.5;
@@ -57,12 +54,9 @@ function stableRandom01(seed: string): number {
 function getDecayedPriorityBoostMs(priority: number, ageHours: number): number {
   if (priority <= 0) return 0;
 
-  const baselineBoost = priority * PRIORITY_BOOST_HOURS * 60 * 60 * 1000;
   const peakBoost = priority * EXTRA_PRIORITY_PEAK_MS;
   const floorBoost = priority * EXTRA_PRIORITY_FLOOR_MS;
-  const decayedSpecialBoost = floorBoost + peakBoost * Math.exp(-ageHours / EXTRA_PRIORITY_DECAY_TAU_HOURS);
-
-  return baselineBoost + decayedSpecialBoost;
+  return floorBoost + peakBoost * Math.exp(-ageHours / EXTRA_PRIORITY_DECAY_TAU_HOURS);
 }
 
 function getLowEngagementBonusMs(reactionCount: number, commentCount: number): number {
@@ -292,7 +286,8 @@ export async function GET(request: NextRequest) {
         score = createdAtMs + latestUnseenBoost;
       }
 
-      score += priorityBoost + lowEngagementBonus;
+      const priorityWeight = isSeenByUser ? SEEN_PRIORITY_WEIGHT : 1;
+      score += priorityBoost * priorityWeight + lowEngagementBonus;
 
       return {
         post: p,
