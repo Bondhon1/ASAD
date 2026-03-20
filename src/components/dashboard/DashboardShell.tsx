@@ -157,6 +157,7 @@ function getMenuItems(userRole: string, userStatus?: string | null) {
     { label: "User Management", href: "/dashboard/hr/users" },
     { label: "Services", href: "/dashboard/hr/services" },
     { label: "Tasks", href: "/dashboard/tasks" },
+    { label: "Community", href: "/dashboard/community" },
     { label: "Settings", href: "/dashboard/settings" },
   ];
 

@@ -15,9 +15,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const me = await prisma.user.findUnique({
       where: { email: session.user.email },
-      select: { id: true, status: true },
+      select: { id: true, status: true, role: true },
     });
-    if (!me || me.status !== "OFFICIAL")
+    if (!me || me.status === "BANNED")
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    
+    // Allow OFFICIAL volunteers, HR, ADMIN, MASTER, and DATABASE_DEPT to view profiles
+    const canViewProfiles = me.status === "OFFICIAL" || ['HR', 'ADMIN', 'MASTER', 'DATABASE_DEPT'].includes(me.role as string);
+    if (!canViewProfiles)
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const profile = await prisma.user.findUnique({
