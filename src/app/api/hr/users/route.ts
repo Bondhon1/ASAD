@@ -201,9 +201,20 @@ async function fetchUsersData(
   const officialIds = users.filter((u: any) => u.status === 'OFFICIAL' && !u.monthlyPaymentExempt).map((u: any) => u.id);
   const overdueMap: Record<string, number> = {};
   if (officialIds.length > 0) {
-    const overduePairs = getRelevantDonationMonths(24).filter(p =>
-      isAfterDeadline(p.month, p.year, DEFAULT_DEADLINE_DAY)
-    );
+    const relevantPairs = getRelevantDonationMonths(24);
+    
+    // Fetch deadline configs for each month to ensure consistency with user-status endpoint
+    const configs = await prisma.monthlyPaymentConfig.findMany({
+      where: { OR: relevantPairs.map(p => ({ month: p.month, year: p.year })) },
+    });
+
+    // Filter pairs where deadline has passed, using config-specific deadlines
+    const overduePairs = relevantPairs.filter(p => {
+      const config = configs.find(c => c.month === p.month && c.year === p.year);
+      const deadlineDay = config?.deadline ?? DEFAULT_DEADLINE_DAY;
+      return isAfterDeadline(p.month, p.year, deadlineDay);
+    });
+
     if (overduePairs.length > 0) {
       const payments = await prisma.monthlyPayment.findMany({
         where: {
