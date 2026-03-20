@@ -91,8 +91,9 @@ export default function StoriesRail({ userRole }: { userRole: string }) {
 
   useEffect(() => {
     fetchStories();
-    const timer = setInterval(fetchStories, 60_000);
-    return () => clearInterval(timer);
+    // DISABLED: automatic polling removed
+    // const timer = setInterval(fetchStories, 60_000);
+    // return () => clearInterval(timer);
   }, [fetchStories]);
 
   const trackStories = useMemo(() => {

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getCachedProfile, setCachedProfile, getCacheTTL } from "@/lib/profileCache";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 10; // Revalidate every 10 seconds
+export const revalidate = 0; // Always fetch fresh data on request (no automatic polling)
 
 // Sector/club lists rarely change — cache them for 5 minutes to avoid
 // full table scans on every full profile request.
@@ -49,9 +49,9 @@ export async function GET(request: NextRequest) {
           status: 200,
           headers: { 
             'X-Cache': 'HIT',
-            // Use stale-while-revalidate for normal requests (edge caching enabled)
-            'Cache-Control': 'private, s-maxage=10, stale-while-revalidate=10',
-            'CDN-Cache-Control': 'max-age=10'
+            // Always allow fresh fetches on manual reload
+            'Cache-Control': 'private, no-cache, must-revalidate',
+            'CDN-Cache-Control': 'no-cache'
           }
         });
       }

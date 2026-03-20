@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, useRef } from "react";
 
 const CACHE_KEY_PREFIX = "asad_user_profile_v2_";
 const DEFAULT_TTL_MS = 30 * 1000; // 30 seconds — keep credit/coin/user info fresh
-const POLL_INTERVAL_MS = 30 * 1000; // re-fetch every 30 seconds in background
+const POLL_INTERVAL_MS = 0; // DISABLED: no automatic polling
 
 interface UseCachedUserProfileOptions {
   pollIntervalMs?: number;
@@ -63,7 +63,7 @@ export function useCachedUserProfile<T = any>(
   const {
     pollIntervalMs = POLL_INTERVAL_MS,
     refreshOnVisibility = true,
-    refreshOnNotification = true,
+    refreshOnNotification = false,
   } = options;
   const [user, setUser] = useState<T | null>(() => {
     if (!email) return null;

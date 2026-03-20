@@ -4,7 +4,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 30; // Cache for 30 seconds
+export const revalidate = 0; // Always fetch fresh data on request (no automatic polling)
 
 // In-memory cache for calendar status
 const statusCache = new Map<string, { data: any; timestamp: number }>();

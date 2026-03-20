@@ -7,7 +7,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getSlotsCacheEntry, setSlotsCacheEntry, invalidateSlotsCache } from "@/lib/hrSlotsCache";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 20; // Cache for 20 seconds
+export const revalidate = 0; // Always fetch fresh data on request (no automatic polling)
 
 // GET - List all interview slots
 export async function GET() {
