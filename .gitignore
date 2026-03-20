@@ -4,7 +4,7 @@
 /node_modules
 /.pnp
 .pnp.*
-
+unpaid-users-backup-2026-03-20T10-32-48-317Z.json
 .yarn/*
 !.yarn/patches
 !.yarn/plugins
