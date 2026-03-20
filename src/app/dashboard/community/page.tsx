@@ -617,6 +617,51 @@ export default function CommunityPage() {
   const [sectorsList, setSectorsList] = useState<{ id: string; name: string }[]>([]);
   const [clubsList, setClubsList] = useState<{ id: string; name: string }[]>([]);
 
+  const closeSearchDropdown = useCallback(() => {
+    setSearchResults(null);
+    setSearchQuery("");
+    setSearchOpen(false);
+  }, []);
+
+  const scrollToAndHighlightPost = useCallback((postId: string) => {
+    const el = document.getElementById(`post-${postId}`);
+    if (!el) return false;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.classList.add("ring-2", "ring-[#1E3A5F]", "ring-offset-2");
+    setTimeout(() => el.classList.remove("ring-2", "ring-[#1E3A5F]", "ring-offset-2"), 2500);
+    return true;
+  }, []);
+
+  const goToExactPostFromSearch = useCallback(
+    async (postId: string) => {
+      closeSearchDropdown();
+
+      if (scrollToAndHighlightPost(postId)) return;
+
+      const hasPost = posts.some((p) => p.id === postId);
+      if (!hasPost) {
+        try {
+          const res = await fetch(`/api/community/posts/${postId}`);
+          if (res.ok) {
+            const d = await res.json();
+            if (d?.post) {
+              setPosts((prev) => (prev.some((p) => p.id === d.post.id) ? prev : [d.post, ...prev]));
+              setTimeout(() => {
+                scrollToAndHighlightPost(postId);
+              }, 120);
+              return;
+            }
+          }
+        } catch {}
+      }
+
+      const url = new URL(window.location.href);
+      url.searchParams.set("post", postId);
+      router.replace(url.pathname + (url.search || ""), { scroll: false });
+    },
+    [closeSearchDropdown, posts, router, scrollToAndHighlightPost]
+  );
+
   const currentUserId = (user as any)?.id || (session as any)?.user?.id || "";
 
   const _commStatus = (session as any)?.user?.status;
@@ -700,14 +745,12 @@ export default function CommunityPage() {
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
-        setSearchResults(null);
-        setSearchQuery("");
-        setSearchOpen(false);
+        closeSearchDropdown();
       }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, []);
+  }, [closeSearchDropdown]);
 
   const loadPosts = useCallback(
     async (cursor?: string, replace = false) => {
@@ -757,18 +800,35 @@ export default function CommunityPage() {
   // Scroll to highlighted post after it loads
   useEffect(() => {
     if (!highlightPostId || loading) return;
-    const el = document.getElementById(`post-${highlightPostId}`);
-    if (el) {
+    if (scrollToAndHighlightPost(highlightPostId)) {
       setTimeout(() => {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-        el.classList.add("ring-2", "ring-[#1E3A5F]", "ring-offset-2");
-        setTimeout(() => el.classList.remove("ring-2", "ring-[#1E3A5F]", "ring-offset-2"), 2500);
         // Clean URL
         const url = new URL(window.location.href);
         url.searchParams.delete("post");
         router.replace(url.pathname + (url.search || ""), { scroll: false });
       }, 400);
     }
+  }, [highlightPostId, loading, posts, router, scrollToAndHighlightPost]);
+
+  // If highlighted post is not in current page set, fetch it directly.
+  useEffect(() => {
+    if (!highlightPostId || loading) return;
+    if (posts.some((p) => p.id === highlightPostId)) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/community/posts/${highlightPostId}`);
+        if (!res.ok) return;
+        const d = await res.json();
+        if (cancelled || !d?.post) return;
+        setPosts((prev) => (prev.some((p) => p.id === d.post.id) ? prev : [d.post, ...prev]));
+      } catch {}
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [highlightPostId, loading, posts]);
 
   // Infinite scroll
@@ -1058,7 +1118,10 @@ export default function CommunityPage() {
                             {searchResults.users.map((u: any) => (
                               <button
                                 key={u.id}
-                                onClick={() => { router.push(`/profile/${u.volunteerId || u.id}`); setSearchResults(null); setSearchQuery(""); setSearchOpen(false); }}
+                                onClick={() => {
+                                  router.push(`/dashboard/community/profile/${u.id}`);
+                                  closeSearchDropdown();
+                                }}
                                 className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors text-left"
                               >
                                 <div className="w-8 h-8 rounded-full bg-slate-200 flex-shrink-0 overflow-hidden">
@@ -1084,7 +1147,9 @@ export default function CommunityPage() {
                             {searchResults.posts.map((p: any) => (
                               <button
                                 key={p.id}
-                                onClick={() => { router.push(`/dashboard/community?post=${p.id}`); setSearchResults(null); setSearchQuery(""); setSearchOpen(false); }}
+                                onClick={() => {
+                                  goToExactPostFromSearch(p.id);
+                                }}
                                 className="w-full flex items-start gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors text-left"
                               >
                                 <div className="w-8 h-8 rounded-full bg-slate-200 flex-shrink-0 overflow-hidden mt-0.5">
