@@ -21,7 +21,9 @@ const AD_ROLES = ["MASTER"];
 const STAFF_ROLES = ["HR", "MASTER", "ADMIN", "DIRECTOR", "DATABASE_DEPT", "SECRETARIES"];
 
 // Seen-aware feed tuning
-const SEEN_RANDOM_WINDOW_HOURS = 6; // seen posts are shuffled inside this random window
+const SEEN_RANDOM_WINDOW_HOURS = 6; // max shuffle window for fresh seen posts
+const SEEN_RANDOM_MIN_WINDOW_HOURS = 0.5; // keep a small shuffle even for older seen posts
+const SEEN_RANDOM_DECAY_TAU_HOURS = 48; // older seen posts get progressively less random lift
 const UNSEEN_LATEST_BOOST_HOURS = 18; // newest unseen posts get an extra freshness lift
 const EXTRA_PRIORITY_PEAK_HOURS = 16; // initial extra boost for sponsored/notice
 const EXTRA_PRIORITY_DECAY_TAU_HOURS = 12; // faster decay so priority does not stick forever
@@ -34,6 +36,7 @@ const POST_SEEN_RETENTION_MONTHS = 1;
 const POST_SEEN_CLEANUP_INTERVAL_HOURS = 6;
 
 const SEEN_RANDOM_WINDOW_MS = SEEN_RANDOM_WINDOW_HOURS * 60 * 60 * 1000;
+const SEEN_RANDOM_MIN_WINDOW_MS = SEEN_RANDOM_MIN_WINDOW_HOURS * 60 * 60 * 1000;
 const UNSEEN_LATEST_BOOST_MS = UNSEEN_LATEST_BOOST_HOURS * 60 * 60 * 1000;
 const EXTRA_PRIORITY_PEAK_MS = EXTRA_PRIORITY_PEAK_HOURS * 60 * 60 * 1000;
 const EXTRA_PRIORITY_FLOOR_MS = EXTRA_PRIORITY_FLOOR_HOURS * 60 * 60 * 1000;
@@ -63,6 +66,12 @@ function getLowEngagementBonusMs(reactionCount: number, commentCount: number): n
   const weightedEngagement =
     reactionCount * REACTION_WEIGHT + commentCount * COMMENT_WEIGHT;
   return LOW_ENGAGEMENT_BONUS_MS / (1 + weightedEngagement);
+}
+
+function getSeenRandomJitterMs(ageHours: number, randomPart: number): number {
+  const decayedWindowMs = SEEN_RANDOM_WINDOW_MS / (1 + ageHours / SEEN_RANDOM_DECAY_TAU_HOURS);
+  const adaptiveWindowMs = Math.max(SEEN_RANDOM_MIN_WINDOW_MS, decayedWindowMs);
+  return randomPart * adaptiveWindowMs;
 }
 
 async function getSeenPostIdsForUser(userId: string, postIds: string[]): Promise<Set<string>> {
@@ -280,7 +289,8 @@ export async function GET(request: NextRequest) {
       let score = 0;
       if (isSeenByUser) {
         const randomPart = stableRandom01(`${user.id}:${p.id}:${feedSeed}`);
-        score = randomPart * SEEN_RANDOM_WINDOW_MS;
+        const randomJitterMs = getSeenRandomJitterMs(ageHours, randomPart);
+        score = createdAtMs + randomJitterMs;
       } else {
         const latestUnseenBoost = UNSEEN_LATEST_BOOST_MS / (1 + ageHours);
         score = createdAtMs + latestUnseenBoost;
