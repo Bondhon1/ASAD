@@ -326,7 +326,7 @@ export default function StoriesRail({ userRole }: { userRole: string }) {
                   className="relative w-[124px] sm:w-[136px] h-[208px] sm:h-[228px] rounded-xl overflow-hidden border border-slate-200 bg-slate-800 flex-shrink-0 group block"
                 >
                   {isMaster && (
-                    <div className="absolute top-2 right-2 z-20 flex items-center gap-1">
+                    <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
                       <button
                         type="button"
                         onClick={(e) => {
@@ -372,7 +372,7 @@ export default function StoriesRail({ userRole }: { userRole: string }) {
                   className="relative w-[124px] sm:w-[136px] h-[208px] sm:h-[228px] rounded-xl overflow-hidden border border-slate-200 bg-slate-800 flex-shrink-0"
                 >
                   {isMaster && (
-                    <div className="absolute top-2 right-2 z-20 flex items-center gap-1">
+                    <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
                       <button
                         type="button"
                         onClick={() => startEdit(story)}
