@@ -71,7 +71,7 @@ export function useCachedUserProfile<T = any>(
   });
   const [loading, setLoading] = useState<boolean>(!!email && !user);
   const [error, setError] = useState<string | null>(null);
-  const hasFetchedRef = useRef(false);
+  const fetchedEmailRef = useRef<string | null>(null);
 
   const refresh = useCallback(async (forceFresh: boolean = false) => {
     if (!email) return null;
@@ -131,20 +131,25 @@ export function useCachedUserProfile<T = any>(
   }, [email]);
 
   useEffect(() => {
-    if (!email) return;
-    if (hasFetchedRef.current) return; // Prevent duplicate fetches
-    
-    hasFetchedRef.current = true;
-    const cached = readCachedUser<T>(email, ttlMs);
-    
-    if (cached) {
-      setUser(cached);
+    if (!email) {
+      fetchedEmailRef.current = null;
+      setUser(null);
       setLoading(false);
-      // Still schedule a background refresh so stale data is updated quickly
-    } else {
-      refresh();
+      setError(null);
+      return;
     }
-  }, [email, ttlMs]); // Removed 'refresh' from dependencies to prevent infinite loop
+
+    if (fetchedEmailRef.current === email) return; // already initialized for this account
+    fetchedEmailRef.current = email;
+
+    const cached = readCachedUser<T>(email, ttlMs);
+    setUser(cached);
+    setLoading(!cached);
+    setError(null);
+
+    // Always refresh once per email switch to avoid stale cross-account UI
+    refresh();
+  }, [email, ttlMs, refresh]);
 
   // Periodic background polling — keeps credit/coin/user info up-to-date
   useEffect(() => {
