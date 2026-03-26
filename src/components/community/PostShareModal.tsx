@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import Image from "next/image";
 import { type Post } from "./PostCard";
 import { useChatContext } from "@/components/chat/ChatProvider";
+import { logErrorToAudit } from "@/lib/apiErrorHandler";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -67,16 +68,49 @@ function ShareAsPostTab({
       if (onShareAsPost) {
         await onShareAsPost(message.trim(), post.id);
       } else {
-        await fetch("/api/community/posts", {
+        const res = await fetch("/api/community/posts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ content: message.trim(), sharedPostId: post.id }),
         });
+        if (!res.ok) {
+          console.error(`[PostShareModal] Share failed: ${res.status}`, res.statusText);
+          let errorMsg = "Failed to share post";
+          try {
+            const contentType = res.headers.get("content-type");
+            if (contentType?.includes("application/json")) {
+              const error = await res.json();
+              errorMsg = error.error || errorMsg;
+            }
+          } catch (parseErr) {
+            console.error("[PostShareModal] Failed to parse error response:", parseErr);
+          }
+          await logErrorToAudit(
+            "/api/community/posts",
+            "POST",
+            `Failed to share post: ${res.status} ${res.statusText}`,
+            undefined,
+            { postId: post.id, errorMessage: errorMsg }
+          );
+          alert(errorMsg);
+          setLoading(false);
+          return;
+        }
       }
       setDone(true);
       setTimeout(onClose, 1200);
-    } catch {}
-    setLoading(false);
+    } catch (err) {
+      console.error("[PostShareModal] Error:", err instanceof Error ? err.message : err);
+      await logErrorToAudit(
+        "/api/community/posts",
+        "POST",
+        err instanceof Error ? err : String(err),
+        undefined,
+        { postId: post.id }
+      );
+      alert("Error sharing post");
+      setLoading(false);
+    }
   };
 
   if (done) {
@@ -176,8 +210,26 @@ function ShareViaChatTab({ post, onClose }: { post: Post; onClose: () => void })
       if (res.ok) {
         const d = await res.json();
         setSearchResults(d.users || []);
+      } else {
+        console.error(`[ShareModalSearch] Search failed: ${res.status}`, res.statusText);
+        await logErrorToAudit(
+          `/api/community/users/mention-search`,
+          "GET",
+          `Failed to search users: ${res.status} ${res.statusText}`,
+          undefined,
+          { query: q }
+        );
       }
-    } catch {}
+    } catch (err) {
+      console.error("[ShareModalSearch] Error:", err instanceof Error ? err.message : err);
+      await logErrorToAudit(
+        `/api/community/users/mention-search`,
+        "GET",
+        err instanceof Error ? err : String(err),
+        undefined,
+        { query: q }
+      );
+    }
     setSearching(false);
   }, []);
 

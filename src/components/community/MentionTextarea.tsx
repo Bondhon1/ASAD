@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect, KeyboardEvent } from "react";
 import Image from "next/image";
+import { logErrorToAudit } from "@/lib/apiErrorHandler";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -248,9 +249,27 @@ export function MentionTextarea({
           const data = await res.json();
           setMentionUsers(data.users || []);
           setActiveIndex(0);
+        } else {
+          console.error(`[MentionSearch] Search failed: ${res.status}`, res.statusText);
+          await logErrorToAudit(
+            `/api/community/users/mention-search`,
+            "GET",
+            `Failed to fetch mentions: ${res.status} ${res.statusText}`,
+            undefined,
+            { query: trigger.query }
+          );
         }
-      } catch {
-        // aborted or network error
+      } catch (err) {
+        if (err instanceof Error && err.name !== "AbortError") {
+          console.error("[MentionSearch] Error:", err.message);
+          await logErrorToAudit(
+            `/api/community/users/mention-search`,
+            "GET",
+            err,
+            undefined,
+            { query: trigger.query }
+          );
+        }
       } finally {
         setLoading(false);
       }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Image from "next/image";
+import { logErrorToAudit } from "@/lib/apiErrorHandler";
 
 interface LeaderboardEntry {
   id: string;
@@ -225,8 +226,22 @@ export default function CommunityLeaderboard() {
         const data = await res.json();
         setEntries(data.leaderboard || []);
         setMonth(data.month || null);
+      } else {
+        console.error(`[Leaderboard] Failed to fetch: ${res.status}`, res.statusText);
+        await logErrorToAudit(
+          "/api/community/leaderboard",
+          "GET",
+          `Failed to fetch leaderboard: ${res.status} ${res.statusText}`
+        );
       }
-    } catch {}
+    } catch (err) {
+      console.error("[Leaderboard] Error:", err instanceof Error ? err.message : err);
+      await logErrorToAudit(
+        "/api/community/leaderboard",
+        "GET",
+        err instanceof Error ? err : String(err)
+      );
+    }
     setLoading(false);
   }, []);
 

@@ -9,6 +9,7 @@ import UserMonthlyOverdueIndicator from "@/components/dashboard/UserMonthlyOverd
 import { PostMenu } from "./PostMenu";
 import { ReportPostModal } from "./ReportPostModal";
 import PostShareModal from "./PostShareModal";
+import { logErrorToAudit } from "@/lib/apiErrorHandler";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -646,7 +647,9 @@ export function PostCard({
         const d = await res.json();
         setComments(d.comments || []);
       }
-    } catch {}
+    } catch (err) {
+      await logErrorToAudit(`/api/community/posts/${post.id}/comments`, "GET", err instanceof Error ? err : String(err));
+    }
     setCommentsLoading(false);
   }, [post.id]);
 
@@ -673,7 +676,9 @@ export function PostCard({
         setComments((prev) => [...prev, d.comment]);
         setNewComment("");
       }
-    } catch {}
+    } catch (err) {
+      await logErrorToAudit(`/api/community/posts/${post.id}/comments`, "POST", err instanceof Error ? err : String(err));
+    }
     setCommentSubmitting(false);
   };
 
@@ -687,7 +692,9 @@ export function PostCard({
             .map((c) => ({ ...c, replies: c.replies.filter((r) => r.id !== commentId) }))
         );
       }
-    } catch {}
+    } catch (err) {
+      await logErrorToAudit(`/api/community/comments/${commentId}`, "DELETE", err instanceof Error ? err : String(err));
+    }
   };
 
   const editComment = async (commentId: string, content: string) => {
@@ -705,7 +712,9 @@ export function PostCard({
           })
         );
       }
-    } catch {}
+    } catch (err) {
+      await logErrorToAudit(`/api/community/comments/${commentId}`, "PATCH", err instanceof Error ? err : String(err));
+    }
   };
 
   const reactComment = async (commentId: string, _currentReacted: boolean) => {
@@ -726,7 +735,9 @@ export function PostCard({
           })
         );
       }
-    } catch {}
+    } catch (err) {
+      await logErrorToAudit(`/api/community/comments/${commentId}/react`, "POST", err instanceof Error ? err : String(err));
+    }
   };
 
   const replyToComment = async (parentId: string, content: string) => {
@@ -742,7 +753,9 @@ export function PostCard({
           prev.map((c) => (c.id === parentId ? { ...c, replies: [...c.replies, d.reply] } : c))
         );
       }
-    } catch {}
+    } catch (err) {
+      await logErrorToAudit(`/api/community/comments/${parentId}/replies`, "POST", err instanceof Error ? err : String(err));
+    }
   };
 
   const saveEdit = async () => {
