@@ -632,7 +632,7 @@ export default function AdminMonthlyPaymentsPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Deadline (day) <span className="text-gray-400">default: 15</span></label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Deadline<span className="text-gray-400">default: 15</span></label>
                       <input
                         type="number"
                         min={1}
