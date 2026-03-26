@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useSession } from "next-auth/react";
 
 export interface MonthSummary {
   month: number;
@@ -35,51 +36,88 @@ export interface MonthlyPaymentStatusData {
 }
 
 // ── Module-level dedup cache ──────────────────────────────────────────────────
-let _cache: MonthlyPaymentStatusData | null = null;
-let _promise: Promise<MonthlyPaymentStatusData> | null = null;
-const _subscribers = new Set<(data: MonthlyPaymentStatusData) => void>();
+const _cache = new Map<string, MonthlyPaymentStatusData>();
+const _promise = new Map<string, Promise<MonthlyPaymentStatusData>>();
+const _subscribers = new Map<string, Set<(data: MonthlyPaymentStatusData) => void>>();
 
-function fetchOnce(): Promise<MonthlyPaymentStatusData> {
-  if (_cache) return Promise.resolve(_cache);
-  if (_promise) return _promise;
-  _promise = fetch("/api/monthly-payments/status")
+function getSubscribers(cacheKey: string) {
+  let set = _subscribers.get(cacheKey);
+  if (!set) {
+    set = new Set<(data: MonthlyPaymentStatusData) => void>();
+    _subscribers.set(cacheKey, set);
+  }
+  return set;
+}
+
+function fetchOnce(cacheKey: string): Promise<MonthlyPaymentStatusData> {
+  const cached = _cache.get(cacheKey);
+  if (cached) return Promise.resolve(cached);
+
+  const pending = _promise.get(cacheKey);
+  if (pending) return pending;
+
+  const request = fetch("/api/monthly-payments/status", { cache: "no-store" })
     .then((r) => r.json())
     .then((data: MonthlyPaymentStatusData) => {
-      _cache = data;
-      _promise = null;
+      _cache.set(cacheKey, data);
+      _promise.delete(cacheKey);
       // Notify all other mounted instances
-      _subscribers.forEach((cb) => cb(data));
+      getSubscribers(cacheKey).forEach((cb) => cb(data));
       return data;
     })
     .catch((err) => {
-      _promise = null;
+      _promise.delete(cacheKey);
       throw err;
     });
-  return _promise;
+
+  _promise.set(cacheKey, request);
+  return request;
 }
 
-export function invalidateMonthlyPaymentStatus() {
-  _cache = null;
-  _promise = null;
+export function invalidateMonthlyPaymentStatus(cacheKey?: string) {
+  if (cacheKey) {
+    _cache.delete(cacheKey);
+    _promise.delete(cacheKey);
+    return;
+  }
+  _cache.clear();
+  _promise.clear();
 }
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 export function useMonthlyPaymentStatus() {
+  const { data: session } = useSession();
+  const cacheKey = session?.user?.email || "__no-session__";
+
   // Initialise from cache so components that mount after the first fetch
   // render with data immediately (no extra network request).
-  const [status, setStatus] = useState<MonthlyPaymentStatusData | null>(_cache);
+  const [status, setStatus] = useState<MonthlyPaymentStatusData | null>(
+    () => _cache.get(cacheKey) ?? null
+  );
+
+  useEffect(() => {
+    setStatus(_cache.get(cacheKey) ?? null);
+  }, [cacheKey]);
 
   useEffect(() => {
     let cancelled = false;
+
+    if (!session?.user?.email) {
+      setStatus(null);
+      return () => {
+        cancelled = true;
+      };
+    }
 
     // Subscribe so other instances' refresh() calls update us too
     const sub = (data: MonthlyPaymentStatusData) => {
       if (!cancelled) setStatus(data);
     };
-    _subscribers.add(sub);
+    const subscribers = getSubscribers(cacheKey);
+    subscribers.add(sub);
 
     // Fetch (or reuse in-flight promise / cache)
-    fetchOnce()
+    fetchOnce(cacheKey)
       .then((data) => {
         if (!cancelled) setStatus(data);
       })
@@ -87,16 +125,16 @@ export function useMonthlyPaymentStatus() {
 
     return () => {
       cancelled = true;
-      _subscribers.delete(sub);
+      subscribers.delete(sub);
     };
-  }, []);
+  }, [cacheKey, session?.user?.email]);
 
   const refresh = useCallback(() => {
-    invalidateMonthlyPaymentStatus();
-    fetchOnce()
+    invalidateMonthlyPaymentStatus(cacheKey);
+    fetchOnce(cacheKey)
       .then((data) => setStatus(data))
       .catch(() => {});
-  }, []);
+  }, [cacheKey]);
 
   return { status, refresh };
 }

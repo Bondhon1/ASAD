@@ -641,7 +641,7 @@ export default function CommunityPage() {
       const hasPost = posts.some((p) => p.id === postId);
       if (!hasPost) {
         try {
-          const res = await fetch(`/api/community/posts/${postId}`);
+          const res = await fetch(`/api/community/posts/${postId}`, { cache: "no-store" });
           if (res.ok) {
             const d = await res.json();
             if (d?.post) {
@@ -728,7 +728,7 @@ export default function CommunityPage() {
       try {
         const [usersRes, postsRes] = await Promise.all([
           fetch(`/api/community/users/mention-search?q=${encodeURIComponent(q.trim())}`),
-          fetch(`/api/community/posts?q=${encodeURIComponent(q.trim())}&limit=5`),
+          fetch(`/api/community/posts?q=${encodeURIComponent(q.trim())}&limit=5`, { cache: "no-store" }),
         ]);
         const usersData = usersRes.ok ? await usersRes.json() : { users: [] };
         const postsData = postsRes.ok ? await postsRes.json() : { posts: [] };
@@ -767,7 +767,7 @@ export default function CommunityPage() {
         if (cursor) params.set("cursor", cursor);
         if (view === "timeline" && currentUserId) params.set("authorId", currentUserId);
 
-        const res = await fetch(`/api/community/posts?${params}`);
+        const res = await fetch(`/api/community/posts?${params}`, { cache: "no-store" });
         if (!res.ok) return;
         const d = await res.json();
         const newPosts: Post[] = d.posts || [];
@@ -818,7 +818,7 @@ export default function CommunityPage() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`/api/community/posts/${highlightPostId}`);
+        const res = await fetch(`/api/community/posts/${highlightPostId}`, { cache: "no-store" });
         if (!res.ok) return;
         const d = await res.json();
         if (cancelled || !d?.post) return;
@@ -853,6 +853,7 @@ export default function CommunityPage() {
     try {
       const res = await fetch("/api/community/posts", {
         method: "POST",
+        cache: "no-store",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           content: newPostContent.trim(),
@@ -920,6 +921,7 @@ export default function CommunityPage() {
   const submitNotice = async ({ content, images, targetAudience }: { content: string; images: string[]; targetAudience: AudienceSpec | null }) => {
     const res = await fetch("/api/community/posts", {
       method: "POST",
+      cache: "no-store",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         content,
@@ -936,6 +938,7 @@ export default function CommunityPage() {
   const submitAd = async ({ content, images }: { content: string; images: string[] }) => {
     const res = await fetch("/api/community/posts", {
       method: "POST",
+      cache: "no-store",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content, images, postType: "SPONSORED_AD" }),
     });
@@ -981,6 +984,7 @@ export default function CommunityPage() {
   const sharePost = async (content: string, sharedPostId: string) => {
     const res = await fetch("/api/community/posts", {
       method: "POST",
+      cache: "no-store",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content, sharedPostId }),
     });
