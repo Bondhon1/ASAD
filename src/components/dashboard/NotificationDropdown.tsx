@@ -80,9 +80,10 @@ export default function NotificationDropdown() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleNotificationClick = (notification: any) => {
+  const handleNotificationClick = async (notification: any) => {
+    // Auto-mark as read if unread
     if (!notification.read) {
-      markAsRead(notification.id);
+      await markAsRead(notification.id);
     }
     // If the notification points to dashboard or has no link, show full message using app alert modal
     const link = notification.link || null;

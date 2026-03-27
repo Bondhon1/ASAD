@@ -189,6 +189,19 @@ export default function NotificationsPage() {
     }
   };
 
+  // Handle notification click - auto mark as read and navigate if link exists
+  const handleNotificationClick = async (notification: Notification) => {
+    // Auto-mark as read if unread
+    if (!notification.read && !markingAsRead.has(notification.id)) {
+      handleMarkAsRead(notification.id, notification.read);
+    }
+
+    // Navigate to link if exists
+    if (notification.link) {
+      window.location.href = notification.link;
+    }
+  };
+
   // Handle delete
   const handleDelete = async (notificationId: string) => {
     try {
@@ -348,8 +361,11 @@ export default function NotificationsPage() {
                 {getNotificationIcon(notification.type)}
               </div>
 
-              {/* Content */}
-              <div className="flex-grow min-w-0">
+              {/* Content - Clickable area */}
+              <div
+                className="flex-grow min-w-0 cursor-pointer"
+                onClick={() => handleNotificationClick(notification)}
+              >
                 <div className="flex items-start justify-between gap-2 md:gap-4">
                   <div className="flex-grow min-w-0">
                     <h3 className="font-semibold text-gray-900 text-xs md:text-base line-clamp-1 md:line-clamp-none">
@@ -360,23 +376,21 @@ export default function NotificationsPage() {
                         {notification.message}
                       </p>
                     )}
-                    <p className="text-gray-500 text-[10px] md:text-xs mt-1 md:mt-2">
-                      {formatDate(notification.createdAt)}
-                    </p>
+                    <div className="flex items-center gap-1 mt-1 md:mt-2">
+                      <p className="text-gray-500 text-[10px] md:text-xs">
+                        {formatDate(notification.createdAt)}
+                      </p>
+                      {notification.link && (
+                        <ExternalLink size={10} className="text-gray-400" />
+                      )}
+                    </div>
                   </div>
 
-                  {/* Actions */}
-                  <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
-                    {notification.link && (
-                      <Link href={notification.link}>
-                        <button
-                          className="p-1 md:p-2 rounded-lg hover:bg-gray-200 text-gray-600 hover:text-gray-900 transition-colors"
-                          title="View"
-                        >
-                          <ExternalLink size={isMobile ? 14 : 16} />
-                        </button>
-                      </Link>
-                    )}
+                  {/* Actions - Stop propagation to prevent triggering card click */}
+                  <div
+                    className="flex items-center gap-1 md:gap-2 flex-shrink-0"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {!notification.read && (
                       <button
                         onClick={() =>
