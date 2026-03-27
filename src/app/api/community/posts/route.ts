@@ -169,11 +169,24 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get("limit") || "10"), 20);
     const authorId = searchParams.get("authorId") || undefined;
     const q = (searchParams.get("q") || "").trim();
+    const hashtag = (searchParams.get("hashtag") || "").trim();
 
     // For search queries — return top matching posts by relevance (recency)
     if (q.length >= 2) {
+      const searchWhere: any = {
+        isDeleted: false,
+        content: { contains: q, mode: "insensitive" }
+      };
+      if (hashtag) {
+        // Add hashtag filter to search
+        searchWhere.content = {
+          contains: `#${hashtag}`,
+          mode: "insensitive",
+        };
+      }
+
       const posts = await prisma.post.findMany({
-        where: { isDeleted: false, content: { contains: q, mode: "insensitive" } },
+        where: searchWhere,
         orderBy: { createdAt: "desc" },
         take: 10,
         include: {
@@ -196,8 +209,17 @@ export async function GET(request: NextRequest) {
 
     // For timeline view (own posts only), simple createdAt sort — no priority boost needed
     if (authorId) {
+      const timelineWhere: any = { isDeleted: false, authorId };
+      if (hashtag) {
+        // Add hashtag filter to timeline
+        timelineWhere.content = {
+          contains: `#${hashtag}`,
+          mode: "insensitive",
+        };
+      }
+
       const posts = await prisma.post.findMany({
-        where: { isDeleted: false, authorId },
+        where: timelineWhere,
         orderBy: { createdAt: "desc" },
         take: limit + 1,
         ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
@@ -255,8 +277,17 @@ export async function GET(request: NextRequest) {
     }
 
     // Single Prisma query — no raw SQL, no parameter issues
+    const whereCondition: any = { isDeleted: false };
+    if (hashtag) {
+      // Filter posts that contain the hashtag (case-insensitive)
+      whereCondition.content = {
+        contains: `#${hashtag}`,
+        mode: "insensitive",
+      };
+    }
+
     const allPosts = await prisma.post.findMany({
-      where: { isDeleted: false },
+      where: whereCondition,
       orderBy: { createdAt: "desc" },
       take: MAX_FEED_POSTS,
       include: {

@@ -579,6 +579,7 @@ export default function CommunityPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const highlightPostId = searchParams.get("post");
+  const hashtagFilter = searchParams.get("hashtag");
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -766,6 +767,7 @@ export default function CommunityPage() {
         const params = new URLSearchParams({ limit: "10" });
         if (cursor) params.set("cursor", cursor);
         if (view === "timeline" && currentUserId) params.set("authorId", currentUserId);
+        if (hashtagFilter) params.set("hashtag", hashtagFilter);
 
         const res = await fetch(`/api/community/posts?${params}`, { cache: "no-store" });
         if (!res.ok) return;
@@ -787,7 +789,7 @@ export default function CommunityPage() {
       setLoading(false);
       setLoadingMore(false);
     },
-    [view, currentUserId, isOfficialOrStaff]
+    [view, currentUserId, isOfficialOrStaff, hashtagFilter]
   );
 
   useEffect(() => {
@@ -1200,6 +1202,26 @@ export default function CommunityPage() {
                 Timeline
               </button>
             </div>
+
+            {/* Hashtag Filter Indicator */}
+            {hashtagFilter && (
+              <div className="mt-3 sm:mt-0 sm:ml-auto flex items-center gap-2 px-4 py-2 bg-[#1E3A5F]/10 border border-[#1E3A5F]/20 rounded-xl">
+                <span className="text-sm font-semibold text-[#1E3A5F]">
+                  #{hashtagFilter}
+                </span>
+                <button
+                  onClick={() => {
+                    const url = new URL(window.location.href);
+                    url.searchParams.delete("hashtag");
+                    router.replace(url.pathname + (url.search || ""));
+                  }}
+                  className="text-[#1E3A5F] hover:text-[#0b2545] transition-colors"
+                  title="Clear hashtag filter"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+            )}
           </div>
 
           <StoriesRail userRole={_commRole} />

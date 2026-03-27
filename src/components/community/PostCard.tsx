@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { MentionTextarea, renderMentionContent } from "./MentionTextarea";
+import { MentionTextarea, renderMentionContent, renderContentWithHashtags } from "./MentionTextarea";
 import UserMonthlyExemptBadge from "@/components/dashboard/UserMonthlyExemptBadge";
 import UserMonthlyOverdueIndicator from "@/components/dashboard/UserMonthlyOverdueIndicator";
 import { PostMenu } from "./PostMenu";
@@ -257,7 +257,7 @@ function SharedPostEmbed({ sharedPost }: { sharedPost: SharedPost }) {
       {/* Original post content */}
       <div className="px-3 pb-2.5">
         <p className="text-sm text-slate-700 whitespace-pre-wrap break-words leading-relaxed">
-          {contentPreview}
+          {renderContentWithHashtags(contentPreview)}
         </p>
         {/* Original post images (show first only) */}
         {sharedPost.images && sharedPost.images.length > 0 && (
@@ -520,7 +520,7 @@ export function CommentItem({
               </div>
             </div>
           ) : (
-            <p className="text-sm text-slate-700 mt-0.5 break-words">{renderMentionContent(comment.content)}</p>
+            <p className="text-sm text-slate-700 mt-0.5 break-words">{renderContentWithHashtags(comment.content)}</p>
           )}
         </div>
 
@@ -917,7 +917,7 @@ export function PostCard({
           </div>
         ) : (
           <p className="text-slate-700 leading-relaxed whitespace-pre-wrap break-words text-sm sm:text-base">
-            {renderMentionContent(post.content)}
+            {renderContentWithHashtags(post.content)}
           </p>
         )}
         {/* Shared post embed */}

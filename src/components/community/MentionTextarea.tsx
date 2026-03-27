@@ -151,6 +151,62 @@ export function renderMentionContent(text: string): React.ReactNode {
   );
 }
 
+/** Render text with both mentions and hashtags (hashtags as bold, clickable). */
+export function renderContentWithHashtags(text: string): React.ReactNode {
+  // First split by mentions to preserve mention rendering
+  const mentionParts = text.split(/(@\[[^\]]+\]\([^)]+\))/g);
+
+  return (
+    <>
+      {mentionParts.map((part, i) => {
+        // Check if this part is a mention
+        const mentionMatch = part.match(/^@\[([^\]]+)\]\(([^)]+)\)$/);
+        if (mentionMatch) {
+          return (
+            <a
+              key={i}
+              href={`/dashboard/community/profile/${mentionMatch[2]}`}
+              className="text-[#1E3A5F] font-semibold hover:underline"
+              onClick={(e) => e.stopPropagation()}
+            >
+              @{mentionMatch[1]}
+            </a>
+          );
+        }
+
+        // For non-mention parts, parse hashtags
+        // Match hashtags: # followed by alphanumeric, underscore, or Unicode letters
+        const hashtagParts = part.split(/(#[\w\u0600-\u06FF]+)/g);
+
+        return (
+          <span key={i}>
+            {hashtagParts.map((hashtagPart, j) => {
+              const hashtagMatch = hashtagPart.match(/^#([\w\u0600-\u06FF]+)$/);
+              if (hashtagMatch) {
+                return (
+                  <a
+                    key={`${i}-${j}`}
+                    href={`/dashboard/community?hashtag=${encodeURIComponent(hashtagMatch[1])}`}
+                    className="text-[#1E3A5F] font-bold hover:underline cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // Use client-side navigation
+                      window.location.href = `/dashboard/community?hashtag=${encodeURIComponent(hashtagMatch[1])}`;
+                    }}
+                  >
+                    #{hashtagMatch[1]}
+                  </a>
+                );
+              }
+              return hashtagPart;
+            })}
+          </span>
+        );
+      })}
+    </>
+  );
+}
+
 // ─── Mention trigger detection ─────────────────────────────────────────────────
 
 function detectMentionTrigger(
