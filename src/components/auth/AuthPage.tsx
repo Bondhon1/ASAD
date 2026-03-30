@@ -274,13 +274,14 @@ function AuthPageContent() {
         );
       }
 
-      const callbackUrl = `${appScheme}://auth-callback?target=${encodeURIComponent("/dashboard")}`;
+      const callbackUrl = `${appAuthBaseUrl}/api/auth/mobile-callback?target=${encodeURIComponent("/dashboard")}`;
       const authUrl = `${appAuthBaseUrl}/api/auth/signin/google?callbackUrl=${encodeURIComponent(callbackUrl)}`;
       const debugText = [
         `native=${Capacitor.isNativePlatform()}`,
         `platform=${Capacitor.getPlatform()}`,
         `appScheme=${appScheme}`,
         `appAuthBaseUrl=${appAuthBaseUrl}`,
+        `callbackUrl=${callbackUrl}`,
         `authUrl=${authUrl}`,
       ].join("\n");
 
