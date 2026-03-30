@@ -231,6 +231,7 @@ function getMenuItems(userRole: string, userStatus?: string | null) {
   if (userRole === "ADMIN") {
     const adminItems = [
       ...hrItems.slice(0, -1),
+      { label: "Manage Points / Ranks", href: "/dashboard/database" },
       { label: "Task management", href: "/dashboard/secretaries" },
       { label: "Monthly Payments", href: "/dashboard/admin/monthly-payments" },
       { label: "Sector/club management", href: "/dashboard/admin/org-requests" },

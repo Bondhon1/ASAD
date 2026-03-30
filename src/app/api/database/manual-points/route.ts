@@ -78,7 +78,7 @@ export async function POST(req: Request) {
 
     const requester = await prisma.user.findUnique({ where: { email: session.user.email } });
     if (!requester) return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    if (!['MASTER', 'DATABASE_DEPT'].includes(requester.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (!['MASTER', 'ADMIN', 'DATABASE_DEPT'].includes(requester.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     const body = await req.json();
     const taskName = (body.taskName || 'Manual upgrade').toString();

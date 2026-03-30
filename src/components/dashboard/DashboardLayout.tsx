@@ -480,6 +480,7 @@ export default function DashboardLayout({
     if (userRole === "ADMIN") {
       const adminItems = [
         ...hrItems.slice(0, -1), // All items except Settings
+        { label: "Manage Points / Ranks", href: "/dashboard/database" },
         { label: "Credit Management", href: "/dashboard/admin/credit-management" },
         { label: "Sector/club management", href: "/dashboard/admin/org-requests" },
         hrItems[hrItems.length - 1], // Settings at the end
