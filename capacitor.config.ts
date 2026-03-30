@@ -1,9 +1,10 @@
 import type { CapacitorConfig } from "@capacitor/cli";
+import "dotenv/config";
 
 const baseAppUrl =
   process.env.CAPACITOR_APP_URL ||
   process.env.NEXT_PUBLIC_APP_URL ||
-  "https://amarsomoyamardesh.org";
+  "https://www.amarsomoyamardesh.org";
 
 const normalizedBaseAppUrl = baseAppUrl.endsWith("/")
   ? baseAppUrl.slice(0, -1)

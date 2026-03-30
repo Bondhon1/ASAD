@@ -91,7 +91,7 @@ function AuthPageContent() {
   const appAuthBaseUrl = (
     sanitizeEnv(process.env.NEXT_PUBLIC_APP_URL) ||
     sanitizeEnv(process.env.NEXT_PUBLIC_SITE_URL) ||
-    "https://amarsomoyamardesh.org"
+    "https://www.amarsomoyamardesh.org"
   ).replace(/\/$/, "");
 
   useEffect(() => {
