@@ -65,6 +65,8 @@ function AuthPageContent() {
   const searchParams = useSearchParams();
   const { data: session, status, update: updateSession } = useSession();
   const router = useRouter();
+  const sanitizeEnv = (value?: string) =>
+    (value || "").trim().replace(/^['\"]|['\"]$/g, "");
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -82,10 +84,13 @@ function AuthPageContent() {
   const [resendMessage, setResendMessage] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const appScheme = process.env.NEXT_PUBLIC_CAPACITOR_APP_SCHEME || "org.amarsomoyamardesh.app";
+  const [googleDebugInfo, setGoogleDebugInfo] = useState("");
+  const appScheme =
+    sanitizeEnv(process.env.NEXT_PUBLIC_CAPACITOR_APP_SCHEME) ||
+    "org.amarsomoyamardesh.app";
   const appAuthBaseUrl = (
-    process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.NEXT_PUBLIC_SITE_URL ||
+    sanitizeEnv(process.env.NEXT_PUBLIC_APP_URL) ||
+    sanitizeEnv(process.env.NEXT_PUBLIC_SITE_URL) ||
     "https://amarsomoyamardesh.org"
   ).replace(/\/$/, "");
 
@@ -251,6 +256,8 @@ function AuthPageContent() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleGoogleLogin = async () => {
+    setGoogleDebugInfo("");
+
     if (!Capacitor.isNativePlatform()) {
       signIn("google", { callbackUrl: "/dashboard" });
       return;
@@ -258,12 +265,31 @@ function AuthPageContent() {
 
     try {
       const { Browser } = await import("@capacitor/browser");
+      const parsedBaseUrl = new URL(appAuthBaseUrl);
+
+      if (parsedBaseUrl.protocol !== "https:") {
+        throw new Error(
+          `Invalid app auth URL protocol: ${parsedBaseUrl.protocol || "unknown"}. Expected https:`
+        );
+      }
+
       const callbackUrl = `${appScheme}://auth-callback?target=${encodeURIComponent("/dashboard")}`;
       const authUrl = `${appAuthBaseUrl}/api/auth/signin/google?callbackUrl=${encodeURIComponent(callbackUrl)}`;
+      const debugText = [
+        `native=${Capacitor.isNativePlatform()}`,
+        `platform=${Capacitor.getPlatform()}`,
+        `appScheme=${appScheme}`,
+        `appAuthBaseUrl=${appAuthBaseUrl}`,
+        `authUrl=${authUrl}`,
+      ].join("\n");
+
+      setGoogleDebugInfo(debugText);
       await Browser.open({ url: authUrl });
     } catch (error) {
       console.error("[GoogleSignIn] Failed to launch native OAuth flow", error);
-      setError("Unable to start Google sign in. Please try again");
+      const reason = error instanceof Error ? error.message : String(error);
+      setGoogleDebugInfo((prev) => `${prev ? `${prev}\n` : ""}error=${reason}`);
+      setError(`Unable to start Google sign in. ${reason}`);
     }
   };
 
@@ -803,6 +829,15 @@ function AuthPageContent() {
                     </svg>
                     Continue with Google
                   </button>
+
+                  {Capacitor.isNativePlatform() && googleDebugInfo && (
+                    <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-left">
+                      <p className="text-xs font-semibold text-amber-900">Native Google Debug</p>
+                      <pre className="mt-2 whitespace-pre-wrap break-all text-[11px] leading-4 text-amber-800">
+                        {googleDebugInfo}
+                      </pre>
+                    </div>
+                  )}
                 </motion.div>
               </div>
             </motion.div>
