@@ -100,6 +100,11 @@ export default function DashboardPage() {
   const [payoutSubmitting, setPayoutSubmitting] = useState(false);
   const [payouts, setPayouts] = useState<any[]>([]);
 
+  // Manual credit history states
+  const [showManualCreditHistory, setShowManualCreditHistory] = useState(false);
+  const [manualCreditHistory, setManualCreditHistory] = useState<any[]>([]);
+  const [loadingManualCreditHistory, setLoadingManualCreditHistory] = useState(false);
+
   // Points history modal state
   const [showPointsModal, setShowPointsModal] = useState(false);
   // Rank status modal state
@@ -372,6 +377,25 @@ export default function DashboardPage() {
 
   const openPointsModal = () => { fetchPointsData(); setShowPointsModal(true); };
   const openRankModal  = () => { fetchPointsData(); setShowRankModal(true);  };
+
+  const fetchManualCreditHistory = async () => {
+    setLoadingManualCreditHistory(true);
+    try {
+      const res = await fetch('/api/credits/history');
+      if (!res.ok) return;
+      const data = await res.json();
+      setManualCreditHistory(data.history || []);
+    } catch (e) {
+      setManualCreditHistory([]);
+    } finally {
+      setLoadingManualCreditHistory(false);
+    }
+  };
+
+  const openManualCreditHistory = () => {
+    fetchManualCreditHistory();
+    setShowManualCreditHistory(true);
+  };
 
   const handleWithdrawRequest = async () => {
     if (!payoutBkash.trim()) {
@@ -907,7 +931,7 @@ export default function DashboardPage() {
               </div>
 
               {/* Action Button */}
-              <div>
+              <div className="space-y-3">
                 <button
                   type="button"
                   onClick={() => { setShowCreditModal(false); setShowPayoutModal(true); }}
@@ -917,6 +941,13 @@ export default function DashboardPage() {
                   {payoutCalc.eligibleBDT === 0
                     ? `Need ${(10000 - availableCredits).toLocaleString()} more to Request Payout`
                     : `Request Payout — ৳${payoutCalc.eligibleBDT.toLocaleString()}`}
+                </button>
+                <button
+                  type="button"
+                  onClick={openManualCreditHistory}
+                  className="w-full px-4 py-2.5 bg-slate-200 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-300 transition-colors"
+                >
+                  View Manual Credit History
                 </button>
                 {payouts.filter((w: any) => w.status === 'PENDING').length > 0 && (
                   <div className="mt-3 px-4 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
@@ -954,6 +985,57 @@ export default function DashboardPage() {
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Manual Credit History Modal ──────────────────────────────── */}
+      {showManualCreditHistory && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[600px] overflow-hidden">
+            <div className="px-6 py-4 bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-900">Manual Credit History</h2>
+              <button
+                onClick={() => setShowManualCreditHistory(false)}
+                className="p-2 hover:bg-white rounded-lg transition-colors"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 6 6 18" /><path d="m6 6 12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="overflow-y-auto max-h-[calc(600px-80px)]">
+              {loadingManualCreditHistory ? (
+                <div className="p-6 text-center text-slate-500 text-sm">Loading…</div>
+              ) : manualCreditHistory.length === 0 ? (
+                <div className="p-6 text-center text-slate-500 text-sm">
+                  No manual credit adjustments found
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {manualCreditHistory.map((transaction) => (
+                    <div key={transaction.id} className="p-4 hover:bg-slate-50 transition-colors">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className={`font-semibold ${transaction.amount > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {transaction.amount > 0 ? '+' : ''}{transaction.amount.toLocaleString()} credits
+                        </span>
+                        <span className="text-xs text-slate-500">
+                          {new Date(transaction.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <div className="text-sm text-slate-700 mb-1">
+                        {transaction.reason}
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-slate-500">
+                        <span>By: {transaction.adminName}</span>
+                        <span>Balance: {transaction.balanceAfter?.toLocaleString()} credits</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
