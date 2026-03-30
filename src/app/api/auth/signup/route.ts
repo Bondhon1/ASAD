@@ -41,7 +41,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { email, password } = validation.data;
+    const { email, password, acceptedTerms } = validation.data;
+
+    if (!acceptedTerms) {
+      return NextResponse.json(
+        { error: "You must accept the Terms & Conditions and Privacy Policy" },
+        { status: 400 }
+      );
+    }
 
     // Generate username from email
     const username = email.split('@')[0];

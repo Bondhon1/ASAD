@@ -14,9 +14,18 @@
     "lint": "eslint",
     "postinstall": "npm run generate",
     "seed": "tsx prisma/seed.ts",
-    "cleanup:post-seen": "tsx scripts/cleanup-post-seen.ts"
+    "cleanup:post-seen": "tsx scripts/cleanup-post-seen.ts",
+    "cap:sync": "npx cap sync android",
+    "cap:copy": "npx cap copy android",
+    "cap:open": "npx cap open android",
+    "cap:run": "npx cap run android",
+    "android:debug": "cd android && gradlew.bat assembleDebug",
+    "android:release": "cd android && gradlew.bat bundleRelease"
   },
   "dependencies": {
+    "@capacitor/android": "^8.3.0",
+    "@capacitor/cli": "^8.3.0",
+    "@capacitor/core": "^8.3.0",
     "@hookform/resolvers": "^5.2.2",
     "@marsidev/react-turnstile": "^1.4.2",
     "@neondatabase/serverless": "^1.0.2",

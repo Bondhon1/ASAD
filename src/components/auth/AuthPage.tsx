@@ -80,6 +80,7 @@ function AuthPageContent() {
   const [resendingEmail, setResendingEmail] = useState(false);
   const [resendMessage, setResendMessage] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   useEffect(() => {
     // Check for OAuth errors in URL
@@ -109,6 +110,7 @@ function AuthPageContent() {
     setResendCooldown(0);
     setResendMessage("");
     setMode(newMode);
+    setAcceptedTerms(false);
     setTurnstileToken('');
     setTurnstileKey(prev => prev + 1); // Reset Turnstile widget
   };
@@ -179,6 +181,12 @@ function AuthPageContent() {
     setError("");
     setLoading(true);
 
+    if (!acceptedTerms) {
+      setError("You must accept the Terms & Conditions and Privacy Policy to sign up.");
+      setLoading(false);
+      return;
+    }
+
     // Verify Turnstile token
     if (!turnstileToken) {
       setError("Please complete the security verification");
@@ -193,6 +201,7 @@ function AuthPageContent() {
         body: JSON.stringify({
           email,
           password,
+          acceptedTerms,
           turnstileToken,
         }),
       });
@@ -219,6 +228,7 @@ function AuthPageContent() {
       // Reset form on success
       setEmail('');
       setPassword('');
+      setAcceptedTerms(false);
       setTurnstileToken('');
       setTurnstileKey(prev => prev + 1);
     } catch (err) {
@@ -587,6 +597,21 @@ function AuthPageContent() {
                           </div>
                         </div>
                       )}
+
+                      <motion.div variants={itemVariants} className="mt-4">
+                        <label className="flex items-start gap-3 rounded-lg border border-border p-3">
+                          <input
+                            type="checkbox"
+                            checked={acceptedTerms}
+                            onChange={(e) => setAcceptedTerms(e.target.checked)}
+                            required
+                            className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                          />
+                          <span className="text-xs text-muted leading-relaxed">
+                            I agree to the <Link href="/terms" className="text-primary font-medium hover:text-primary/80">Terms & Conditions</Link>, <Link href="/apc-terms" className="text-primary font-medium hover:text-primary/80">APC Terms</Link>, and <Link href="/privacy" className="text-primary font-medium hover:text-primary/80">Privacy Policy</Link>.
+                          </span>
+                        </label>
+                      </motion.div>
 
                       <motion.div variants={itemVariants} className="mt-4">
                         <Turnstile

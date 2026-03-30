@@ -52,6 +52,18 @@ npm start
 
 # Run linter
 npm run lint
+
+# Capacitor Android sync
+npm run cap:sync
+
+# Open Android Studio project
+npm run cap:open
+
+# Build APK (debug)
+npm run android:debug
+
+# Build AAB (release)
+npm run android:release
 ```
 
 ## Testing URLs
@@ -134,7 +146,30 @@ NEXTAUTH_SECRET="generate with: openssl rand -hex 32"
 # Optional: Google OAuth
 GOOGLE_CLIENT_ID="your-google-client-id"
 GOOGLE_CLIENT_SECRET="your-google-client-secret"
+
+# Optional: Force Android app mode on all requests
+# Use only for dedicated app deployments
+APP_MODE_FORCE_ANDROID="false"
 ```
+
+## Android App Mode (No Homepage)
+
+The project now supports an app-only routing mode through `src/middleware.ts`.
+
+When app mode is active:
+
+- `/` redirects to `/auth`
+- Public pages (`/about`, `/sectors`) redirect to `/auth`
+- Legal pages (`/terms`, `/apc-terms`, `/privacy`) stay available for signup consent
+- Authenticated pages and APIs remain unchanged
+
+How to activate app mode:
+
+1. Use an app subdomain (recommended): `https://app.yourdomain.com`
+2. Or send one of these headers from Android WebView/Capacitor requests:
+  - `x-apc-client: android`
+  - `x-app-mode: android`
+3. Or set `APP_MODE_FORCE_ANDROID=true` in environment for a dedicated app-only deployment
 
 ## Generate NEXTAUTH_SECRET
 
