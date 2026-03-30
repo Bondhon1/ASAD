@@ -85,6 +85,7 @@ function AuthPageContent() {
   const [resendCooldown, setResendCooldown] = useState(0);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [googleDebugInfo, setGoogleDebugInfo] = useState("");
+  const isNativeApp = Capacitor.isNativePlatform();
   const appScheme =
     sanitizeEnv(process.env.NEXT_PUBLIC_CAPACITOR_APP_SCHEME) ||
     "org.amarsomoyamardesh.app";
@@ -349,9 +350,15 @@ function AuthPageContent() {
           background-color: #15803d !important;
         }
       `}</style>
-      <Header />
+      {!isNativeApp && <Header />}
 
-    <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 flex items-center justify-center p-4 md:p-8 overflow-hidden relative" style={{ paddingTop: '8rem' }}>
+    <div
+      className={clsx(
+        "min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 flex items-center justify-center overflow-hidden relative",
+        isNativeApp ? "p-3" : "p-4 md:p-8"
+      )}
+      style={{ paddingTop: isNativeApp ? '1.25rem' : '8rem' }}
+    >
       {/* Decorative background elements */}
       <motion.div
         className="absolute top-0 left-0 w-80 h-80 bg-[#1E3A5F]/5 rounded-full blur-3xl"
@@ -364,11 +371,11 @@ function AuthPageContent() {
         transition={{ duration: 8, repeat: Infinity }}
       />
 
-      <div className="relative z-10 w-full max-w-md lg:max-w-6xl">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+      <div className={clsx("relative z-10 w-full", isNativeApp ? "max-w-2xl" : "max-w-md lg:max-w-6xl")}>
+        <div className={clsx("grid items-center", isNativeApp ? "grid-cols-1 gap-4" : "grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12")}>
           {/* Left side - Branding & Info (Hidden on mobile) */}
           <motion.div
-            className="hidden lg:flex flex-col justify-center"
+            className={clsx("flex-col justify-center", isNativeApp ? "hidden" : "hidden lg:flex")}
             initial={{ opacity: 0, x: -50 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8 }}
@@ -876,7 +883,7 @@ function AuthPageContent() {
       </div>
     </div>
 
-      <Footer />
+      {!isNativeApp && <Footer />}
     </div>
   );
 }
