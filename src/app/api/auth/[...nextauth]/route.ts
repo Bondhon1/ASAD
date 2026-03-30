@@ -166,6 +166,29 @@ export const authOptions: NextAuthOptions = {
       }
       return session;
     },
+    async redirect({ url, baseUrl }) {
+      const appScheme = process.env.CAPACITOR_APP_SCHEME || "org.amarsomoyamardesh.app";
+      const schemePrefix = `${appScheme}://`;
+
+      if (url.startsWith(schemePrefix)) {
+        return url;
+      }
+
+      if (url.startsWith("/")) {
+        return `${baseUrl}${url}`;
+      }
+
+      try {
+        const nextUrl = new URL(url);
+        if (nextUrl.origin === baseUrl) {
+          return url;
+        }
+      } catch {
+        return baseUrl;
+      }
+
+      return baseUrl;
+    },
   },
   pages: {
     signIn: "/auth",

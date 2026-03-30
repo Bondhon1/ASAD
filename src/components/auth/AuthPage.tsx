@@ -11,6 +11,7 @@ import { signIn, useSession, getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import { Turnstile } from '@marsidev/react-turnstile';
+import { Capacitor } from "@capacitor/core";
 
 type AuthMode = "login" | "signup";
 
@@ -81,6 +82,7 @@ function AuthPageContent() {
   const [resendMessage, setResendMessage] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const appScheme = process.env.NEXT_PUBLIC_CAPACITOR_APP_SCHEME || "org.amarsomoyamardesh.app";
 
   useEffect(() => {
     // Check for OAuth errors in URL
@@ -242,6 +244,22 @@ function AuthPageContent() {
   };
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const handleGoogleLogin = async () => {
+    if (!Capacitor.isNativePlatform()) {
+      signIn("google", { callbackUrl: "/dashboard" });
+      return;
+    }
+
+    try {
+      const { Browser } = await import("@capacitor/browser");
+      const callbackUrl = `${appScheme}://auth-callback?target=${encodeURIComponent("/dashboard")}`;
+      const authUrl = `${window.location.origin}/api/auth/signin/google?callbackUrl=${encodeURIComponent(callbackUrl)}`;
+      await Browser.open({ url: authUrl });
+    } catch {
+      setError("Unable to start Google sign-in. Please try again.");
+    }
+  };
 
   const handleResendVerification = async () => {
     const emailToResend = localStorage.getItem("userEmail");
@@ -599,21 +617,6 @@ function AuthPageContent() {
                       )}
 
                       <motion.div variants={itemVariants} className="mt-4">
-                        <label className="flex items-start gap-3 rounded-lg border border-border p-3">
-                          <input
-                            type="checkbox"
-                            checked={acceptedTerms}
-                            onChange={(e) => setAcceptedTerms(e.target.checked)}
-                            required
-                            className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
-                          />
-                          <span className="text-xs text-muted leading-relaxed">
-                            I agree to the <Link href="/terms" className="text-primary font-medium hover:text-primary/80">Terms & Conditions</Link>, <Link href="/apc-terms" className="text-primary font-medium hover:text-primary/80">APC Terms</Link>, and <Link href="/privacy" className="text-primary font-medium hover:text-primary/80">Privacy Policy</Link>.
-                          </span>
-                        </label>
-                      </motion.div>
-
-                      <motion.div variants={itemVariants} className="mt-4">
                         <Turnstile
                           key={turnstileKey}
                           siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'}
@@ -712,6 +715,21 @@ function AuthPageContent() {
                       </motion.div>
 
                       <motion.div variants={itemVariants} className="mt-4">
+                        <label className="flex items-start gap-3 rounded-lg border border-border p-3">
+                          <input
+                            type="checkbox"
+                            checked={acceptedTerms}
+                            onChange={(e) => setAcceptedTerms(e.target.checked)}
+                            required
+                            className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                          />
+                          <span className="text-xs text-muted leading-relaxed">
+                            I agree to the <Link href="/terms" className="text-primary font-medium hover:text-primary/80">Terms & Conditions</Link>, <Link href="/apc-terms" className="text-primary font-medium hover:text-primary/80">APC Terms</Link>, and <Link href="/privacy" className="text-primary font-medium hover:text-primary/80">Privacy Policy</Link>.
+                          </span>
+                        </label>
+                      </motion.div>
+
+                      <motion.div variants={itemVariants} className="mt-4">
                         <Turnstile
                           key={turnstileKey}
                           siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'}
@@ -767,7 +785,7 @@ function AuthPageContent() {
 
                   <button
                     type="button"
-                    onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+                    onClick={handleGoogleLogin}
                     className="w-full px-4 py-3 border border-border rounded-lg hover:bg-surface transition-all flex items-center justify-center gap-3 font-semibold text-ink"
                   >
                     <svg

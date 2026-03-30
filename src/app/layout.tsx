@@ -3,6 +3,7 @@ import { Inter, Space_Grotesk, Poppins, Playfair_Display, DM_Sans, Nunito } from
 import "./globals.css";
 import SessionProvider from "@/components/providers/SessionProvider";
 import ModalProvider from "@/components/ui/ModalProvider";
+import CapacitorOAuthHandler from "@/components/providers/CapacitorOAuthHandler";
 import { Analytics } from "@vercel/analytics/next";
 
 const display = Space_Grotesk({
@@ -209,6 +210,7 @@ export default function RootLayout({
       <body className={`${display.variable} ${body.variable} ${poppins.variable} ${playfair.variable} ${dmSans.variable} ${nunito.variable} bg-white text-ink antialiased`}>
         <ModalProvider>
           <SessionProvider>
+            <CapacitorOAuthHandler />
             {children}
           </SessionProvider>
         </ModalProvider>
