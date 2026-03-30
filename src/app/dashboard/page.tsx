@@ -917,7 +917,7 @@ export default function DashboardPage() {
               {(
                 [
                   { key: 'overview', label: 'Overview' },
-                  { key: 'payout-history', label: 'Payout History', badge: payouts.filter((w: any) => w.status === 'PENDING').length },
+                  { key: 'payout-history', label: 'Payout History ', badge: payouts.filter((w: any) => w.status === 'PENDING').length },
                   { key: 'manual-history', label: 'Credits History' },
                 ] as const
               ).map((tab) => (
@@ -936,7 +936,7 @@ export default function DashboardPage() {
                   }`}
                 >
                   {tab.label}
-                  {'badge' in tab && tab.badge && tab.badge > 0 && (
+                  {'badge' in tab && tab.badge > 0 && (
                     <span className="ml-1.5 inline-flex items-center justify-center w-5 h-5 text-xs font-bold bg-yellow-200 text-yellow-800 rounded-full">
                       {tab.badge}
                     </span>
