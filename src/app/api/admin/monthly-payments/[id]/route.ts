@@ -88,6 +88,7 @@ export async function POST(
         4,
         'Monthly payment approved',
         undefined,
+        undefined,
         updated.id,
       ).catch((e) => console.error('[monthly-payments] applyPointsChange failed', e));
     }

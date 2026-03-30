@@ -113,7 +113,7 @@ export async function POST(req: Request) {
         providedDbUserIds.add(user.id);
 
         // skipHistory=true — shared PointsHistory row created after the loop
-        const r = await applyPointsChange(user.id, points, `Manual points: ${taskName}`, undefined, undefined, true);
+        const r = await applyPointsChange(user.id, points, `Manual points: ${taskName}`, undefined, undefined, undefined, true);
         if (!r.success) {
           results.push({ ident, ok: false, error: r.error || 'applyPointsChange failed' });
         } else {

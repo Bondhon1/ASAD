@@ -524,6 +524,7 @@ export async function applyPointsChange(
   reason: string,
   relatedTaskId?: string,
   relatedDonationId?: string,
+  relatedMonthlyPaymentId?: string,
   skipHistory?: boolean
 ): Promise<{
   success: boolean;
@@ -583,6 +584,7 @@ export async function applyPointsChange(
           reason,
           relatedTaskId,
           relatedDonationId,
+          relatedMonthlyPaymentId,
         },
       });
     }

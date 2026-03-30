@@ -326,11 +326,14 @@ model PointsHistory {
   relatedTaskId         String?
   relatedDonation       Donation?        @relation(fields: [relatedDonationId], references: [id], onDelete: SetNull)
   relatedDonationId     String?
+  relatedMonthlyPayment MonthlyPayment?  @relation(fields: [relatedMonthlyPaymentId], references: [id], onDelete: SetNull)
+  relatedMonthlyPaymentId String?
   createdAt             DateTime         @default(now())
-  
+
   @@index([userId])
   @@index([relatedTaskId])
   @@index([relatedDonationId])
+  @@index([relatedMonthlyPaymentId])
 }
 
 // Volunteer experiences (roles & work history)
@@ -1209,6 +1212,7 @@ model MonthlyPayment {
   submittedAt     DateTime             @default(now())
   createdAt       DateTime             @default(now())
   updatedAt       DateTime             @updatedAt
+  pointsHistory   PointsHistory[]
 
   @@index([userId])
   @@index([status])
