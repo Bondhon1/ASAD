@@ -94,6 +94,7 @@ export default function DashboardPage() {
 
   // APC Payout states
   const [showCreditModal, setShowCreditModal] = useState(false);
+  const [creditModalTab, setCreditModalTab] = useState<'overview' | 'payout-history' | 'manual-history'>('overview');
   const [showPayoutModal, setShowPayoutModal] = useState(false);
   const [payoutBkash, setPayoutBkash] = useState('');
   const [payoutTermsAccepted, setPayoutTermsAccepted] = useState(false);
@@ -101,7 +102,6 @@ export default function DashboardPage() {
   const [payouts, setPayouts] = useState<any[]>([]);
 
   // Manual credit history states
-  const [showManualCreditHistory, setShowManualCreditHistory] = useState(false);
   const [manualCreditHistory, setManualCreditHistory] = useState<any[]>([]);
   const [loadingManualCreditHistory, setLoadingManualCreditHistory] = useState(false);
 
@@ -393,8 +393,9 @@ export default function DashboardPage() {
   };
 
   const openManualCreditHistory = () => {
+    setCreditModalTab('manual-history');
     fetchManualCreditHistory();
-    setShowManualCreditHistory(true);
+    setShowCreditModal(true);
   };
 
   const handleWithdrawRequest = async () => {
@@ -891,10 +892,10 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* APC Credit Details Modal */}
+      {/* APC Credit Details Modal with Tabs */}
       {showCreditModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[600px] overflow-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[600px] overflow-hidden flex flex-col">
             <div className="px-6 py-4 bg-gradient-to-r from-[#0b2545] to-[#0d2d5a] border-b border-[#0b2545]/30">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -911,131 +912,151 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="p-6 space-y-6">
-              {/* Credit Balance Display */}
-              <div className="bg-gradient-to-r from-[#0b2545]/5 to-[#0b2545]/10 border border-[#0b2545]/20 rounded-xl p-6 text-center">
-                <div className="text-sm text-gray-600 mb-2">Total Credits</div>
-                <div className="text-4xl font-bold text-[#0b2545] mb-2">{totalCredits.toLocaleString()}</div>
-                <div className="mt-1 text-sm text-gray-600">
-                  Pending: {pendingCredits.toLocaleString()} &nbsp;•&nbsp; Available: {availableCredits.toLocaleString()}
-                </div>
-                {payoutCalc.eligibleBDT > 0 ? (
-                  <div className="mt-2 text-sm font-semibold text-green-700">
-                    Eligible for ৳{payoutCalc.eligibleBDT.toLocaleString()} payout
-                  </div>
-                ) : (
-                  <div className="mt-2 text-xs text-gray-500">
-                    Need {(10000 - availableCredits).toLocaleString()} more credits for first payout
-                  </div>
-                )}
-              </div>
-
-              {/* Action Button */}
-              <div className="space-y-3">
+            {/* Tabs */}
+            <div className="flex gap-1 bg-slate-100 p-1 mx-3 mt-3 rounded-lg">
+              {(
+                [
+                  { key: 'overview', label: 'Overview' },
+                  { key: 'payout-history', label: 'Payout History', badge: payouts.filter((w: any) => w.status === 'PENDING').length },
+                  { key: 'manual-history', label: 'Credits History' },
+                ] as const
+              ).map((tab) => (
                 <button
-                  type="button"
-                  onClick={() => { setShowCreditModal(false); setShowPayoutModal(true); }}
-                  disabled={payoutCalc.eligibleBDT === 0}
-                  className="w-full px-4 py-3 bg-[#0b2545] text-white text-sm font-medium rounded-lg hover:bg-[#0d2d5a] disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md hover:shadow-lg"
+                  key={tab.key}
+                  onClick={() => {
+                    setCreditModalTab(tab.key);
+                    if (tab.key === 'manual-history' && manualCreditHistory.length === 0) {
+                      fetchManualCreditHistory();
+                    }
+                  }}
+                  className={`flex-1 px-3 py-2 rounded text-sm font-medium transition-colors ${
+                    creditModalTab === tab.key
+                      ? 'bg-white text-slate-900 shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
                 >
-                  {payoutCalc.eligibleBDT === 0
-                    ? `Need ${(10000 - availableCredits).toLocaleString()} more to Request Payout`
-                    : `Request Payout — ৳${payoutCalc.eligibleBDT.toLocaleString()}`}
-                </button>
-                <button
-                  type="button"
-                  onClick={openManualCreditHistory}
-                  className="w-full px-4 py-2.5 bg-slate-200 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-300 transition-colors"
-                >
-                  View Manual Credit History
-                </button>
-                {payouts.filter((w: any) => w.status === 'PENDING').length > 0 && (
-                  <div className="mt-3 px-4 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
-                    <span className="text-sm text-yellow-800 font-medium">
-                      {payouts.filter((w: any) => w.status === 'PENDING').length} Pending Payout Request(s)
+                  {tab.label}
+                  {tab.badge && tab.badge > 0 && (
+                    <span className="ml-1.5 inline-flex items-center justify-center w-5 h-5 text-xs font-bold bg-yellow-200 text-yellow-800 rounded-full">
+                      {tab.badge}
                     </span>
-                  </div>
-                )}
-              </div>
+                  )}
+                </button>
+              ))}
+            </div>
 
-              {/* Payout History */}
-              {payouts.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Payout History</h4>
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {payouts.map((w: any) => (
-                      <div key={w.id} className={`p-3 rounded-lg border ${w.status === 'PENDING' ? 'bg-yellow-50 border-yellow-200' : w.status === 'COMPLETED' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-                        <div className="flex items-center justify-between mb-1">
-                          <div>
-                            <span className="font-semibold text-sm">{(w.credits || w.coins || 0).toLocaleString()} credits</span>
-                            {w.bdtAmount && (
-                              <span className="ml-2 text-sm text-green-700">→ ৳{Number(w.bdtAmount).toLocaleString()}</span>
-                            )}
-                          </div>
-                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${w.status === 'PENDING' ? 'bg-yellow-200 text-yellow-800' : w.status === 'COMPLETED' ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}>
-                            {w.status}
-                          </span>
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {new Date(w.createdAt).toLocaleDateString()} · bKash: {w.bkashNumber || '—'}
-                        </div>
-                        {w.notes && w.status === 'REJECTED' && (
-                          <div className="text-xs text-red-600 mt-1 italic">Reason: {w.notes}</div>
-                        )}
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {/* Overview Tab */}
+              {creditModalTab === 'overview' && (
+                <div className="space-y-6">
+                  {/* Credit Balance Display */}
+                  <div className="bg-gradient-to-r from-[#0b2545]/5 to-[#0b2545]/10 border border-[#0b2545]/20 rounded-xl p-6 text-center">
+                    <div className="text-sm text-gray-600 mb-2">Total Credits</div>
+                    <div className="text-4xl font-bold text-[#0b2545] mb-2">{totalCredits.toLocaleString()}</div>
+                    <div className="mt-1 text-sm text-gray-600">
+                      Pending: {pendingCredits.toLocaleString()} &nbsp;•&nbsp; Available: {availableCredits.toLocaleString()}
+                    </div>
+                    {payoutCalc.eligibleBDT > 0 ? (
+                      <div className="mt-2 text-sm font-semibold text-green-700">
+                        Eligible for ৳{payoutCalc.eligibleBDT.toLocaleString()} payout
                       </div>
-                    ))}
+                    ) : (
+                      <div className="mt-2 text-xs text-gray-500">
+                        Need {(10000 - availableCredits).toLocaleString()} more credits for first payout
+                      </div>
+                    )}
                   </div>
+
+                  {/* Action Button */}
+                  <button
+                    type="button"
+                    onClick={() => { setShowCreditModal(false); setShowPayoutModal(true); }}
+                    disabled={payoutCalc.eligibleBDT === 0}
+                    className="w-full px-4 py-3 bg-[#0b2545] text-white text-sm font-medium rounded-lg hover:bg-[#0d2d5a] disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md hover:shadow-lg"
+                  >
+                    {payoutCalc.eligibleBDT === 0
+                      ? `Need ${(10000 - availableCredits).toLocaleString()} more to Request Payout`
+                      : `Request Payout — ৳${payoutCalc.eligibleBDT.toLocaleString()}`}
+                  </button>
+
+                  {payouts.filter((w: any) => w.status === 'PENDING').length > 0 && (
+                    <div className="px-4 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
+                      <span className="text-sm text-yellow-800 font-medium">
+                        {payouts.filter((w: any) => w.status === 'PENDING').length} Pending Payout Request(s)
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* ── Manual Credit History Modal ──────────────────────────────── */}
-      {showManualCreditHistory && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[600px] overflow-hidden">
-            <div className="px-6 py-4 bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900">Manual Credit History</h2>
-              <button
-                onClick={() => setShowManualCreditHistory(false)}
-                className="p-2 hover:bg-white rounded-lg transition-colors"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M18 6 6 18" /><path d="m6 6 12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="overflow-y-auto max-h-[calc(600px-80px)]">
-              {loadingManualCreditHistory ? (
-                <div className="p-6 text-center text-slate-500 text-sm">Loading…</div>
-              ) : manualCreditHistory.length === 0 ? (
-                <div className="p-6 text-center text-slate-500 text-sm">
-                  No manual credit adjustments found
-                </div>
-              ) : (
-                <div className="divide-y divide-slate-100">
-                  {manualCreditHistory.map((transaction) => (
-                    <div key={transaction.id} className="p-4 hover:bg-slate-50 transition-colors">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className={`font-semibold ${transaction.amount > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {transaction.amount > 0 ? '+' : ''}{transaction.amount.toLocaleString()} credits
-                        </span>
-                        <span className="text-xs text-slate-500">
-                          {new Date(transaction.createdAt).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <div className="text-sm text-slate-700 mb-1">
-                        {transaction.reason}
-                      </div>
-                      <div className="flex items-center justify-between text-xs text-slate-500">
-                        <span>By: {transaction.adminName}</span>
-                        <span>Balance: {transaction.balanceAfter?.toLocaleString()} credits</span>
-                      </div>
+              {/* Payout History Tab */}
+              {creditModalTab === 'payout-history' && (
+                <div>
+                  {payouts.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500 text-sm">
+                      No payout history yet
                     </div>
-                  ))}
+                  ) : (
+                    <div className="space-y-2">
+                      {payouts.map((w: any) => (
+                        <div key={w.id} className={`p-3 rounded-lg border ${w.status === 'PENDING' ? 'bg-yellow-50 border-yellow-200' : w.status === 'COMPLETED' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                          <div className="flex items-center justify-between mb-1">
+                            <div>
+                              <span className="font-semibold text-sm">{(w.credits || w.coins || 0).toLocaleString()} credits</span>
+                              {w.bdtAmount && (
+                                <span className="ml-2 text-sm text-green-700">→ ৳{Number(w.bdtAmount).toLocaleString()}</span>
+                              )}
+                            </div>
+                            <span className={`px-2 py-0.5 rounded text-xs font-medium ${w.status === 'PENDING' ? 'bg-yellow-200 text-yellow-800' : w.status === 'COMPLETED' ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}>
+                              {w.status}
+                            </span>
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {new Date(w.createdAt).toLocaleDateString()} · bKash: {w.bkashNumber || '—'}
+                          </div>
+                          {w.notes && w.status === 'REJECTED' && (
+                            <div className="text-xs text-red-600 mt-1 italic">Reason: {w.notes}</div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Manual Credit History Tab */}
+              {creditModalTab === 'manual-history' && (
+                <div>
+                  {loadingManualCreditHistory ? (
+                    <div className="text-center py-8 text-gray-500 text-sm">Loading…</div>
+                  ) : manualCreditHistory.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500 text-sm">
+                      No manual credit adjustments found
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {manualCreditHistory.map((transaction) => (
+                        <div key={transaction.id} className="p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className={`font-semibold text-sm ${transaction.amount > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {transaction.amount > 0 ? '+' : ''}{transaction.amount.toLocaleString()} credits
+                            </span>
+                            <span className="text-xs text-slate-500">
+                              {new Date(transaction.createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <div className="text-xs text-slate-700 mb-1">
+                            {transaction.reason}
+                          </div>
+                          <div className="flex items-center justify-between text-xs text-slate-500">
+                            <span>By: {transaction.adminName}</span>
+                            <span>Balance: {transaction.balanceAfter?.toLocaleString()}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
