@@ -3,7 +3,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
 const appUrl =
   process.env.CAPACITOR_APP_URL ||
   process.env.NEXT_PUBLIC_APP_URL ||
-  "https://app.amarsomoyamardesh.org";
+  "https://amarsomoyamardesh.org";
 
 const config: CapacitorConfig = {
   appId: "org.amarsomoyamardesh.app",
