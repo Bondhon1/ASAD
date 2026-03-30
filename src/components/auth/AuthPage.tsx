@@ -83,6 +83,11 @@ function AuthPageContent() {
   const [resendCooldown, setResendCooldown] = useState(0);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const appScheme = process.env.NEXT_PUBLIC_CAPACITOR_APP_SCHEME || "org.amarsomoyamardesh.app";
+  const appAuthBaseUrl = (
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    "https://amarsomoyamardesh.org"
+  ).replace(/\/$/, "");
 
   useEffect(() => {
     // Check for OAuth errors in URL
@@ -254,10 +259,11 @@ function AuthPageContent() {
     try {
       const { Browser } = await import("@capacitor/browser");
       const callbackUrl = `${appScheme}://auth-callback?target=${encodeURIComponent("/dashboard")}`;
-      const authUrl = `${window.location.origin}/api/auth/signin/google?callbackUrl=${encodeURIComponent(callbackUrl)}`;
+      const authUrl = `${appAuthBaseUrl}/api/auth/signin/google?callbackUrl=${encodeURIComponent(callbackUrl)}`;
       await Browser.open({ url: authUrl });
-    } catch {
-      setError("Unable to start Google sign-in. Please try again.");
+    } catch (error) {
+      console.error("[GoogleSignIn] Failed to launch native OAuth flow", error);
+      setError("Unable to start Google sign in. Please try again");
     }
   };
 
