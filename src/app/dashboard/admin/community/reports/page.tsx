@@ -285,11 +285,11 @@ export default function CommunityReportsPage() {
 
           {/* Filters */}
           <div className="bg-white border border-slate-200 rounded-lg p-4 mb-6">
-            <div className="flex items-center gap-3">
-              <label className="text-sm font-medium text-slate-700">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              <label className="text-sm font-medium text-slate-700 whitespace-nowrap">
                 Filter by Status:
               </label>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {(["PENDING", "REVIEWED", "RESOLVED", "DISMISSED", "ALL"] as const).map(
                   (status) => (
                     <button
@@ -459,7 +459,7 @@ export default function CommunityReportsPage() {
 
                       {/* Actions */}
                       {report.status === "PENDING" && (
-                        <div className="flex gap-2 pt-2">
+                        <div className="flex flex-col sm:flex-row gap-2 pt-2">
                           {/* Resolve Dropdown */}
                           <div className="relative flex-1">
                             <button

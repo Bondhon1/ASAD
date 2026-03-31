@@ -236,13 +236,13 @@ export default function AuditLogsPage() {
         </div>
 
         {/* Results */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6">
-          <div className="flex items-center justify-between mb-4">
+        <div className="bg-white border border-gray-200 rounded-lg p-4 sm:p-6 text-sm sm:text-base overflow-x-auto">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-4 gap-4">
             <h2 className="text-lg font-semibold">
               Logs ({total} total)
             </h2>
             {totalPages > 1 && (
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 <button
                   onClick={() => setPage(p => Math.max(1, p - 1))}
                   disabled={page === 1}
@@ -308,10 +308,10 @@ export default function AuditLogsPage() {
                 const isExpanded = expandedLog === log.id;
 
                 return (
-                  <div key={log.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
+                  <div key={log.id} className="border border-gray-200 rounded-lg p-3 sm:p-4 hover:bg-gray-50 flex-col">
+                    <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-2">
+                      <div className="flex-1 min-w-0 break-words w-full">
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
                           <span className="inline-block px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-800 rounded">
                             {log.action}
                           </span>
@@ -382,7 +382,7 @@ export default function AuditLogsPage() {
                       {meta && (
                         <button
                           onClick={() => toggleExpandLog(log.id)}
-                          className="ml-4 px-3 py-1 text-xs text-blue-600 hover:text-blue-800"
+                          className="sm:ml-4 px-3 py-1 text-xs text-blue-600 hover:text-blue-800 whitespace-nowrap self-start"
                         >
                           {isExpanded ? 'Hide' : 'Show'} Details
                         </button>

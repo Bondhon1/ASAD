@@ -36,6 +36,10 @@ const config: CapacitorConfig = {
     appendUserAgent: "ASAD-Android-App",
   },
   plugins: {
+    Keyboard: {
+      resize: "none",
+      resizeOnFullScreen: true, // often helps with exact layout calculations
+    },
     SplashScreen: {
       launchShowDuration: 2000,
       launchAutoHide: true,

@@ -208,7 +208,7 @@ export default function NavyTheme() {
               <p className={`mt-8 text-xl leading-relaxed text-white/80 max-w-2xl transition-all duration-700 delay-200 ${heroAnim.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
                 {heroContent.description}
               </p>
-              <div className={`mt-10 flex flex-nowrap items-center gap-3 transition-all duration-700 delay-300 ${heroAnim.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+              <div className={`mt-10 flex flex-wrap items-center gap-3 transition-all duration-700 delay-300 ${heroAnim.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
                 <Link
                   href={heroContent.primaryAction.href}
                   className="group rounded-lg bg-white px-5 py-3 text-sm font-semibold text-[#1E3A5F] shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-105 md:px-8 md:py-4 md:text-base"
@@ -219,6 +219,16 @@ export default function NavyTheme() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                     </svg>
                   </span>
+                </Link>
+                <Link
+                  href="/ASAD.apk"
+                  target="_blank"
+                  className="rounded-lg border-2 border-white/50 px-4 py-3 text-sm font-semibold text-white transition-all duration-300 hover:bg-white/10 hover:border-white flex items-center gap-2 whitespace-nowrap md:px-8 md:py-4 md:text-base"
+                >
+                  <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Download App
                 </Link>
                 <Link
                   href="#donate"
