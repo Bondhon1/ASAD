@@ -570,7 +570,7 @@ export default function AdminMonthlyPaymentsPage() {
               <h2 className="text-base font-semibold text-gray-900 mb-4">Set Configuration</h2>
 
               {/* Month + Year selector */}
-              <div className="grid grid-cols-2 gap-4 mb-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Month</label>
                   <select
@@ -610,7 +610,7 @@ export default function AdminMonthlyPaymentsPage() {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-3 gap-4 mb-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">Amount (৳) <span className="text-gray-400">default: 70</span></label>
                       <input
@@ -644,7 +644,7 @@ export default function AdminMonthlyPaymentsPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">bKash Number</label>
                       <input
@@ -700,8 +700,8 @@ export default function AdminMonthlyPaymentsPage() {
         {activeTab === "submissions" && (
           <div className="space-y-4">
             {/* Filter bar */}
-            <div className="flex flex-wrap gap-3 items-center">
-              <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+              <div className="flex gap-1 bg-gray-100 rounded-xl p-1 overflow-x-auto whitespace-nowrap hide-scrollbar w-full sm:w-auto">
                 {(["PENDING", "APPROVED", "REJECTED", "all"] as const).map(f => (
                   <button
                     key={f}
@@ -981,7 +981,8 @@ export default function AdminMonthlyPaymentsPage() {
                 No payment records found.
               </div>
             ) : (
-              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto whitespace-nowrap hide-scrollbar">
+                <div className="min-w-[600px]">
                 {/* Table header */}
                 <div className="grid grid-cols-5 gap-2 px-4 py-2.5 bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                   <div className="col-span-2">Period</div>
@@ -1027,6 +1028,7 @@ export default function AdminMonthlyPaymentsPage() {
                     <div className="text-right text-sm font-bold">৳{statsHistory.reduce((s, p) => s + p.totalCollected, 0).toLocaleString()}</div>
                   </div>
                 )}
+                </div>
               </div>
             )}
           </div>
@@ -1034,8 +1036,8 @@ export default function AdminMonthlyPaymentsPage() {
 
         {activeTab === "delay-requests" && (
           <div className="space-y-4">
-            <div className="flex gap-3 items-center">
-              <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+              <div className="flex gap-1 bg-gray-100 rounded-xl p-1 overflow-x-auto whitespace-nowrap hide-scrollbar w-full sm:w-auto">
                 {(["PENDING", "APPROVED", "REJECTED", "all"] as const).map(f => (
                   <button
                     key={f}
