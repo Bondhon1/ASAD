@@ -395,9 +395,9 @@ function AuthPageContent() {
 
     <div
       className={clsx(
-        "min-h-screen flex items-center justify-center overflow-hidden relative",
-        isNativeApp 
-          ? "bg-white p-0" 
+        "min-h-screen flex items-center justify-center relative",
+        isNativeApp
+          ? "bg-white p-0"
           : "bg-gradient-to-br from-white via-gray-50 to-gray-100 p-4 md:p-8"
       )}
       style={{ paddingTop: isNativeApp ? '0' : '8rem' }}
@@ -414,8 +414,8 @@ function AuthPageContent() {
         transition={{ duration: 8, repeat: Infinity }}
       />
 
-      <div className={clsx("relative z-10 w-full", isNativeApp ? "h-screen" : "max-w-md lg:max-w-6xl")}>
-        <div className={clsx("grid items-center h-full", isNativeApp ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12")}>
+      <div className={clsx("relative z-10 w-full", isNativeApp ? "min-h-screen" : "max-w-md lg:max-w-6xl")}>
+        <div className={clsx("grid items-center min-h-screen lg:h-full", isNativeApp ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12")}>
           {/* Left side - Branding & Info (Hidden on mobile) */}
           <motion.div
             className={clsx("flex-col justify-center", isNativeApp ? "hidden" : "hidden lg:flex")}
@@ -520,8 +520,8 @@ function AuthPageContent() {
             <motion.div
               className={clsx(
                 "overflow-hidden",
-                isNativeApp 
-                  ? "bg-white h-full flex flex-col" 
+                isNativeApp
+                  ? "bg-white min-h-screen flex flex-col"
                   : "bg-white rounded-2xl card-shadow"
               )}
               variants={containerVariants}
@@ -573,7 +573,7 @@ function AuthPageContent() {
 
               {/* Forms Container */}
               <div className={clsx(
-                isNativeApp ? "flex-1 overflow-y-auto px-6 py-6" : "p-8"
+                isNativeApp ? "flex-1 px-6 py-6 pb-24" : "p-8"
               )}>
                 {/* Error and Success Messages */}
                 <AnimatePresence>

@@ -35,6 +35,19 @@ const config: CapacitorConfig = {
     // Middleware can detect this marker to force app-mode behavior.
     appendUserAgent: "ASAD-Android-App",
   },
+  plugins: {
+    SplashScreen: {
+      launchShowDuration: 2000,
+      launchAutoHide: true,
+      launchFadeOutDuration: 500,
+      backgroundColor: "#1E3A5F",
+      androidSplashResourceName: "splash",
+      androidScaleType: "CENTER_CROP",
+      showSpinner: false,
+      splashFullScreen: true,
+      splashImmersive: true,
+    },
+  },
 };
 
 export default config;
