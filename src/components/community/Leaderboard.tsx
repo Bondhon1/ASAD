@@ -221,7 +221,7 @@ export default function CommunityLeaderboard() {
   const fetchLeaderboard = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/community/leaderboard");
+      const res = await fetch("/api/community/leaderboard", { cache: "no-store" });
       if (res.ok) {
         const data = await res.json();
         setEntries(data.leaderboard || []);
@@ -246,7 +246,11 @@ export default function CommunityLeaderboard() {
   }, []);
 
   useEffect(() => {
-    fetchLeaderboard();
+    const timeoutId = window.setTimeout(() => {
+      void fetchLeaderboard();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, [fetchLeaderboard]);
 
   // Close drawer on ESC
