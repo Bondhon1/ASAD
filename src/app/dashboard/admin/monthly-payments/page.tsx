@@ -5,6 +5,7 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import PullToRefresh from "@/components/layout/PullToRefresh";
 import { useCachedUserProfile } from "@/hooks/useCachedUserProfile";
 import { useModal } from "@/components/ui/ModalProvider";
 import UserMonthlyExemptBadge from "@/components/dashboard/UserMonthlyExemptBadge";
@@ -531,6 +532,7 @@ export default function AdminMonthlyPaymentsPage() {
 
   return (
     <DashboardLayout userRole={displayRole} userName={displayName} userEmail={displayEmail} userId={viewer.id || ""}>
+      <PullToRefresh>
       <div className="max-w-5xl mx-auto px-4 py-6">
         {/* Header */}
         <div className="mb-6">
@@ -1122,6 +1124,7 @@ export default function AdminMonthlyPaymentsPage() {
           </div>
         )}
       </div>
+      </PullToRefresh>
     </DashboardLayout>
   );
 }

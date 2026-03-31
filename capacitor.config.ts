@@ -37,8 +37,8 @@ const config: CapacitorConfig = {
   },
   plugins: {
     Keyboard: {
-      resize: "none",
-      resizeOnFullScreen: true, // often helps with exact layout calculations
+      resize: "native",
+      resizeOnFullScreen: true,
     },
     SplashScreen: {
       launchShowDuration: 2000,
