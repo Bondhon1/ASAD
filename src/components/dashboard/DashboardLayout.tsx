@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
+import { Capacitor } from "@capacitor/core";
 
 // Module-level TTL cache for scheduled interview data.
 // DashboardLayout is used directly inside every dashboard page (not as a Next.js
@@ -124,6 +125,11 @@ export default function DashboardLayout({
   const [finalPaymentStatus, setFinalPaymentStatus] = useState<string | null>(initialFinalPaymentStatus ?? null);
   const [initialPaymentStatus, setInitialPaymentStatus] = useState<string | null>(initialInitialPaymentStatus ?? null);
   const [scheduledInterview, setScheduledInterview] = useState<any | null>(null);
+  
+  // Check if running in native app (APK)
+  const isNativeApp = Capacitor.isNativePlatform();
+  // Status bar height for Android - typical height is 24-28dp, use 24px as safe value
+  const statusBarHeight = isNativeApp ? 24 : 0;
 
   const formatStatusLabel = (status: string | null) => {
     switch (status) {
@@ -522,7 +528,10 @@ export default function DashboardLayout({
   const dashboardContent = (
     <div className="min-h-screen bg-gray-50">
       {/* Topbar */}
-      <div className="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-30">
+      <div 
+        className="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-30"
+        style={{ paddingTop: `${statusBarHeight}px` }}
+      >
         <div className="flex items-center justify-between h-16 px-4">
           {/* Left: Menu button and Logo */}
           <div className="flex items-center gap-4">
@@ -564,9 +573,10 @@ export default function DashboardLayout({
 
       {/* Sidebar */}
       <div
-        className={`fixed top-16 left-0 bottom-0 w-64 bg-white border-r border-gray-200 z-20 transform transition-transform duration-200 ${
+        className={`fixed left-0 bottom-0 w-64 bg-white border-r border-gray-200 z-20 transform transition-transform duration-200 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         } lg:translate-x-0`}
+        style={{ top: `${64 + statusBarHeight}px` }}
       >
         <div className="flex flex-col h-full">
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
@@ -613,7 +623,7 @@ export default function DashboardLayout({
       )}
 
       {/* Main Content */}
-      <div className="pt-16 lg:pl-64">
+      <div className="lg:pl-64" style={{ paddingTop: `${64 + statusBarHeight}px` }}>
         <main className="px-2 py-4 sm:p-6">
           {/* Rejection / payment banners */}
           {showStatusBanners && (
