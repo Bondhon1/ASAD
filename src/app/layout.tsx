@@ -32,7 +32,10 @@ const socialPreviewImage = new URL("/banner.jpg", siteUrl).toString();
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
   themeColor: "#1E3A5F",
+  viewportFit: "cover",
 };
 
 export const metadata: Metadata = {
