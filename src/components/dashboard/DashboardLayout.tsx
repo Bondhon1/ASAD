@@ -128,8 +128,8 @@ export default function DashboardLayout({
   
   // Check if running in native app (APK)
   const isNativeApp = Capacitor.isNativePlatform();
-  // Status bar height for Android - typical height is 24-28dp, use 24px as safe value
-  const statusBarHeight = isNativeApp ? 24 : 0;
+  // Topbar height: 88px for APK (24px status bar + 64px content), 64px for web
+  const topbarHeight = isNativeApp ? 88 : 64;
 
   const formatStatusLabel = (status: string | null) => {
     switch (status) {
@@ -529,10 +529,10 @@ export default function DashboardLayout({
     <div className="min-h-screen bg-gray-50">
       {/* Topbar */}
       <div 
-        className="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-30"
-        style={{ paddingTop: `${statusBarHeight}px` }}
+        className="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-30 flex items-end"
+        style={{ height: isNativeApp ? '88px' : '64px' }}
       >
-        <div className="flex items-center justify-between h-16 px-4">
+        <div className="flex items-center justify-between h-16 px-4 w-full">
           {/* Left: Menu button and Logo */}
           <div className="flex items-center gap-4">
             <button
@@ -576,7 +576,7 @@ export default function DashboardLayout({
         className={`fixed left-0 bottom-0 w-64 bg-white border-r border-gray-200 z-20 transform transition-transform duration-200 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         } lg:translate-x-0`}
-        style={{ top: `${64 + statusBarHeight}px` }}
+        style={{ top: `${topbarHeight}px` }}
       >
         <div className="flex flex-col h-full">
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
@@ -623,7 +623,7 @@ export default function DashboardLayout({
       )}
 
       {/* Main Content */}
-      <div className="lg:pl-64" style={{ paddingTop: `${64 + statusBarHeight}px` }}>
+      <div className="lg:pl-64" style={{ paddingTop: `${topbarHeight}px` }}>
         <main className="px-2 py-4 sm:p-6">
           {/* Rejection / payment banners */}
           {showStatusBanners && (
