@@ -11,6 +11,7 @@ unpaid-users-backup-2026-03-20T10-32-48-317Z.json
 !.yarn/releases
 !.yarn/versions
 /docs/
+
 # testing
 /coverage
 
@@ -43,3 +44,13 @@ next-env.d.ts
 
 /src/generated/prisma
 *.txt
+
+# Android / Capacitor (not needed for Vercel deployment)
+/android/
+/ios/
+/www/
+android/app/google-services.json
+*.apk
+*.aab
+*.keystore
+.DS_Store
