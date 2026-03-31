@@ -234,6 +234,7 @@ function getMenuItems(userRole: string, userStatus?: string | null) {
       { label: "Manage Points / Ranks", href: "/dashboard/database" },
       { label: "Task management", href: "/dashboard/secretaries" },
       { label: "Monthly Payments", href: "/dashboard/admin/monthly-payments" },
+      { label: "Audit Logs", href: "/dashboard/admin/audit-logs" },
       { label: "Sector/club management", href: "/dashboard/admin/org-requests" },
       { label: "Community Reports", href: "/dashboard/admin/community/reports" },
       hrItems[hrItems.length - 1],

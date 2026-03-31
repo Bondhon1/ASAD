@@ -482,6 +482,7 @@ export default function DashboardLayout({
         ...hrItems.slice(0, -1), // All items except Settings
         { label: "Manage Points / Ranks", href: "/dashboard/database" },
         { label: "Credit Management", href: "/dashboard/admin/credit-management" },
+        { label: "Audit Logs", href: "/dashboard/admin/audit-logs" },
         { label: "Sector/club management", href: "/dashboard/admin/org-requests" },
         hrItems[hrItems.length - 1], // Settings at the end
       ];
