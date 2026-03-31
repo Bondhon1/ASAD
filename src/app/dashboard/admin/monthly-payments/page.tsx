@@ -532,7 +532,7 @@ export default function AdminMonthlyPaymentsPage() {
 
   return (
     <DashboardLayout userRole={displayRole} userName={displayName} userEmail={displayEmail} userId={viewer.id || ""}>
-      <PullToRefresh>
+      
       <div className="max-w-5xl mx-auto px-4 py-6">
         {/* Header */}
         <div className="mb-6">
@@ -1124,7 +1124,7 @@ export default function AdminMonthlyPaymentsPage() {
           </div>
         )}
       </div>
-      </PullToRefresh>
+      
     </DashboardLayout>
   );
 }

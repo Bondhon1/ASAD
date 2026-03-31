@@ -41,17 +41,17 @@ export default function PullToRefresh({ children, onRefresh }: PullToRefreshProp
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!pulling || refreshing) return;
 
-    if (getScrollTop() > 0) {
-      setPulling(false);
-      setPullDistance(0);
-      return;
-    }
-
     const currentY = e.touches[0].clientY;
     const distance = currentY - startY;
 
-    if (distance > 0) {
+    // Only handle pull if pulling downwards AND at top of scroll
+    if (distance > 0 && getScrollTop() <= 0) {
       setPullDistance(Math.min(distance * 0.4, threshold + 20));
+      
+      // Stop native overscroll behavior when actively pulling
+      if (e.cancelable && distance > 10) {
+        e.preventDefault();
+      }
     } else {
       setPullDistance(0);
     }

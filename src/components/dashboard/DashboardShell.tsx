@@ -4,6 +4,7 @@ import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import PullToRefresh from "@/components/layout/PullToRefresh";
 import {
   MessageSquare,
   Menu,
@@ -409,7 +410,11 @@ function ShellInner({
         )}
 
         {/* Main content area — offset for topbar + sidebar */}
-        <div className="pt-16 lg:pl-64">{children}</div>
+        <div className="pt-16 lg:pl-64 h-full">
+          <PullToRefresh>
+            {children}
+          </PullToRefresh>
+        </div>
       </div>
       <ChatList />
       <ChatModal />
