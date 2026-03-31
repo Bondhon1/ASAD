@@ -10,6 +10,27 @@ const APP_SCHEME = process.env.NEXT_PUBLIC_CAPACITOR_APP_SCHEME || "org.amarsomo
 export default function CapacitorOAuthHandler() {
   const router = useRouter();
 
+  // Initialize StatusBar for Android
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) {
+      return;
+    }
+
+    const initStatusBar = async () => {
+      try {
+        const { StatusBar, Style } = await import("@capacitor/status-bar");
+        // Set status bar to light style with white background
+        await StatusBar.setStyle({ style: Style.Light });
+        await StatusBar.setBackgroundColor({ color: "#ffffff" });
+        await StatusBar.setOverlaysWebView({ overlay: true });
+      } catch (error) {
+        console.log("StatusBar not available:", error);
+      }
+    };
+
+    initStatusBar();
+  }, []);
+
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) {
       return;

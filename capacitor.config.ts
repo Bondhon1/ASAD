@@ -39,6 +39,11 @@ const config: CapacitorConfig = {
     Keyboard: {
       resize: "none",
     },
+    StatusBar: {
+      style: "LIGHT",
+      backgroundColor: "#ffffff",
+      overlaysWebView: true,
+    },
     SplashScreen: {
       launchShowDuration: 2000,
       launchAutoHide: true,
