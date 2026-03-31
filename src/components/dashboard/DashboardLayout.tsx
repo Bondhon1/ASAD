@@ -128,8 +128,8 @@ export default function DashboardLayout({
   
   // Check if running in native app (APK)
   const isNativeApp = Capacitor.isNativePlatform();
-  // Topbar height: 88px for APK (24px status bar + 64px content), 64px for web
-  const topbarHeight = isNativeApp ? 88 : 64;
+  // Navy bar (28px) + topbar (64px) = 92px for APK, just 64px for web
+  const topbarHeight = isNativeApp ? 92 : 64;
 
   const formatStatusLabel = (status: string | null) => {
     switch (status) {
@@ -527,10 +527,24 @@ export default function DashboardLayout({
 
   const dashboardContent = (
     <div className="min-h-screen bg-gray-50">
+      {/* Navy blue status bar cover - ONLY for APK */}
+      {isNativeApp && (
+        <div 
+          className="fixed top-0 left-0 right-0 z-50" 
+          style={{ 
+            height: '28px', 
+            backgroundColor: '#1E3A5F'
+          }}
+        />
+      )}
+      
       {/* Topbar */}
       <div 
-        className="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-30 flex items-end"
-        style={{ height: isNativeApp ? '88px' : '64px' }}
+        className="fixed left-0 right-0 bg-white border-b border-gray-200 z-30 flex items-end"
+        style={{ 
+          top: isNativeApp ? '28px' : '0px',
+          height: '64px'
+        }}
       >
         <div className="flex items-center justify-between h-16 px-4 w-full">
           {/* Left: Menu button and Logo */}
