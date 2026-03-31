@@ -19,10 +19,10 @@ export default function CapacitorOAuthHandler() {
     const initStatusBar = async () => {
       try {
         const { StatusBar, Style } = await import("@capacitor/status-bar");
-        // Set status bar to light style with white background
+        // Set status bar to light style with white background, NOT overlaying
         await StatusBar.setStyle({ style: Style.Light });
         await StatusBar.setBackgroundColor({ color: "#ffffff" });
-        await StatusBar.setOverlaysWebView({ overlay: true });
+        await StatusBar.setOverlaysWebView({ overlay: false });
       } catch (error) {
         console.log("StatusBar not available:", error);
       }
