@@ -13,6 +13,58 @@ export const authOptions: NextAuthOptions = {
       allowDangerousEmailAccountLinking: true,
     }),
     CredentialsProvider({
+      id: "google-native",
+      name: "Google Native",
+      credentials: {
+        idToken: { label: "ID Token", type: "text" },
+      },
+      async authorize(credentials) {
+        if (!credentials?.idToken) {
+          throw new Error("ID token required");
+        }
+
+        // Import OAuth2Client
+        const { OAuth2Client } = require("google-auth-library");
+        const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+        try {
+          // Verify the Google ID token
+          const ticket = await googleClient.verifyIdToken({
+            idToken: credentials.idToken,
+            audience: process.env.GOOGLE_CLIENT_ID,
+          });
+
+          const payload = ticket.getPayload();
+          if (!payload || !payload.email || !payload.email_verified) {
+            throw new Error("Invalid or unverified Google token");
+          }
+
+          // Check if user exists in our database
+          const user = await prisma.user.findUnique({
+            where: { email: payload.email },
+            include: { initialPayment: true },
+          });
+
+          if (!user) {
+            throw new Error("User not found. Please complete registration.");
+          }
+
+          if (user.status === "BANNED") {
+            throw new Error("Your account has been suspended");
+          }
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.fullName || user.username,
+          };
+        } catch (error) {
+          console.error("Google native auth error:", error);
+          throw new Error(error instanceof Error ? error.message : "Authentication failed");
+        }
+      },
+    }),
+    CredentialsProvider({
       name: "Credentials",
       credentials: {
         email: { label: "Email", type: "email" },

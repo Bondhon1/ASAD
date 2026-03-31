@@ -258,6 +258,8 @@ function AuthPageContent() {
 
   const handleGoogleLogin = async () => {
     setGoogleDebugInfo("");
+    setLoading(true);
+    setError("");
 
     if (!Capacitor.isNativePlatform()) {
       signIn("google", { callbackUrl: "/dashboard" });
@@ -265,33 +267,71 @@ function AuthPageContent() {
     }
 
     try {
-      const { Browser } = await import("@capacitor/browser");
-      const parsedBaseUrl = new URL(appAuthBaseUrl);
+      // Use native Google Sign-In on mobile
+      const { SocialLogin } = await import("@capgo/capacitor-social-login");
+      
+      await SocialLogin.initialize({
+        google: {
+          webClientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "",
+        },
+      });
 
-      if (parsedBaseUrl.protocol !== "https:") {
-        throw new Error(
-          `Invalid app auth URL protocol: ${parsedBaseUrl.protocol || "unknown"}. Expected https:`
-        );
+      const result = await SocialLogin.login({
+        provider: "google",
+        options: {
+          scopes: ["email", "profile"],
+        },
+      });
+
+      if (!result.provider || result.provider !== "google") {
+        throw new Error("Invalid provider returned");
       }
 
-      const callbackUrl = `${appAuthBaseUrl}/api/auth/mobile-callback?target=${encodeURIComponent("/dashboard")}`;
-      const authUrl = `${appAuthBaseUrl}/api/auth/signin/google?callbackUrl=${encodeURIComponent(callbackUrl)}`;
-      const debugText = [
-        `native=${Capacitor.isNativePlatform()}`,
-        `platform=${Capacitor.getPlatform()}`,
-        `appScheme=${appScheme}`,
-        `appAuthBaseUrl=${appAuthBaseUrl}`,
-        `callbackUrl=${callbackUrl}`,
-        `authUrl=${authUrl}`,
-      ].join("\n");
+      // Check if we got an online response with idToken
+      const googleResult = result.result;
+      if (googleResult.responseType !== "online" || !googleResult.idToken) {
+        throw new Error("No ID token received from Google. Please try again.");
+      }
 
-      setGoogleDebugInfo(debugText);
-      await Browser.open({ url: authUrl });
+      const idToken = googleResult.idToken;
+
+      // First, ensure user exists in database
+      const response = await fetch("/api/auth/google-native", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ idToken }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Authentication failed");
+      }
+
+      // Now sign in with NextAuth using the verified token
+      const result2 = await signIn("google-native", {
+        idToken,
+        redirect: false,
+      });
+
+      if (result2?.error) {
+        throw new Error(result2.error);
+      }
+
+      // Success! Navigate to dashboard
+      setSuccess("Successfully signed in with Google!");
+      router.push("/dashboard");
+      router.refresh();
+      
     } catch (error) {
-      console.error("[GoogleSignIn] Failed to launch native OAuth flow", error);
+      console.error("[GoogleSignIn] Native sign-in failed", error);
       const reason = error instanceof Error ? error.message : String(error);
-      setGoogleDebugInfo((prev) => `${prev ? `${prev}\n` : ""}error=${reason}`);
-      setError(`Unable to start Google sign in. ${reason}`);
+      setGoogleDebugInfo(`Native Google Sign-In Error: ${reason}`);
+      setError(`Google sign-in failed: ${reason}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -355,10 +395,12 @@ function AuthPageContent() {
 
     <div
       className={clsx(
-        "min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 flex items-center justify-center overflow-hidden relative",
-        isNativeApp ? "p-3" : "p-4 md:p-8"
+        "min-h-screen flex items-center justify-center overflow-hidden relative",
+        isNativeApp 
+          ? "bg-white p-0" 
+          : "bg-gradient-to-br from-white via-gray-50 to-gray-100 p-4 md:p-8"
       )}
-      style={{ paddingTop: isNativeApp ? '1.25rem' : '8rem' }}
+      style={{ paddingTop: isNativeApp ? '0' : '8rem' }}
     >
       {/* Decorative background elements */}
       <motion.div
@@ -372,8 +414,8 @@ function AuthPageContent() {
         transition={{ duration: 8, repeat: Infinity }}
       />
 
-      <div className={clsx("relative z-10 w-full", isNativeApp ? "max-w-2xl" : "max-w-md lg:max-w-6xl")}>
-        <div className={clsx("grid items-center", isNativeApp ? "grid-cols-1 gap-4" : "grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12")}>
+      <div className={clsx("relative z-10 w-full", isNativeApp ? "h-screen" : "max-w-md lg:max-w-6xl")}>
+        <div className={clsx("grid items-center h-full", isNativeApp ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12")}>
           {/* Left side - Branding & Info (Hidden on mobile) */}
           <motion.div
             className={clsx("flex-col justify-center", isNativeApp ? "hidden" : "hidden lg:flex")}
@@ -476,13 +518,23 @@ function AuthPageContent() {
             transition={{ duration: 0.8 }}
           >
             <motion.div
-              className="bg-white rounded-2xl card-shadow overflow-hidden"
+              className={clsx(
+                "overflow-hidden",
+                isNativeApp 
+                  ? "bg-white h-full flex flex-col" 
+                  : "bg-white rounded-2xl card-shadow"
+              )}
               variants={containerVariants}
               initial="initial"
               animate="animate"
             >
               {/* Form Header with Mode Toggle */}
-              <div className="bg-gradient-to-r from-blue-900 to-indigo-800 p-8 text-white">
+              <div className={clsx(
+                "text-white",
+                isNativeApp
+                  ? "bg-[#1E3A5F] px-6 py-8 pt-12"
+                  : "bg-gradient-to-r from-blue-900 to-indigo-800 p-8"
+              )}>
                 <motion.div
                   className="flex gap-4 mb-6"
                   layout
@@ -492,9 +544,12 @@ function AuthPageContent() {
                       key={m}
                       onClick={() => handleModeChange(m)}
                       className={clsx(
-                        "px-4 py-2 rounded-lg font-semibold transition-all duration-300",
+                        "px-4 py-2 font-semibold transition-all duration-300",
+                        isNativeApp ? "rounded" : "rounded-lg",
                         mode === m
-                          ? "bg-white text-blue-900"
+                          ? isNativeApp 
+                            ? "bg-white text-[#1E3A5F]"
+                            : "bg-white text-blue-900"
                           : "text-white/70 hover:text-white"
                       )}
                     >
@@ -517,7 +572,9 @@ function AuthPageContent() {
               </div>
 
               {/* Forms Container */}
-              <div className="p-8">
+              <div className={clsx(
+                isNativeApp ? "flex-1 overflow-y-auto px-6 py-6" : "p-8"
+              )}>
                 {/* Error and Success Messages */}
                 <AnimatePresence>
                   {error && (
