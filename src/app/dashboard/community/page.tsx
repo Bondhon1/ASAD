@@ -1229,27 +1229,6 @@ export default function CommunityPage() {
 
           <StoriesRail userRole={_commRole} />
 
-          {/* Leaderboard Button for APK */}
-          {typeof window !== 'undefined' && Capacitor.isNativePlatform() && (
-            <Link 
-              href="/dashboard/community/leaderboard"
-              className="block bg-gradient-to-r from-amber-50 to-amber-100 border border-amber-200 rounded-2xl shadow-sm p-4 mb-5 hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-amber-400 flex items-center justify-center flex-shrink-0">
-                  <Trophy size={20} className="text-white" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-[#1E3A5F]">Monthly Leaderboard</h3>
-                  <p className="text-xs text-amber-700">See who's leading this month</p>
-                </div>
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-600">
-                  <path d="M9 18l6-6-6-6"/>
-                </svg>
-              </div>
-            </Link>
-          )}
-
           {/* Create Post Box */}
           <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 mb-5">
             <div className="flex gap-3 items-start">
@@ -1437,6 +1416,17 @@ export default function CommunityPage() {
           {/* Leaderboard — sidebar on desktop, floating button on mobile */}
           <CommunityLeaderboard />
         </div>
+
+        {/* Floating Leaderboard Button for APK */}
+        {typeof window !== 'undefined' && Capacitor.isNativePlatform() && (
+          <Link
+            href="/dashboard/community/leaderboard"
+            className="fixed bottom-6 right-4 z-30 w-14 h-14 flex items-center justify-center bg-amber-500 text-white rounded-full shadow-lg hover:bg-amber-600 active:scale-95 transition-all"
+            aria-label="View leaderboard"
+          >
+            <Trophy size={24} />
+          </Link>
+        )}
       </div>
     </DashboardLayout>
 

@@ -72,15 +72,20 @@ export default function LeaderboardPage() {
   useEffect(() => {
     const fetchLeaderboard = async () => {
       try {
+        console.log('[Leaderboard] Fetching data...');
         const res = await fetch("/api/community/leaderboard");
+        console.log('[Leaderboard] Response status:', res.status);
         if (!res.ok) throw new Error("Failed to fetch leaderboard");
         const data = await res.json();
+        console.log('[Leaderboard] Data received:', data);
         setEntries(data.leaderboard || []);
         setMonth(data.month || null);
       } catch (error) {
+        console.error('[Leaderboard] Error:', error);
         logErrorToAudit("/api/community/leaderboard", "GET", error instanceof Error ? error : new Error(String(error)));
       } finally {
         setLoading(false);
+        console.log('[Leaderboard] Loading complete');
       }
     };
 
@@ -93,8 +98,8 @@ export default function LeaderboardPage() {
 
   return (
     <div 
-      className="bg-white flex flex-col"
-      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 50 }}
+      className="flex flex-col"
+      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 50, backgroundColor: '#f8f9fa' }}
     >
       {/* Header */}
       <div className="flex items-center gap-3 bg-[#1E3A5F] text-white px-4 flex-shrink-0" style={{ paddingTop: '3.5rem', paddingBottom: '1rem' }}>
@@ -112,7 +117,7 @@ export default function LeaderboardPage() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-4" style={{ backgroundColor: '#f8f9fa' }}>
         {loading && (
           <div className="flex items-center justify-center h-64">
             <div className="w-8 h-8 border-4 border-[#1E3A5F] border-t-transparent rounded-full animate-spin"></div>

@@ -63,8 +63,8 @@ export default function ImageViewerPage() {
       </div>
 
       {/* Image Container */}
-      <div className="flex-1 flex items-center justify-center relative">
-        <div className="relative w-full h-full">
+      <div className="flex-1 flex items-center justify-center relative px-4">
+        <div className="relative w-full" style={{ height: 'calc(100vh - 180px)' }}>
           <Image
             src={images[currentIndex]}
             alt={`Image ${currentIndex + 1}`}
@@ -72,6 +72,7 @@ export default function ImageViewerPage() {
             className="object-contain"
             sizes="100vw"
             priority
+            unoptimized
           />
         </div>
 
