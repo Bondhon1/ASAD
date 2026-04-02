@@ -309,17 +309,31 @@ export default function CommunityLeaderboard() {
         {/* Backdrop */}
         {mobileOpen && (
           <div
-            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+            className="z-40 bg-black/40 backdrop-blur-sm"
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+            }}
             onClick={() => setMobileOpen(false)}
           />
         )}
 
         {/* Bottom sheet drawer */}
         <div
-          className={`fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-2xl transition-transform duration-300 ease-out ${
+          className={`z-50 bg-white rounded-t-2xl shadow-2xl transition-transform duration-300 ease-out ${
             mobileOpen ? "translate-y-0" : "translate-y-full"
           }`}
-          style={{ maxHeight: "80vh", overflowY: "auto" }}
+          style={{ 
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            maxHeight: "80vh", 
+            overflowY: "auto" 
+          }}
         >
           {/* Drag handle */}
           <div className="flex justify-center pt-3 pb-1">

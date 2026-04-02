@@ -127,11 +127,19 @@ function PostImageGallery({ images }: { images: string[] }) {
       {/* Lightbox */}
       {lightbox !== null && (
         <div
-          className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4"
+          className="z-50 bg-black/95 flex items-center justify-center"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+          }}
           onClick={() => setLightbox(null)}
         >
           <button
-            className="absolute top-6 right-6 text-white/90 hover:text-white text-3xl font-light leading-none z-10 bg-black/30 rounded-full w-10 h-10 flex items-center justify-center"
+            className="absolute top-4 right-4 text-white/90 hover:text-white text-3xl font-light leading-none z-10 bg-black/30 rounded-full w-10 h-10 flex items-center justify-center"
+            style={{ top: '1rem', right: '1rem' }}
             onClick={() => setLightbox(null)}
             aria-label="Close"
           >
@@ -139,7 +147,8 @@ function PostImageGallery({ images }: { images: string[] }) {
           </button>
           {lightbox > 0 && (
             <button
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-white/90 hover:text-white text-5xl font-light z-10 bg-black/30 rounded-full w-12 h-12 flex items-center justify-center"
+              className="absolute left-4 text-white/90 hover:text-white text-5xl font-light z-10 bg-black/30 rounded-full w-12 h-12 flex items-center justify-center"
+              style={{ top: '50%', transform: 'translateY(-50%)', left: '1rem' }}
               onClick={(e) => { e.stopPropagation(); setLightbox((l) => (l !== null && l > 0 ? l - 1 : l)); }}
               aria-label="Previous"
             >
@@ -148,27 +157,25 @@ function PostImageGallery({ images }: { images: string[] }) {
           )}
           {lightbox < images.length - 1 && (
             <button
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-white/90 hover:text-white text-5xl font-light z-10 bg-black/30 rounded-full w-12 h-12 flex items-center justify-center"
+              className="absolute right-4 text-white/90 hover:text-white text-5xl font-light z-10 bg-black/30 rounded-full w-12 h-12 flex items-center justify-center"
+              style={{ top: '50%', transform: 'translateY(-50%)', right: '1rem' }}
               onClick={(e) => { e.stopPropagation(); setLightbox((l) => (l !== null && l < images.length - 1 ? l + 1 : l)); }}
               aria-label="Next"
             >
               ›
             </button>
           )}
-          <div className="relative w-full h-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
-            <div className="relative max-w-6xl w-full" style={{ maxHeight: 'calc(100vh - 120px)' }}>
-              <Image
-                src={images[lightbox]}
-                alt={`Image ${lightbox + 1}`}
-                width={1200}
-                height={900}
-                className="w-full h-auto max-h-[calc(100vh-120px)] object-contain"
-                sizes="100vw"
-                priority
-              />
-            </div>
+          <div className="relative w-[90%] h-[85%]" onClick={(e) => e.stopPropagation()}>
+            <Image
+              src={images[lightbox]}
+              alt={`Image ${lightbox + 1}`}
+              fill
+              className="object-contain"
+              sizes="100vw"
+              priority
+            />
           </div>
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/80 text-sm bg-black/40 px-4 py-2 rounded-full">
+          <div className="absolute text-white/80 text-sm bg-black/40 px-4 py-2 rounded-full" style={{ bottom: '1rem', left: '50%', transform: 'translateX(-50%)' }}>
             {lightbox + 1} / {images.length}
           </div>
         </div>
