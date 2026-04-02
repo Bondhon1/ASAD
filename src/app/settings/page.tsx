@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import { ChatWithButton } from "@/components/chat/ChatWithButton";
 import { divisions, getDistricts, getUpazilas } from '@/lib/bdGeo';
 import { getServiceIdForInstitute } from '@/lib/serviceAssignment';
 import { useModal } from '@/components/ui/ModalProvider';
@@ -15,6 +16,17 @@ type ExperienceInput = {
   startDate?: string;
   endDate?: string;
   isCurrent?: boolean;
+};
+
+type SupportContact = {
+  id: string;
+  fullName: string | null;
+  email: string;
+  phone: string | null;
+  volunteerId: string | null;
+  role: string;
+  status: string;
+  profilePicUrl: string | null;
 };
 
 export default function SettingsPage() {
@@ -72,8 +84,8 @@ export default function SettingsPage() {
   const [leavesLoading, setLeavesLoading] = useState(false);
   // Support section state
   const [supportExpanded, setSupportExpanded] = useState(false);
-  const [admins, setAdmins] = useState<Array<{ id: string; fullName: string | null; email: string; phone: string | null; role: string; profilePicUrl: string | null }>>([]);
-  const [adminsLoading, setAdminsLoading] = useState(false);
+  const [supportContacts, setSupportContacts] = useState<SupportContact[]>([]);
+  const [supportContactsLoading, setSupportContactsLoading] = useState(false);
   const skeleton = (
     <div className="max-w-4xl mx-auto px-6 py-8 animate-pulse space-y-4">
       <div className="h-8 w-40 bg-gray-200 rounded" />
@@ -283,16 +295,16 @@ export default function SettingsPage() {
     }
   };
 
-  const fetchAdmins = async () => {
+  const fetchSupportContacts = async () => {
     try {
-      setAdminsLoading(true);
+      setSupportContactsLoading(true);
       const res = await fetch('/api/admin/admins', { cache: 'no-store' });
       const data = await res.json();
-      setAdmins(data.admins || []);
+      setSupportContacts(data.contacts || []);
     } catch (e) {
-      console.error('Failed to fetch admins', e);
+      console.error('Failed to fetch support contacts', e);
     } finally {
-      setAdminsLoading(false);
+      setSupportContactsLoading(false);
     }
   };
 
@@ -376,6 +388,8 @@ export default function SettingsPage() {
   if (status === "unauthenticated") return null;
 
   const displayRole = (session as any)?.user?.role || (user?.role as any) || 'VOLUNTEER';
+  const developerContacts = supportContacts.filter((contact) => ['MASTER', 'DATABASE_DEPT'].includes(contact.role));
+  const adminContacts = supportContacts.filter((contact) => ['ADMIN', 'DIRECTOR'].includes(contact.role));
 
   return (
     <DashboardLayout userRole={displayRole} userName={user?.fullName || user?.username || 'User'} userEmail={user?.email || session?.user?.email} userId={user?.id || ""}>
@@ -1284,7 +1298,7 @@ export default function SettingsPage() {
             onClick={() => {
               setSupportExpanded(v => {
                 const next = !v;
-                if (next && admins.length === 0) fetchAdmins();
+                if (next && supportContacts.length === 0) fetchSupportContacts();
                 return next;
               });
             }}
@@ -1319,6 +1333,31 @@ export default function SettingsPage() {
                     WhatsApp
                   </a>
                 </div>
+                {developerContacts.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {developerContacts.map((contact) => (
+                      <div key={contact.id} className="p-3 border border-blue-100 rounded-lg bg-blue-50/60">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">{contact.fullName || 'Developer'}</div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {contact.role.replace(/_/g, ' ')}
+                              {contact.volunteerId ? ` • #${contact.volunteerId}` : ''}
+                            </div>
+                          </div>
+                          <ChatWithButton
+                            targetUserId={contact.id}
+                            targetUser={contact}
+                            label="Direct Chat"
+                            size="sm"
+                            variant="primary"
+                            className="justify-center"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Admin Support */}
@@ -1327,15 +1366,15 @@ export default function SettingsPage() {
                 <p className="text-xs text-gray-600 mb-3 bg-emerald-50 border border-emerald-100 rounded p-3">
                   Contact admins for: <span className="font-medium">account-related issues, approval requests, policy inquiries, volunteer concerns, or general administrative support.</span>
                 </p>
-                {adminsLoading ? (
-                  <div className="text-sm text-gray-500 py-4 text-center">Loading admins...</div>
-                ) : admins.length === 0 ? (
+                {supportContactsLoading ? (
+                  <div className="text-sm text-gray-500 py-4 text-center">Loading support contacts...</div>
+                ) : adminContacts.length === 0 ? (
                   <div className="text-sm text-gray-500 py-4 text-center">No admins available</div>
                 ) : (
                   <div className="space-y-2">
-                    {admins.map((admin) => (
+                    {adminContacts.map((admin) => (
                       <div key={admin.id} className="p-3 border border-gray-100 rounded bg-gray-50 hover:bg-gray-100 transition-colors">
-                        <div className="flex items-center justify-between gap-2">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                           <div>
                             <div className="text-sm font-medium text-gray-900">{admin.fullName}</div>
                             <div className={`text-xs font-semibold inline-block px-2 py-0.5 rounded mt-1 ${
@@ -1343,14 +1382,21 @@ export default function SettingsPage() {
                               'bg-blue-100 text-blue-700'
                             }`}>{admin.role}</div>
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <ChatWithButton
+                              targetUserId={admin.id}
+                              targetUser={admin}
+                              label="Direct Chat"
+                              size="sm"
+                              variant="secondary"
+                            />
                             {admin.email && (
                               <a href={`mailto:${admin.email}`} className="inline-flex items-center justify-center p-1.5 bg-gray-100 hover:bg-gray-200 rounded transition-colors" title={`Email: ${admin.email}`}>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
                               </a>
                             )}
                             {admin.phone && (
-                              <a href={`https://wa.me/${admin.phone.replace(/\\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center p-1.5 bg-green-100 hover:bg-green-200 rounded transition-colors" title={`WhatsApp: ${admin.phone}`}>
+                              <a href={`https://wa.me/${admin.phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center p-1.5 bg-green-100 hover:bg-green-200 rounded transition-colors" title={`WhatsApp: ${admin.phone}`}>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.272-.099-.47-.148-.67.15-.23.297-.921.967-.129 1.226.792.259 1.693.849 1.928 1.049.234.2.374.346.374.647 0 .305-.189.713-.385 1.006-.196.292-.385.585-.792.585h-.001c-.404 0-1.584-.211-2.409-.654-.823-.443-1.577-1.041-2.078-1.614-.501-.572-.805-1.237-.971-1.902-.166-.665-.123-1.232.114-1.728.237-.496.655-.922 1.161-1.147.506-.225 1.075-.243 1.583-.054.509.189.961.565 1.279 1.128.318.563.496 1.24.517 1.918.021.678-.127 1.351-.326 1.971-.2.62-.559 1.179-.994 1.646-.435.467-.968.868-1.577 1.133-.608.265-1.286.421-1.993.405-.707-.016-1.378-.178-2.002-.488z"/><path d="M12.004 2C6.48 2.016 2.016 6.48 2 12.004c0 1.968.509 3.872 1.465 5.502L2.089 22 7.72 20.576c1.574.899 3.38 1.416 5.284 1.416 5.52 0 10-4.48 10-10s-4.48-10-10-10zm0 18c-1.716 0-3.374-.471-4.793-1.365l-.345-.196-3.561.766.78-2.847-.214-.342c-.93-1.481-1.428-3.192-1.428-4.974 0-4.41 3.59-8 8-8s8 3.59 8 8-3.59 8-8 8z"/></svg>
                               </a>
                             )}
