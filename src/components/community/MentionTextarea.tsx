@@ -24,6 +24,8 @@ interface MentionSegment {
 // ─── Encoding helpers ──────────────────────────────────────────────────────────
 
 const MENTION_RE = /@\[([^\]]+)\]\(([^)]+)\)/g;
+const URL_RE = /(https?:\/\/[^\s<]+|www\.[^\s<]+)/gi;
+const HASHTAG_RE = /#[\w\u0600-\u06FF]+/g;
 
 /** Convert encoded string (contains @[Name](id)) to plain display string (@Name). */
 function encodedToDisplay(encoded: string): string {
@@ -145,10 +147,108 @@ export function renderMentionContent(text: string): React.ReactNode {
             </a>
           );
         }
-        return <span key={i}>{part}</span>;
+        return <span key={i}>{renderTextWithLinks(part, `${i}`)}</span>;
       })}
     </>
   );
+}
+
+function normalizeUrl(url: string): string {
+  return url.startsWith("www.") ? `https://${url}` : url;
+}
+
+function splitTrailingPunctuation(value: string): { core: string; trailing: string } {
+  const match = value.match(/^(.*?)([),.!?:;]*)$/);
+  if (!match) return { core: value, trailing: "" };
+  return { core: match[1], trailing: match[2] };
+}
+
+function renderTextWithLinks(text: string, keyPrefix: string): React.ReactNode[] {
+  const nodes: React.ReactNode[] = [];
+  let lastIndex = 0;
+
+  for (const match of text.matchAll(URL_RE)) {
+    const rawUrl = match[0];
+    const start = match.index ?? 0;
+    const end = start + rawUrl.length;
+
+    if (start > lastIndex) {
+      nodes.push(...renderTextWithHashtags(text.slice(lastIndex, start), `${keyPrefix}-text-${lastIndex}`));
+    }
+
+    const { core, trailing } = splitTrailingPunctuation(rawUrl);
+    if (core) {
+      nodes.push(
+        <a
+          key={`${keyPrefix}-url-${start}`}
+          href={normalizeUrl(core)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[#1E3A5F] font-medium hover:underline break-all"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {core}
+        </a>
+      );
+    }
+
+    if (trailing) {
+      nodes.push(...renderTextWithHashtags(trailing, `${keyPrefix}-trail-${start}`));
+    }
+
+    lastIndex = end;
+  }
+
+  if (lastIndex < text.length) {
+    nodes.push(...renderTextWithHashtags(text.slice(lastIndex), `${keyPrefix}-text-${lastIndex}`));
+  }
+
+  return nodes;
+}
+
+function renderTextWithHashtags(text: string, keyPrefix: string): React.ReactNode[] {
+  const nodes: React.ReactNode[] = [];
+  let lastIndex = 0;
+
+  for (const match of text.matchAll(HASHTAG_RE)) {
+    const hashtag = match[0];
+    const start = match.index ?? 0;
+    const end = start + hashtag.length;
+
+    if (start > lastIndex) {
+      nodes.push(
+        <span key={`${keyPrefix}-plain-${lastIndex}`}>
+          {text.slice(lastIndex, start)}
+        </span>
+      );
+    }
+
+    nodes.push(
+      <a
+        key={`${keyPrefix}-hashtag-${start}`}
+        href={`/dashboard/community?hashtag=${encodeURIComponent(hashtag.slice(1))}`}
+        className="text-[#1E3A5F] font-bold hover:underline cursor-pointer"
+        onClick={(e) => {
+          e.stopPropagation();
+          window.location.href = `/dashboard/community?hashtag=${encodeURIComponent(hashtag.slice(1))}`;
+        }}
+      >
+        {hashtag}
+      </a>
+    );
+
+    lastIndex = end;
+  }
+
+  if (lastIndex < text.length) {
+    nodes.push(
+      <span key={`${keyPrefix}-plain-${lastIndex}`}>
+        {text.slice(lastIndex)}
+      </span>
+    );
+  }
+
+  return nodes;
 }
 
 /** Render text with both mentions and hashtags (hashtags as bold, clickable). */
@@ -174,34 +274,7 @@ export function renderContentWithHashtags(text: string): React.ReactNode {
           );
         }
 
-        // For non-mention parts, parse hashtags
-        // Match hashtags: # followed by alphanumeric, underscore, or Unicode letters
-        const hashtagParts = part.split(/(#[\w\u0600-\u06FF]+)/g);
-
-        return (
-          <span key={i}>
-            {hashtagParts.map((hashtagPart, j) => {
-              const hashtagMatch = hashtagPart.match(/^#([\w\u0600-\u06FF]+)$/);
-              if (hashtagMatch) {
-                return (
-                  <a
-                    key={`${i}-${j}`}
-                    href={`/dashboard/community?hashtag=${encodeURIComponent(hashtagMatch[1])}`}
-                    className="text-[#1E3A5F] font-bold hover:underline cursor-pointer"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      // Use client-side navigation
-                      window.location.href = `/dashboard/community?hashtag=${encodeURIComponent(hashtagMatch[1])}`;
-                    }}
-                  >
-                    #{hashtagMatch[1]}
-                  </a>
-                );
-              }
-              return hashtagPart;
-            })}
-          </span>
-        );
+        return <span key={i}>{renderTextWithLinks(part, `${i}`)}</span>;
       })}
     </>
   );
