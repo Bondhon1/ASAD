@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { X, MessageSquare, Loader2, Search, Plus } from "lucide-react";
-import { useChatContext, ConversationPreview } from "./ChatProvider";
+import { useChatContext, ConversationPreview, OtherUser } from "./ChatProvider";
 
 const CHAT_TRIGGER_ATTR = "data-chat-trigger";
 
@@ -51,10 +51,39 @@ export function ChatList() {
   const { isListOpen, closeList, openChat, isOfficialUser, conversations, conversationsLoading: loading } =
     useChatContext();
 
+  if (!isListOpen || !isOfficialUser) return null;
+
+  return (
+    <ChatListPanel
+      closeList={closeList}
+      openChat={openChat}
+      conversations={conversations}
+      loading={loading}
+    />
+  );
+}
+
+function ChatListPanel({
+  closeList,
+  openChat,
+  conversations,
+  loading,
+}: {
+  closeList: () => void;
+  openChat: (targetUserId: string, targetUser?: OtherUser) => void;
+  conversations: ConversationPreview[];
+  loading: boolean;
+}) {
   const desktopPanelRef = useRef<HTMLDivElement>(null);
   const mobilePanelRef = useRef<HTMLDivElement>(null);
+  const newChatModalRef = useRef<HTMLDivElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showNewChat, setShowNewChat] = useState(false);
+
+  const handleCloseList = useCallback(() => {
+    setShowNewChat(false);
+    closeList();
+  }, [closeList]);
   
   // Filter conversations based on search query
   const filteredConversations = conversations.filter((conv) =>
@@ -63,7 +92,6 @@ export function ChatList() {
 
   // Close on outside click, but ignore clicks on the topbar trigger button
   useEffect(() => {
-    if (!isListOpen) return;
     const handler = (e: MouseEvent) => {
       const target = e.target as Element;
       if (target.closest(`[${CHAT_TRIGGER_ATTR}]`)) return;
@@ -71,17 +99,16 @@ export function ChatList() {
       // Check if click is inside EITHER desktop OR mobile panel
       const isInsideDesktop = desktopPanelRef.current?.contains(target);
       const isInsideMobile = mobilePanelRef.current?.contains(target);
+      const isInsideNewChatModal = newChatModalRef.current?.contains(target);
       
-      // Only close if outside BOTH panels
-      if (!isInsideDesktop && !isInsideMobile) {
-        closeList();
+      // Only close if outside the list panels and the new chat modal
+      if (!isInsideDesktop && !isInsideMobile && !isInsideNewChatModal) {
+        handleCloseList();
       }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [isListOpen, closeList]);
-
-  if (!isListOpen || !isOfficialUser) return null;
+  }, [handleCloseList]);
 
   return (
     <>
@@ -101,7 +128,7 @@ export function ChatList() {
             >
               <Plus size={16} />
             </button>
-            <button onClick={closeList} className="p-1 hover:bg-white/20 rounded">
+            <button onClick={handleCloseList} className="p-1 hover:bg-white/20 rounded">
               <X size={16} />
             </button>
           </div>
@@ -131,7 +158,7 @@ export function ChatList() {
             <div className="flex flex-col items-center justify-center h-full text-gray-400 px-4 text-center">
               <MessageSquare size={36} className="mb-2 opacity-40" />
               <p className="text-sm">No conversations yet</p>
-              <p className="text-xs mt-1">Visit a member's profile to start chatting</p>
+              <p className="text-xs mt-1">Visit a member&apos;s profile to start chatting</p>
             </div>
           )}
           {!loading && conversations.length > 0 && filteredConversations.length === 0 && (
@@ -183,7 +210,7 @@ export function ChatList() {
               >
                 <Plus size={20} />
               </button>
-              <button onClick={closeList} className="p-1.5 hover:bg-white/20 rounded-lg">
+              <button onClick={handleCloseList} className="p-1.5 hover:bg-white/20 rounded-lg">
                 <X size={20} />
               </button>
             </div>
@@ -213,7 +240,7 @@ export function ChatList() {
               <div className="flex flex-col items-center justify-center h-60 text-gray-400 px-6 text-center">
                 <MessageSquare size={48} className="mb-3 opacity-40" />
                 <p className="font-medium text-gray-500">No conversations yet</p>
-                <p className="text-sm mt-1">Visit a member's profile to start chatting</p>
+                <p className="text-sm mt-1">Visit a member&apos;s profile to start chatting</p>
               </div>
             )}
             {!loading && conversations.length > 0 && filteredConversations.length === 0 && (
@@ -255,7 +282,11 @@ export function ChatList() {
       
       {/* New Chat Modal */}
       {showNewChat && (
-        <NewChatModal onClose={() => setShowNewChat(false)} onSelectUser={openChat} />
+        <NewChatModal
+          modalRef={newChatModalRef}
+          onClose={() => setShowNewChat(false)}
+          onSelectUser={openChat}
+        />
       )}
     </>
   );
@@ -264,14 +295,16 @@ export function ChatList() {
 // ─── New Chat Modal Component ────────────────────────────────────────
 
 function NewChatModal({ 
+  modalRef,
   onClose, 
   onSelectUser 
 }: { 
+  modalRef: React.RefObject<HTMLDivElement | null>;
   onClose: () => void;
-  onSelectUser: (userId: string, user: any) => void;
+  onSelectUser: (userId: string, user: OtherUser) => void;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<OtherUser[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
 
@@ -297,14 +330,14 @@ function NewChatModal({
     }
   };
 
-  const handleSelectUser = (user: any) => {
+  const handleSelectUser = (user: OtherUser) => {
     onSelectUser(user.id, user);
     onClose();
   };
 
   return (
     <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col">
+      <div ref={modalRef} className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
           <h3 className="font-semibold text-gray-900">New Chat</h3>
