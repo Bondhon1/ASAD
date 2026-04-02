@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { Capacitor } from "@capacitor/core";
 import PullToRefresh from "@/components/layout/PullToRefresh";
 import {
   MessageSquare,
@@ -259,6 +260,15 @@ function ShellInner({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
+  
+  // Detect native app and calculate proper topbar height
+  const [isNativeApp, setIsNativeApp] = useState(false);
+  useEffect(() => {
+    setIsNativeApp(Capacitor.isNativePlatform());
+  }, []);
+  
+  // Android status bar (28px) + topbar (64px) = 92px for native, 64px for web
+  const topbarHeight = isNativeApp ? 92 : 64;
 
   const isStaff = ["HR", "MASTER", "ADMIN", "DIRECTOR", "DATABASE_DEPT", "SECRETARIES"].includes(
     userRole
@@ -311,7 +321,10 @@ function ShellInner({
     <DashboardShellContext.Provider value={{ isMounted: true }}>
       <div className="min-h-screen bg-gray-50">
         {/* Topbar */}
-        <div className="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-30">
+        <div 
+          className="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-30"
+          style={{ height: `${topbarHeight}px`, paddingTop: isNativeApp ? '28px' : '0' }}
+        >
           <div className="flex items-center justify-between h-16 px-4">
             {/* Left: Menu button + Logo */}
             <div className="flex items-center gap-4">
@@ -410,7 +423,10 @@ function ShellInner({
         )}
 
         {/* Main content area — offset for topbar + sidebar */}
-        <div className="pt-16 lg:pl-64 h-full">
+        <div 
+          className="lg:pl-64 h-full"
+          style={{ paddingTop: `${topbarHeight}px` }}
+        >
           <PullToRefresh>
             {children}
           </PullToRefresh>

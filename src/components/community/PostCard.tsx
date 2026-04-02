@@ -127,41 +127,50 @@ function PostImageGallery({ images }: { images: string[] }) {
       {/* Lightbox */}
       {lightbox !== null && (
         <div
-          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+          className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4"
           onClick={() => setLightbox(null)}
         >
           <button
-            className="absolute top-4 right-4 text-white/80 hover:text-white text-3xl font-light leading-none"
+            className="absolute top-6 right-6 text-white/90 hover:text-white text-3xl font-light leading-none z-10 bg-black/30 rounded-full w-10 h-10 flex items-center justify-center"
             onClick={() => setLightbox(null)}
+            aria-label="Close"
           >
             ×
           </button>
           {lightbox > 0 && (
             <button
-              className="absolute left-4 text-white/80 hover:text-white text-4xl font-light"
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-white/90 hover:text-white text-5xl font-light z-10 bg-black/30 rounded-full w-12 h-12 flex items-center justify-center"
               onClick={(e) => { e.stopPropagation(); setLightbox((l) => (l !== null && l > 0 ? l - 1 : l)); }}
+              aria-label="Previous"
             >
               ‹
             </button>
           )}
           {lightbox < images.length - 1 && (
             <button
-              className="absolute right-4 text-white/80 hover:text-white text-4xl font-light"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-white/90 hover:text-white text-5xl font-light z-10 bg-black/30 rounded-full w-12 h-12 flex items-center justify-center"
               onClick={(e) => { e.stopPropagation(); setLightbox((l) => (l !== null && l < images.length - 1 ? l + 1 : l)); }}
+              aria-label="Next"
             >
               ›
             </button>
           )}
-          <div className="relative max-w-4xl max-h-[85vh] w-full h-full mx-8" onClick={(e) => e.stopPropagation()}>
-            <Image
-              src={images[lightbox]}
-              alt={`Image ${lightbox + 1}`}
-              fill
-              className="object-contain"
-              sizes="90vw"
-            />
+          <div className="relative w-full h-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+            <div className="relative max-w-6xl w-full" style={{ maxHeight: 'calc(100vh - 120px)' }}>
+              <Image
+                src={images[lightbox]}
+                alt={`Image ${lightbox + 1}`}
+                width={1200}
+                height={900}
+                className="w-full h-auto max-h-[calc(100vh-120px)] object-contain"
+                sizes="100vw"
+                priority
+              />
+            </div>
           </div>
-          <span className="absolute bottom-4 text-white/60 text-sm">{lightbox + 1} / {images.length}</span>
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/80 text-sm bg-black/40 px-4 py-2 rounded-full">
+            {lightbox + 1} / {images.length}
+          </div>
         </div>
       )}
     </>
