@@ -78,7 +78,7 @@ export default function LeaderboardPage() {
         setEntries(data.leaderboard || []);
         setMonth(data.month || null);
       } catch (error) {
-        logErrorToAudit("Leaderboard", error);
+        logErrorToAudit("/api/community/leaderboard", "GET", error instanceof Error ? error : new Error(String(error)));
       } finally {
         setLoading(false);
       }
