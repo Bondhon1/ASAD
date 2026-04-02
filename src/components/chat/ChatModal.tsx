@@ -336,9 +336,12 @@ export function ChatModal() {
       </div>
 
       {/* Mobile: full-screen modal */}
-      <div className="fixed inset-0 z-50 bg-white flex flex-col md:hidden">
+      <div 
+        className="bg-white flex flex-col md:hidden"
+        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 50 }}
+      >
         {/* Header */}
-        <div className="flex items-center gap-3 bg-[#1E3A5F] text-white px-4 py-3 flex-shrink-0 safe-area-top">
+        <div className="flex items-center gap-3 bg-[#1E3A5F] text-white px-4 flex-shrink-0" style={{ paddingTop: '3.5rem', paddingBottom: '0.75rem' }}>
           <button onClick={closeChat} className="p-1.5 hover:bg-white/20 rounded-lg">
             <ArrowLeft size={20} />
           </button>

@@ -3,6 +3,8 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { Capacitor } from "@capacitor/core";
 import { MentionTextarea, renderMentionContent, renderContentWithHashtags } from "./MentionTextarea";
 import UserMonthlyExemptBadge from "@/components/dashboard/UserMonthlyExemptBadge";
 import UserMonthlyOverdueIndicator from "@/components/dashboard/UserMonthlyOverdueIndicator";
@@ -80,10 +82,22 @@ export interface Post {
 
 // ─── Image Gallery ─────────────────────────────────────────────────────────────
 
-function PostImageGallery({ images }: { images: string[] }) {
+function PostImageGallery({ images, postId }: { images: string[]; postId: string }) {
   const [lightbox, setLightbox] = useState<number | null>(null);
+  const router = useRouter();
+  const isNative = typeof window !== 'undefined' && Capacitor.isNativePlatform();
 
   if (!images || images.length === 0) return null;
+
+  const handleImageClick = (index: number) => {
+    if (isNative) {
+      // Navigate to native image viewer page
+      router.push(`/dashboard/community/image-viewer?images=${encodeURIComponent(JSON.stringify(images))}&index=${index}`);
+    } else {
+      // Use web lightbox
+      setLightbox(index);
+    }
+  };
 
   const count = images.length;
   const gridClass =
@@ -104,7 +118,7 @@ function PostImageGallery({ images }: { images: string[] }) {
             className={`relative overflow-hidden cursor-pointer group bg-slate-100 ${
               count === 3 && i === 0 ? "row-span-2" : ""
             } ${count === 1 ? "w-full" : "h-40"}`}
-            onClick={() => setLightbox(i)}
+            onClick={() => handleImageClick(i)}
           >
             <Image
               src={url}
@@ -124,8 +138,8 @@ function PostImageGallery({ images }: { images: string[] }) {
         ))}
       </div>
 
-      {/* Lightbox */}
-      {lightbox !== null && (
+      {/* Lightbox - only for web */}
+      {!isNative && lightbox !== null && (
         <div
           className="z-50 bg-black/95 flex items-center justify-center"
           style={{
@@ -942,7 +956,7 @@ export function PostCard({
         )}
         {/* Image Gallery */}
         {post.images && post.images.length > 0 && (
-          <PostImageGallery images={post.images} />
+          <PostImageGallery images={post.images} postId={post.id} />
         )}
       </div>
 

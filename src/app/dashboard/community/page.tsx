@@ -4,6 +4,9 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
+import { Trophy } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { useCachedUserProfile } from "@/hooks/useCachedUserProfile";
 import { MentionTextarea } from "@/components/community/MentionTextarea";
@@ -1225,6 +1228,27 @@ export default function CommunityPage() {
           </div>
 
           <StoriesRail userRole={_commRole} />
+
+          {/* Leaderboard Button for APK */}
+          {typeof window !== 'undefined' && Capacitor.isNativePlatform() && (
+            <Link 
+              href="/dashboard/community/leaderboard"
+              className="block bg-gradient-to-r from-amber-50 to-amber-100 border border-amber-200 rounded-2xl shadow-sm p-4 mb-5 hover:shadow-md transition-shadow"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-amber-400 flex items-center justify-center flex-shrink-0">
+                  <Trophy size={20} className="text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-[#1E3A5F]">Monthly Leaderboard</h3>
+                  <p className="text-xs text-amber-700">See who's leading this month</p>
+                </div>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-600">
+                  <path d="M9 18l6-6-6-6"/>
+                </svg>
+              </div>
+            </Link>
+          )}
 
           {/* Create Post Box */}
           <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 mb-5">

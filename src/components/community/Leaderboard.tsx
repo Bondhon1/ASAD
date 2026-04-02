@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Image from "next/image";
+import { Capacitor } from "@capacitor/core";
 import { logErrorToAudit } from "@/lib/apiErrorHandler";
 
 interface LeaderboardEntry {
@@ -262,6 +263,8 @@ export default function CommunityLeaderboard() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
+  const isNative = typeof window !== 'undefined' && Capacitor.isNativePlatform();
+
   return (
     <>
       {/* ── Desktop sidebar panel (visible lg+) ─────────────────────────── */}
@@ -271,7 +274,8 @@ export default function CommunityLeaderboard() {
         </div>
       </aside>
 
-      {/* ── Mobile floating trophy button (hidden lg+) ───────────────────── */}
+      {/* ── Mobile floating trophy button - HIDDEN IN NATIVE APP (hidden lg+) ───────────────────── */}
+      {!isNative && (
       <div className="lg:hidden">
         <button
           onClick={() => setMobileOpen(true)}
@@ -368,6 +372,7 @@ export default function CommunityLeaderboard() {
           </div>
         </div>
       </div>
+      )}
     </>
   );
 }

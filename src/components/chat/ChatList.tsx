@@ -172,8 +172,8 @@ export function ChatList() {
       </div>
 
       {/* Mobile: full-screen list */}
-      <div ref={mobilePanelRef} className="fixed inset-0 z-50 bg-white flex flex-col md:hidden">
-          <div className="flex items-center justify-between px-4 py-3 bg-[#1E3A5F] text-white flex-shrink-0">
+      <div ref={mobilePanelRef} className="bg-white flex flex-col md:hidden" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 50 }}>
+          <div className="flex items-center justify-between px-4 bg-[#1E3A5F] text-white flex-shrink-0" style={{ paddingTop: '3.5rem', paddingBottom: '0.75rem' }}>
             <span className="font-semibold">Messages</span>
             <div className="flex items-center gap-1">
               <button 
