@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import { Capacitor } from "@capacitor/core";
 import { logErrorToAudit } from "@/lib/apiErrorHandler";
@@ -13,6 +14,10 @@ interface LeaderboardEntry {
   role: string;
   monthlyPoints: number;
   totalPoints: number;
+}
+
+interface CommunityLeaderboardProps {
+  onMobileOpenChange?: (setter: (open: boolean) => void) => void;
 }
 
 function MedalIcon({ rank }: { rank: number }) {
@@ -213,16 +218,24 @@ function LeaderboardList({
 
 // ─── Main Export ──────────────────────────────────────────────────────────────
 
-export default function CommunityLeaderboard() {
+export default function CommunityLeaderboard({ onMobileOpenChange }: CommunityLeaderboardProps = {}) {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [month, setMonth] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isNative, setIsNative] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   
   useEffect(() => {
     setIsNative(Capacitor.isNativePlatform());
+    setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (onMobileOpenChange) {
+      onMobileOpenChange(setMobileOpen);
+    }
+  }, [onMobileOpenChange]);
 
   const fetchLeaderboard = useCallback(async () => {
     setLoading(true);
@@ -267,6 +280,93 @@ export default function CommunityLeaderboard() {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, []);
+
+  // Render mobile drawer using portal for native app
+  const renderMobileDrawer = () => {
+    if (!isMounted || !mobileOpen) return null;
+
+    const drawerContent = (
+      <>
+        {/* Backdrop */}
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.4)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 99998,
+          }}
+          onClick={() => setMobileOpen(false)}
+        />
+
+        {/* Bottom sheet drawer */}
+        <div
+          style={{ 
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            maxHeight: "80vh", 
+            overflowY: "auto",
+            backgroundColor: '#fff',
+            borderTopLeftRadius: '1rem',
+            borderTopRightRadius: '1rem',
+            boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.15)',
+            zIndex: 99999,
+            transform: 'translateY(0)',
+            transition: 'transform 0.3s ease-out',
+          }}
+        >
+          {/* Drag handle */}
+          <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '12px', paddingBottom: '4px' }}>
+            <div style={{ width: '40px', height: '4px', borderRadius: '9999px', backgroundColor: '#e2e8f0' }} />
+          </div>
+
+          {/* Close button */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 16px 8px' }}>
+            <span style={{ fontSize: '14px', fontWeight: 600, color: '#334155' }}>Monthly Leaderboard</span>
+            <button
+              onClick={() => setMobileOpen(false)}
+              style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: '9999px',
+                backgroundColor: '#f1f5f9',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M18 6 6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <div style={{ padding: '0 16px 32px' }}>
+            <LeaderboardList entries={entries} loading={loading} month={month} />
+          </div>
+        </div>
+      </>
+    );
+
+    return createPortal(drawerContent, document.body);
+  };
 
   return (
     <>
@@ -382,6 +482,9 @@ export default function CommunityLeaderboard() {
         </div>
       </div>
       )}
+
+      {/* Render mobile drawer for native app using portal */}
+      {isNative && renderMobileDrawer()}
     </>
   );
 }

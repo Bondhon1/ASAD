@@ -19,7 +19,6 @@ import {
 } from "@/components/community/PostCard";
 import CommunityLeaderboard from "@/components/community/Leaderboard";
 import StoriesRail from "@/components/community/StoriesRail";
-import NativeLeaderboard from "@/components/community/NativeLeaderboard";
 
 // ─── Audience Picker (mirrors task creation pattern) ──────────────────────────
 
@@ -623,13 +622,8 @@ export default function CommunityPage() {
   const [sectorsList, setSectorsList] = useState<{ id: string; name: string }[]>([]);
   const [clubsList, setClubsList] = useState<{ id: string; name: string }[]>([]);
   
-  // Native app leaderboard modal
-  const [showNativeLeaderboard, setShowNativeLeaderboard] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
-  
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
+  // Native app leaderboard modal - reference to setter from Leaderboard component
+  const [leaderboardMobileOpenSetter, setLeaderboardMobileOpenSetter] = useState<((open: boolean) => void) | null>(null);
 
   const closeSearchDropdown = useCallback(() => {
     setSearchResults(null);
@@ -1424,15 +1418,17 @@ export default function CommunityPage() {
           )}
           </div>
           {/* Leaderboard — sidebar on desktop, floating button on mobile */}
-          <CommunityLeaderboard />
+          <CommunityLeaderboard 
+            onMobileOpenChange={(setter) => setLeaderboardMobileOpenSetter(() => setter)}
+          />
         </div>
 
         {/* Floating Leaderboard Button for APK - positioned higher for better visibility */}
-        {isMounted && typeof window !== 'undefined' && Capacitor.isNativePlatform() && (
+        {typeof window !== 'undefined' && Capacitor.isNativePlatform() && (
           <>
             {createPortal(
               <button
-                onClick={() => setShowNativeLeaderboard(true)}
+                onClick={() => leaderboardMobileOpenSetter?.(true)}
                 style={{
                   position: 'fixed',
                   bottom: '80px',
@@ -1460,10 +1456,7 @@ export default function CommunityPage() {
           </>
         )}
         
-        {/* Native Leaderboard Modal */}
-        {showNativeLeaderboard && (
-          <NativeLeaderboard onClose={() => setShowNativeLeaderboard(false)} />
-        )}
+        {/* Native Leaderboard Modal - Now handled by CommunityLeaderboard component */}
       </div>
     </DashboardLayout>
 
