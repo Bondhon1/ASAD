@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Capacitor } from "@capacitor/core";
 import { StatusBar } from "@capacitor/status-bar";
 import { X, Trophy, Medal, Award, Crown } from "lucide-react";
@@ -23,8 +24,10 @@ export default function NativeLeaderboard({ onClose }: NativeLeaderboardProps) {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [month, setMonth] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
     fetchLeaderboard();
   }, []);
 
@@ -57,7 +60,9 @@ export default function NativeLeaderboard({ onClose }: NativeLeaderboardProps) {
     return "#64748b";
   };
 
-  return (
+  if (!isMounted) return null;
+
+  const leaderboardContent = (
     <div
       style={{
         position: "fixed",
@@ -66,7 +71,7 @@ export default function NativeLeaderboard({ onClose }: NativeLeaderboardProps) {
         right: 0,
         bottom: 0,
         backgroundColor: "#f8fafc",
-        zIndex: 9999,
+        zIndex: 99999,
       }}
     >
       {/* Header */}
@@ -286,4 +291,6 @@ export default function NativeLeaderboard({ onClose }: NativeLeaderboardProps) {
       </div>
     </div>
   );
+
+  return createPortal(leaderboardContent, document.body);
 }

@@ -273,9 +273,10 @@ export default function CommunityLeaderboard() {
       {/* ── Desktop sidebar panel (visible lg+) ─────────────────────────── */}
       <aside className="hidden lg:block w-80 xl:w-96 flex-shrink-0">
         <div 
-          className="sticky bg-white border border-slate-200 rounded-2xl shadow-sm p-5"
+          className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5"
           style={{ 
-            top: isNative ? '100px' : '24px' // More space for APK status bar
+            position: 'sticky',
+            top: isNative ? '100px' : '24px', // More space for APK status bar
           }}
         >
           <LeaderboardList entries={entries} loading={loading} month={month} />

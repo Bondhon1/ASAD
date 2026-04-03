@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Capacitor } from "@capacitor/core";
 import { StatusBar } from "@capacitor/status-bar";
 import { X } from "lucide-react";
@@ -20,8 +21,11 @@ export default function NativeImageViewer({
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
+    
     // Hide status bar for full-screen experience
     if (Capacitor.isNativePlatform()) {
       StatusBar.hide().catch(() => {});
@@ -73,7 +77,9 @@ export default function NativeImageViewer({
     }
   };
 
-  return (
+  if (!isMounted) return null;
+
+  const viewerContent = (
     <div
       style={{
         position: 'fixed',
@@ -253,4 +259,6 @@ export default function NativeImageViewer({
       )}
     </div>
   );
+
+  return createPortal(viewerContent, document.body);
 }
