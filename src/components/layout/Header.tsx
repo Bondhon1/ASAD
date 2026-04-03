@@ -2,8 +2,9 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
+import { Capacitor } from '@capacitor/core';
 
 // Helper to clear all cached user data
 const clearAllCaches = () => {
@@ -29,12 +30,20 @@ const clearAllCaches = () => {
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isNative, setIsNative] = useState(false);
   const { data: session, status } = useSession();
 
+  useEffect(() => {
+    setIsNative(Capacitor.isNativePlatform());
+  }, []);
+
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-md transition-all duration-300">
-      <div className="mx-auto max-w-7xl px-6">
-        <div className="flex h-20 items-center justify-between">
+    <nav 
+      className="fixed top-0 left-0 right-0 z-50 bg-white shadow-md transition-all duration-300"
+      style={{ paddingTop: isNative ? '24px' : '0' }}
+    >
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <div className="flex h-16 sm:h-20 items-center justify-between">
           <Link href="/" className="flex items-center gap-3 group">
             <div className="relative h-11 w-11 overflow-hidden rounded-xl shadow-md transition-transform duration-300 group-hover:scale-110">
               <Image src="/logo.jpg" alt="ASAD Logo" fill className="object-cover" />
@@ -75,7 +84,7 @@ export function Header() {
       </div>
 
       <div className={`md:hidden bg-white border-t border-gray-100 overflow-hidden transition-all duration-300 ${mobileMenuOpen ? 'max-h-96 py-4' : 'max-h-0'}`}>
-        <div className="flex flex-col gap-4 px-6">
+        <div className="flex flex-col gap-4 px-4 sm:px-6">
           {[
             { label: 'Home', href: '/' },
             { label: 'About', href: '/about' },

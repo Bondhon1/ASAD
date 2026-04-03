@@ -23,19 +23,19 @@ interface CommunityLeaderboardProps {
 function MedalIcon({ rank }: { rank: number }) {
   if (rank === 1)
     return (
-      <span className="text-lg leading-none" title="1st Place">
+      <span className="text-lg leading-tight flex items-center justify-center" title="1st Place">
         🥇
       </span>
     );
   if (rank === 2)
     return (
-      <span className="text-lg leading-none" title="2nd Place">
+      <span className="text-lg leading-tight flex items-center justify-center" title="2nd Place">
         🥈
       </span>
     );
   if (rank === 3)
     return (
-      <span className="text-lg leading-none" title="3rd Place">
+      <span className="text-lg leading-tight flex items-center justify-center" title="3rd Place">
         🥉
       </span>
     );
@@ -376,7 +376,7 @@ export default function CommunityLeaderboard({ onMobileOpenChange }: CommunityLe
           className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5"
           style={{ 
             position: 'sticky',
-            top: isNative ? '100px' : '24px', // More space for APK status bar
+            top: isNative ? '120px' : '84px', // More space for APK status bar + header
           }}
         >
           <LeaderboardList entries={entries} loading={loading} month={month} />
@@ -403,6 +403,7 @@ export default function CommunityLeaderboard({ onMobileOpenChange }: CommunityLe
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
+            className="flex-shrink-0"
           >
             <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
             <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />

@@ -521,10 +521,10 @@ export function CommentItem({
       <div className="flex-1 min-w-0">
         <div className="bg-slate-50 border border-slate-100 rounded-2xl px-3 py-2">
           <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 min-w-0 flex-1">
               <Link
                 href={`/dashboard/community/profile/${comment.author.id}`}
-                className="font-semibold text-sm text-slate-800 hover:text-[#1E3A5F] transition-colors"
+                className="font-semibold text-sm text-slate-800 hover:text-[#1E3A5F] transition-colors truncate"
               >
                 {comment.author.fullName || "Volunteer"}
               </Link>
@@ -903,10 +903,10 @@ export function PostCard({
             <Avatar user={post.author} size={44} />
           </Link>
           <div className="min-w-0">
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 min-w-0">
               <Link
                 href={`/dashboard/community/profile/${post.author.id}`}
-                className="font-semibold text-slate-800 hover:text-[#1E3A5F] transition-colors leading-tight"
+                className="font-semibold text-slate-800 hover:text-[#1E3A5F] transition-colors leading-tight truncate"
               >
                 {post.author.fullName || "Volunteer"}
               </Link>
