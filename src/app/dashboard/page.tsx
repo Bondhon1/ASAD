@@ -738,8 +738,8 @@ export default function DashboardPage() {
                   onClick={openPointsModal}
                   className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 h-9 rounded-full bg-gradient-to-r from-[#0b2545] to-[#07223f] text-white text-xs sm:text-sm font-medium hover:opacity-90 transition-opacity cursor-pointer"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width={12} height={12} viewBox="0 0 24 24" fill="currentColor" stroke="none" className="flex-shrink-0">
-                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                  <svg xmlns="http://www.w3.org/2000/svg" width={12} height={12} viewBox="0 0 24 24" fill="currentColor" className="flex-shrink-0">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                   </svg>
                   <span className="whitespace-nowrap">{user.volunteerProfile?.points ?? 0} Points</span>
                 </button>
