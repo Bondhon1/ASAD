@@ -12,6 +12,7 @@ import { PostMenu } from "./PostMenu";
 import { ReportPostModal } from "./ReportPostModal";
 import PostShareModal from "./PostShareModal";
 import { logErrorToAudit } from "@/lib/apiErrorHandler";
+import NativeImageViewer from "./NativeImageViewer";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -84,6 +85,8 @@ export interface Post {
 
 function PostImageGallery({ images, postId }: { images: string[]; postId: string }) {
   const [lightbox, setLightbox] = useState<number | null>(null);
+  const [showNativeViewer, setShowNativeViewer] = useState(false);
+  const [nativeViewerIndex, setNativeViewerIndex] = useState(0);
   const router = useRouter();
   const isNative = typeof window !== 'undefined' && Capacitor.isNativePlatform();
 
@@ -91,8 +94,9 @@ function PostImageGallery({ images, postId }: { images: string[]; postId: string
 
   const handleImageClick = (index: number) => {
     if (isNative) {
-      // Navigate to native image viewer page
-      router.push(`/dashboard/community/image-viewer?images=${encodeURIComponent(JSON.stringify(images))}&index=${index}`);
+      // Use native image viewer component
+      setNativeViewerIndex(index);
+      setShowNativeViewer(true);
     } else {
       // Use web lightbox
       setLightbox(index);
@@ -193,6 +197,15 @@ function PostImageGallery({ images, postId }: { images: string[]; postId: string
             {lightbox + 1} / {images.length}
           </div>
         </div>
+      )}
+
+      {/* Native Image Viewer - only for app */}
+      {isNative && showNativeViewer && (
+        <NativeImageViewer
+          images={images}
+          initialIndex={nativeViewerIndex}
+          onClose={() => setShowNativeViewer(false)}
+        />
       )}
     </>
   );

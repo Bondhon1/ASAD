@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
@@ -18,6 +19,7 @@ import {
 } from "@/components/community/PostCard";
 import CommunityLeaderboard from "@/components/community/Leaderboard";
 import StoriesRail from "@/components/community/StoriesRail";
+import NativeLeaderboard from "@/components/community/NativeLeaderboard";
 
 // ─── Audience Picker (mirrors task creation pattern) ──────────────────────────
 
@@ -620,6 +622,14 @@ export default function CommunityPage() {
   const [servicesList, setServicesList] = useState<{ id: string; name: string }[]>([]);
   const [sectorsList, setSectorsList] = useState<{ id: string; name: string }[]>([]);
   const [clubsList, setClubsList] = useState<{ id: string; name: string }[]>([]);
+  
+  // Native app leaderboard modal
+  const [showNativeLeaderboard, setShowNativeLeaderboard] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+  
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const closeSearchDropdown = useCallback(() => {
     setSearchResults(null);
@@ -1417,15 +1427,38 @@ export default function CommunityPage() {
           <CommunityLeaderboard />
         </div>
 
-        {/* Floating Leaderboard Button for APK */}
-        {typeof window !== 'undefined' && Capacitor.isNativePlatform() && (
-          <Link
-            href="/dashboard/community/leaderboard"
-            className="fixed bottom-6 right-4 z-30 w-14 h-14 flex items-center justify-center bg-amber-500 text-white rounded-full shadow-lg hover:bg-amber-600 active:scale-95 transition-all"
+        {/* Floating Leaderboard Button for APK - using portal to ensure it's always visible */}
+        {isMounted && typeof window !== 'undefined' && Capacitor.isNativePlatform() && createPortal(
+          <button
+            onClick={() => setShowNativeLeaderboard(true)}
+            style={{
+              position: 'fixed',
+              bottom: '24px',
+              right: '16px',
+              zIndex: 9998,
+              width: '56px',
+              height: '56px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: '#f59e0b',
+              color: '#fff',
+              borderRadius: '50%',
+              border: 'none',
+              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
             aria-label="View leaderboard"
           >
             <Trophy size={24} />
-          </Link>
+          </button>,
+          document.body
+        )}
+        
+        {/* Native Leaderboard Modal */}
+        {showNativeLeaderboard && (
+          <NativeLeaderboard onClose={() => setShowNativeLeaderboard(false)} />
         )}
       </div>
     </DashboardLayout>
