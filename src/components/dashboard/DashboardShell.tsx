@@ -390,10 +390,10 @@ function ShellInner({
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all shadow-sm ${
+                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
                       isActive
                         ? "bg-[#1E3A5F] text-white shadow-md"
-                        : "text-gray-800 bg-white hover:bg-[#1E3A5F]/10 hover:text-[#1E3A5F] hover:shadow-md border border-gray-200"
+                        : "text-gray-700 hover:bg-[#1E3A5F]/10 hover:text-[#1E3A5F]"
                     }`}
                     onClick={() => setSidebarOpen(false)}
                   >
