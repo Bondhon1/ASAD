@@ -374,9 +374,12 @@ function ShellInner({
 
         {/* Sidebar */}
         <div
-          className={`fixed top-16 left-0 bottom-0 w-64 bg-white border-r border-gray-200 z-20 transform transition-transform duration-200 ${
+          className={`fixed left-0 bottom-0 w-64 bg-white border-r border-gray-200 z-20 transform transition-transform duration-200 ${
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           } lg:translate-x-0`}
+          style={{
+            top: `${topbarHeight}px` // Dynamic top position: 92px for APK, 64px for web
+          }}
         >
           <div className="flex flex-col h-full">
             <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
