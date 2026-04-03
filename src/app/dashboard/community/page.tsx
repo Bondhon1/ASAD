@@ -1427,33 +1427,37 @@ export default function CommunityPage() {
           <CommunityLeaderboard />
         </div>
 
-        {/* Floating Leaderboard Button for APK - using portal to ensure it's always visible */}
-        {isMounted && typeof window !== 'undefined' && Capacitor.isNativePlatform() && createPortal(
-          <button
-            onClick={() => setShowNativeLeaderboard(true)}
-            style={{
-              position: 'fixed',
-              bottom: '24px',
-              right: '16px',
-              zIndex: 9998,
-              width: '56px',
-              height: '56px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: '#f59e0b',
-              color: '#fff',
-              borderRadius: '50%',
-              border: 'none',
-              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-            }}
-            aria-label="View leaderboard"
-          >
-            <Trophy size={24} />
-          </button>,
-          document.body
+        {/* Floating Leaderboard Button for APK - positioned higher for better visibility */}
+        {isMounted && typeof window !== 'undefined' && Capacitor.isNativePlatform() && (
+          <>
+            {createPortal(
+              <button
+                onClick={() => setShowNativeLeaderboard(true)}
+                style={{
+                  position: 'fixed',
+                  bottom: '80px',
+                  right: '16px',
+                  zIndex: 9998,
+                  width: '56px',
+                  height: '56px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: '#f59e0b',
+                  color: '#fff',
+                  borderRadius: '50%',
+                  border: 'none',
+                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+                aria-label="View leaderboard"
+              >
+                <Trophy size={24} />
+              </button>,
+              document.body
+            )}
+          </>
         )}
         
         {/* Native Leaderboard Modal */}

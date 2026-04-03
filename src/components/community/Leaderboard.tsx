@@ -218,6 +218,11 @@ export default function CommunityLeaderboard() {
   const [month, setMonth] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isNative, setIsNative] = useState(false);
+  
+  useEffect(() => {
+    setIsNative(Capacitor.isNativePlatform());
+  }, []);
 
   const fetchLeaderboard = useCallback(async () => {
     setLoading(true);
@@ -263,13 +268,16 @@ export default function CommunityLeaderboard() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  const isNative = typeof window !== 'undefined' && Capacitor.isNativePlatform();
-
   return (
     <>
       {/* ── Desktop sidebar panel (visible lg+) ─────────────────────────── */}
       <aside className="hidden lg:block w-80 xl:w-96 flex-shrink-0">
-        <div className="sticky top-6 bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
+        <div 
+          className="sticky bg-white border border-slate-200 rounded-2xl shadow-sm p-5"
+          style={{ 
+            top: isNative ? '100px' : '24px' // More space for APK status bar
+          }}
+        >
           <LeaderboardList entries={entries} loading={loading} month={month} />
         </div>
       </aside>

@@ -24,12 +24,12 @@ export default function NativeImageViewer({
   useEffect(() => {
     // Hide status bar for full-screen experience
     if (Capacitor.isNativePlatform()) {
-      StatusBar.hide();
+      StatusBar.hide().catch(() => {});
     }
 
     return () => {
       if (Capacitor.isNativePlatform()) {
-        StatusBar.show();
+        StatusBar.show().catch(() => {});
       }
     };
   }, []);
@@ -76,79 +76,80 @@ export default function NativeImageViewer({
   return (
     <div
       style={{
-        position: "fixed",
+        position: 'fixed',
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: "#000",
-        zIndex: 9999,
+        backgroundColor: '#000',
+        zIndex: 99999,
       }}
     >
       {/* Header */}
       <div
         style={{
-          position: "absolute",
+          position: 'absolute',
           top: 0,
           left: 0,
           right: 0,
-          height: "60px",
-          background: "linear-gradient(to bottom, rgba(0,0,0,0.8), transparent)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "0 16px",
+          height: '60px',
+          background: 'linear-gradient(to bottom, rgba(0,0,0,0.8), transparent)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 16px',
           zIndex: 10,
         }}
       >
-        <span style={{ color: "#fff", fontSize: "16px", fontWeight: 500 }}>
+        <span style={{ color: '#fff', fontSize: '16px', fontWeight: 500 }}>
           {currentIndex + 1} / {images.length}
         </span>
         <button
           onClick={onClose}
           style={{
-            background: "rgba(255,255,255,0.2)",
-            border: "none",
-            borderRadius: "50%",
-            width: "40px",
-            height: "40px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
+            background: 'rgba(255,255,255,0.2)',
+            border: 'none',
+            borderRadius: '50%',
+            width: '40px',
+            height: '40px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
           }}
         >
           <X size={24} color="#fff" />
         </button>
       </div>
 
-      {/* Image Container */}
+      {/* Image Container - centered in viewport */}
       <div
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         style={{
-          position: "absolute",
-          top: 0,
+          position: 'absolute',
+          top: '60px',
           left: 0,
           right: 0,
-          bottom: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "60px 0",
+          bottom: images.length > 1 ? '100px' : '0',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
         }}
       >
-        <Image
-          src={images[currentIndex]}
-          alt={`Image ${currentIndex + 1}`}
-          fill
-          style={{
-            objectFit: "contain",
-            padding: "60px 16px",
-          }}
-          unoptimized
-        />
+        <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+          <Image
+            src={images[currentIndex]}
+            alt={`Image ${currentIndex + 1}`}
+            fill
+            style={{
+              objectFit: 'contain',
+            }}
+            unoptimized
+            priority
+          />
+        </div>
       </div>
 
       {/* Navigation Arrows */}
@@ -156,21 +157,21 @@ export default function NativeImageViewer({
         <button
           onClick={handlePrevious}
           style={{
-            position: "absolute",
-            left: "16px",
-            top: "50%",
-            transform: "translateY(-50%)",
-            background: "rgba(255,255,255,0.2)",
-            border: "none",
-            borderRadius: "50%",
-            width: "48px",
-            height: "48px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            fontSize: "24px",
-            color: "#fff",
+            position: 'absolute',
+            left: '16px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            background: 'rgba(255,255,255,0.2)',
+            border: 'none',
+            borderRadius: '50%',
+            width: '48px',
+            height: '48px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            fontSize: '24px',
+            color: '#fff',
             zIndex: 10,
           }}
         >
@@ -182,21 +183,21 @@ export default function NativeImageViewer({
         <button
           onClick={handleNext}
           style={{
-            position: "absolute",
-            right: "16px",
-            top: "50%",
-            transform: "translateY(-50%)",
-            background: "rgba(255,255,255,0.2)",
-            border: "none",
-            borderRadius: "50%",
-            width: "48px",
-            height: "48px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            fontSize: "24px",
-            color: "#fff",
+            position: 'absolute',
+            right: '16px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            background: 'rgba(255,255,255,0.2)',
+            border: 'none',
+            borderRadius: '50%',
+            width: '48px',
+            height: '48px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            fontSize: '24px',
+            color: '#fff',
             zIndex: 10,
           }}
         >
@@ -208,17 +209,17 @@ export default function NativeImageViewer({
       {images.length > 1 && (
         <div
           style={{
-            position: "absolute",
+            position: 'absolute',
             bottom: 0,
             left: 0,
             right: 0,
-            height: "80px",
-            background: "linear-gradient(to top, rgba(0,0,0,0.8), transparent)",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            padding: "0 16px",
-            overflowX: "auto",
+            height: '100px',
+            background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '0 16px',
+            overflowX: 'auto',
             zIndex: 10,
           }}
         >
@@ -227,22 +228,23 @@ export default function NativeImageViewer({
               key={idx}
               onClick={() => setCurrentIndex(idx)}
               style={{
-                minWidth: "60px",
-                height: "60px",
-                border: idx === currentIndex ? "2px solid #fff" : "2px solid transparent",
-                borderRadius: "4px",
-                overflow: "hidden",
-                cursor: "pointer",
+                minWidth: '60px',
+                height: '60px',
+                border: idx === currentIndex ? '2px solid #fff' : '2px solid transparent',
+                borderRadius: '4px',
+                overflow: 'hidden',
+                cursor: 'pointer',
                 padding: 0,
-                background: "transparent",
-                position: "relative",
+                background: 'transparent',
+                position: 'relative',
+                flexShrink: 0,
               }}
             >
               <Image
                 src={img}
                 alt={`Thumbnail ${idx + 1}`}
                 fill
-                style={{ objectFit: "cover" }}
+                style={{ objectFit: 'cover' }}
                 unoptimized
               />
             </button>
