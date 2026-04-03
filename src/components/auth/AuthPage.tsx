@@ -403,16 +403,20 @@ function AuthPageContent() {
       style={{ paddingTop: isNativeApp ? '0' : '8rem' }}
     >
       {/* Decorative background elements */}
-      <motion.div
-        className="absolute top-0 left-0 w-80 h-80 bg-[#1E3A5F]/5 rounded-full blur-3xl"
-        animate={{ y: [0, 30, 0] }}
-        transition={{ duration: 8, repeat: Infinity }}
-      />
-      <motion.div
-        className="absolute bottom-0 right-0 w-96 h-96 bg-[#1E3A5F]/5 rounded-full blur-3xl"
-        animate={{ y: [0, -30, 0] }}
-        transition={{ duration: 8, repeat: Infinity }}
-      />
+      {!isNativeApp && (
+        <>
+          <motion.div
+            className="absolute top-0 left-0 w-80 h-80 bg-[#1E3A5F]/5 rounded-full blur-3xl"
+            animate={{ y: [0, 30, 0] }}
+            transition={{ duration: 8, repeat: Infinity }}
+          />
+          <motion.div
+            className="absolute bottom-0 right-0 w-96 h-96 bg-[#1E3A5F]/5 rounded-full blur-3xl"
+            animate={{ y: [0, -30, 0] }}
+            transition={{ duration: 8, repeat: Infinity }}
+          />
+        </>
+      )}
 
       <div className={clsx("relative z-10 w-full", isNativeApp ? "min-h-screen" : "max-w-md lg:max-w-6xl")}>
         <div className={clsx("grid items-center min-h-screen lg:h-full", isNativeApp ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12")}>
@@ -532,7 +536,7 @@ function AuthPageContent() {
               <div className={clsx(
                 "text-white",
                 isNativeApp
-                  ? "bg-[#1E3A5F] px-6 py-8 pt-12"
+                  ? "bg-[#1E3A5F] px-6 py-10 pt-16"
                   : "bg-gradient-to-r from-blue-900 to-indigo-800 p-8"
               )}>
                 <motion.div

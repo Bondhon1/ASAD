@@ -330,9 +330,9 @@ function ShellInner({
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setSidebarOpen((o) => !o)}
-                className="p-2 rounded-lg hover:bg-gray-100 lg:hidden"
+                className="p-2.5 rounded-lg hover:bg-gray-100 lg:hidden shadow-sm border border-gray-200 bg-white active:shadow-md transition-all"
               >
-                {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
+                {sidebarOpen ? <X size={24} className="text-gray-800" /> : <Menu size={24} className="text-gray-800" />}
               </button>
               <Link href="/" className="flex items-center gap-3 text-left">
                 <div className="relative h-10 w-10 overflow-hidden rounded-lg border border-border bg-white p-0.5 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
@@ -390,28 +390,28 @@ function ShellInner({
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all shadow-sm ${
                       isActive
-                        ? "bg-[#1E3A5F] text-white"
-                        : "text-gray-700 hover:bg-[#1E3A5F]/10 hover:text-[#1E3A5F]"
+                        ? "bg-[#1E3A5F] text-white shadow-md"
+                        : "text-gray-800 bg-white hover:bg-[#1E3A5F]/10 hover:text-[#1E3A5F] hover:shadow-md border border-gray-200"
                     }`}
                     onClick={() => setSidebarOpen(false)}
                   >
-                    <Icon size={20} />
-                    <span className="font-medium">{item.label}</span>
+                    <Icon size={22} className="flex-shrink-0" />
+                    <span className="font-semibold text-sm">{item.label}</span>
                   </Link>
                 );
               })}
             </nav>
 
             {/* Logout button */}
-            <div className="p-4 border-t border-gray-200">
+            <div className="p-4 border-t border-gray-200 bg-gray-50">
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-3 w-full px-4 py-3 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                className="flex items-center gap-3 w-full px-4 py-3 text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50 hover:border-red-300 transition-all shadow-sm hover:shadow-md font-semibold"
               >
-                <LogOut size={20} />
-                <span className="font-medium">Logout</span>
+                <LogOut size={22} className="flex-shrink-0" />
+                <span className="text-sm">Logout</span>
               </button>
             </div>
           </div>
