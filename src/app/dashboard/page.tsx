@@ -718,43 +718,41 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Rank, Points, Credits - Responsive row/column layout with consistent styling */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
-                {/* Rank Button - Gray with consistent height */}
+              {/* Rank, Points, Credits - Always in a row with responsive sizing */}
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                {/* Rank Button - Gray, compact design */}
                 <button
                   onClick={openRankModal}
-                  className="flex items-center justify-center gap-2 px-3 h-10 rounded-full bg-gray-100 text-sm font-medium text-gray-800 hover:bg-gray-200 transition-colors cursor-pointer flex-1 sm:flex-initial min-w-0"
+                  className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 h-9 rounded-full bg-gray-100 text-xs sm:text-sm font-medium text-gray-800 hover:bg-gray-200 transition-colors cursor-pointer"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500 flex-shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500 flex-shrink-0">
                     <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
                   </svg>
                   {/* Show short form on mobile, full form on larger screens */}
-                  <span className="truncate">
-                    <span className="sm:hidden">{getShortRankName(user.volunteerProfile?.rank)}</span>
-                    <span className="hidden sm:inline">{user.volunteerProfile?.rank ?? '—'}</span>
-                  </span>
+                  <span className="block sm:hidden whitespace-nowrap">{getShortRankName(user.volunteerProfile?.rank)}</span>
+                  <span className="hidden sm:block whitespace-nowrap">{user.volunteerProfile?.rank ?? '—'}</span>
                 </button>
                 
-                {/* Points Button - Dark blue gradient with consistent height */}
+                {/* Points Button - Dark blue gradient, same size */}
                 <button
                   onClick={openPointsModal}
-                  className="flex items-center justify-center gap-2 px-3 h-10 rounded-full bg-gradient-to-r from-[#0b2545] to-[#07223f] text-white text-sm font-medium hover:opacity-90 transition-opacity cursor-pointer flex-1 sm:flex-initial min-w-0"
+                  className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 h-9 rounded-full bg-gradient-to-r from-[#0b2545] to-[#07223f] text-white text-xs sm:text-sm font-medium hover:opacity-90 transition-opacity cursor-pointer"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" width={12} height={12} viewBox="0 0 24 24" fill="currentColor" stroke="none" className="flex-shrink-0">
                     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
                   </svg>
-                  <span className="truncate">{user.volunteerProfile?.points ?? 0} Points</span>
+                  <span className="whitespace-nowrap">{user.volunteerProfile?.points ?? 0} Points</span>
                 </button>
                 
-                {/* Credits Button - Dark blue gradient with consistent height */}
+                {/* Credits Button - Dark blue gradient, same size */}
                 <button
                   onClick={() => setShowCreditModal(true)}
-                  className="flex items-center justify-center gap-2 px-3 h-10 rounded-full bg-gradient-to-r from-[#0b2545] to-[#0d2d5a] text-white text-sm font-medium hover:opacity-90 transition-all cursor-pointer flex-1 sm:flex-initial min-w-0"
+                  className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 h-9 rounded-full bg-gradient-to-r from-[#0b2545] to-[#0d2d5a] text-white text-xs sm:text-sm font-medium hover:opacity-90 transition-all cursor-pointer"
                 >
-                  {/* APC logo on dark pill — drop-shadow so it pops */}
+                  {/* APC logo on dark pill */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/icons/creditlogo.svg" alt="APC" className="flex-shrink-0" style={{ width: 20, height: 20, display: 'block', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))' }} />
-                  <span className="truncate">{(user.credits ?? user.coins) ?? 0} Credits</span>
+                  <img src="/icons/creditlogo.svg" alt="APC" className="flex-shrink-0" style={{ width: 16, height: 16, display: 'block', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.4))' }} />
+                  <span className="whitespace-nowrap">{(user.credits ?? user.coins) ?? 0} Credits</span>
                 </button>
               </div>
             </div>
