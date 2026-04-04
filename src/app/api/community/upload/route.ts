@@ -8,7 +8,8 @@ export const dynamic = "force-dynamic";
 
 const STAFF_ROLES = ["HR", "MASTER", "ADMIN", "DIRECTOR", "DATABASE_DEPT", "SECRETARIES"];
 
-const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+// Keep this under common serverless request limits so payloads are accepted reliably.
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 const MAX_DIMENSION = 1600;
 const JPEG_QUALITY = 75;
 const WEBP_QUALITY = 72;
@@ -41,8 +42,9 @@ async function compressImageBuffer(input: Buffer, mimeType?: string) {
 
 // POST /api/community/upload
 // Uploads a post image to Vercel Blob and returns the public URL.
-// Body: { fileName: string, mimeType: string, data: base64 }
-// Max 8 MB per image, max 10 images per request call (handled on client).
+// Preferred body: multipart/form-data with field "file"
+// Legacy body: { fileName: string, mimeType: string, data: base64 }
+// Max 4 MB per image, max 10 images per request call (handled on client).
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -55,18 +57,41 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Only official members can upload images" }, { status: 403 });
     }
 
-    const body = await request.json();
-    const { fileName, mimeType, data, context } = body as {
-      fileName?: string;
-      mimeType?: string;
-      data?: string;
-      context?: string;
-    };
+    const contentType = request.headers.get("content-type") || "";
 
-    if (!fileName || !data) return NextResponse.json({ error: "fileName and data required" }, { status: 400 });
+    let fileName: string | undefined;
+    let mimeType: string | undefined;
+    let context: string | undefined;
+    let buffer: Buffer | null = null;
 
-    if (data.startsWith("http://") || data.startsWith("https://")) {
-      return NextResponse.json({ url: data });
+    if (contentType.includes("multipart/form-data")) {
+      const formData = await request.formData();
+      const uploaded = formData.get("file");
+      context = String(formData.get("context") || "").trim() || undefined;
+
+      if (!(uploaded instanceof File)) {
+        return NextResponse.json({ error: "file is required" }, { status: 400 });
+      }
+
+      fileName = uploaded.name;
+      mimeType = uploaded.type;
+      buffer = Buffer.from(await uploaded.arrayBuffer());
+    } else {
+      const body = await request.json();
+      const data = body?.data as string | undefined;
+      fileName = body?.fileName;
+      mimeType = body?.mimeType;
+      context = body?.context;
+
+      if (!fileName || !data) {
+        return NextResponse.json({ error: "fileName and data required" }, { status: 400 });
+      }
+
+      if (data.startsWith("http://") || data.startsWith("https://")) {
+        return NextResponse.json({ url: data });
+      }
+
+      buffer = Buffer.from(data, "base64");
     }
 
     if (context === "REGULAR_POST") {
@@ -89,9 +114,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Blob storage is not configured on this server" }, { status: 500 });
     }
 
-    const buffer = Buffer.from(data, "base64");
+    if (!buffer || !fileName) {
+      return NextResponse.json({ error: "Invalid upload payload" }, { status: 400 });
+    }
+
     if (buffer.length > MAX_IMAGE_BYTES) {
-      return NextResponse.json({ error: "Image too large. Maximum size is 8 MB." }, { status: 413 });
+      return NextResponse.json({ error: "Image too large. Maximum size is 4 MB." }, { status: 413 });
     }
 
     const safeMimeType = mimeType || "image/jpeg";

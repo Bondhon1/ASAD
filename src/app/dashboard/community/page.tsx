@@ -130,32 +130,44 @@ function AudiencePicker({ services, sectors, clubs, audience, onChange }: Audien
 
 // ─── Image Upload Helper ───────────────────────────────────────────────────────
 
-async function uploadImageToBlob(file: File, context?: "REGULAR_POST"): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const base64 = (e.target?.result as string).split(",")[1];
-        const res = await fetch("/api/community/upload", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            fileName: file.name.replace(/[^a-zA-Z0-9._-]/g, "_"),
-            mimeType: file.type,
-            data: base64,
-            ...(context ? { context } : {}),
-          }),
-        });
-        const d = await res.json();
-        if (!res.ok) reject(new Error(d.error || "Upload failed"));
-        else resolve(d.url);
-      } catch (err) {
-        reject(err);
+const MAX_IMAGE_UPLOAD_BYTES = 4 * 1024 * 1024;
+
+async function readApiJsonSafe(response: Response): Promise<any> {
+  const text = await response.text();
+  if (!text) return {};
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    if (!response.ok) {
+      if (text.includes("FUNCTION_PAYLOAD_TOO_LARGE") || text.includes("Request Entity Too Large")) {
+        throw new Error("Upload payload is too large. Please use an image smaller than 4 MB.");
       }
-    };
-    reader.onerror = () => reject(new Error("Failed to read file"));
-    reader.readAsDataURL(file);
+      throw new Error(text.slice(0, 180));
+    }
+    throw new Error("Invalid server response");
+  }
+}
+
+async function uploadImageToBlob(file: File, context?: "REGULAR_POST"): Promise<string> {
+  if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
+    throw new Error("Image too large. Maximum size is 4 MB.");
+  }
+
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_") || "image";
+  const formData = new FormData();
+  formData.append("file", file, safeName);
+  if (context) formData.append("context", context);
+
+  const res = await fetch("/api/community/upload", {
+    method: "POST",
+    body: formData,
   });
+
+  const d = await readApiJsonSafe(res);
+  if (!res.ok) throw new Error(d?.error || "Upload failed");
+  if (!d?.url) throw new Error("Upload failed");
+  return d.url;
 }
 
 // ─── Image Picker ──────────────────────────────────────────────────────────────
@@ -939,7 +951,7 @@ export default function CommunityPage() {
         ...(targetAudience ? { targetAudience } : {}),
       }),
     });
-    const d = await res.json();
+    const d = await readApiJsonSafe(res);
     if (!res.ok) throw new Error(d.error || "Failed to publish notice");
     setPosts((prev) => [d.post, ...prev]);
   };
@@ -951,7 +963,7 @@ export default function CommunityPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content, images, postType: "SPONSORED_AD" }),
     });
-    const d = await res.json();
+    const d = await readApiJsonSafe(res);
     if (!res.ok) throw new Error(d.error || "Failed to publish sponsored ad");
     setPosts((prev) => [d.post, ...prev]);
   };
