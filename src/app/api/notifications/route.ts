@@ -43,6 +43,17 @@ export async function GET(request: NextRequest) {
       where,
       orderBy: { createdAt: "desc" },
       take: Math.min(limit, 50),
+      select: {
+        id: true,
+        userId: true,
+        type: true,
+        title: true,
+        message: true,
+        link: true,
+        read: true,
+        broadcast: true,
+        createdAt: true,
+      },
     });
 
     // For broadcast notifications, determine whether THIS user has read them

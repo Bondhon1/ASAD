@@ -467,6 +467,7 @@ export async function POST(request: NextRequest) {
     // Resolve notice audience — only to send notifications (not stored as user IDs)
     let targetAudience: string | null = null;
     let notificationTargetIds: string[] = [];
+    let useGlobalBroadcast = false;
 
     if (rawType === "NOTICE") {
       if (body.targetAudience) {
@@ -485,14 +486,20 @@ export async function POST(request: NextRequest) {
 
         if (hasAudience) {
           targetAudience = audienceJson; // store the spec (not user IDs)
-          notificationTargetIds = await resolveAudienceUserIds(audienceSpec, { includeRequesterId: user.id });
+          if (audienceSpec.all) {
+            // All-official notices should use global broadcast (empty targetUserIds)
+            // to avoid oversized payloads in DB/data-proxy calls.
+            useGlobalBroadcast = true;
+          } else {
+            notificationTargetIds = await resolveAudienceUserIds(audienceSpec, { includeRequesterId: user.id });
+          }
         }
       }
 
-      if (notificationTargetIds.length === 0) {
-        // No specific audience → target all officials (resolved here, not stored)
-        const allOfficials = await prisma.user.findMany({ where: { status: "OFFICIAL" }, select: { id: true } });
-        notificationTargetIds = allOfficials.map((u) => u.id);
+      if (!useGlobalBroadcast && notificationTargetIds.length === 0) {
+        // No specific audience means all officials.
+        // Use global broadcast semantics instead of storing huge explicit id arrays.
+        useGlobalBroadcast = true;
       }
     }
 
@@ -559,14 +566,14 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Send NOTICE_PUBLISHED broadcast notification to targeted users
-    if (rawType === "NOTICE" && notificationTargetIds.length > 0) {
+    // Send NOTICE_PUBLISHED broadcast notification
+    if (rawType === "NOTICE" && (useGlobalBroadcast || notificationTargetIds.length > 0)) {
       const noticeTitle = content.length > 80 ? content.slice(0, 77) + "…" : content;
       await prisma.notification.create({
         data: {
           userId: user.id,
           broadcast: true,
-          targetUserIds: notificationTargetIds, // stored on Notification, not on Post
+          ...(useGlobalBroadcast ? {} : { targetUserIds: notificationTargetIds }),
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           type: "NOTICE_PUBLISHED" as any,
           title: "📢 New Notice",

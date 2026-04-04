@@ -663,7 +663,7 @@ export default function CommunityPage() {
         try {
           const res = await fetch(`/api/community/posts/${postId}`, { cache: "no-store" });
           if (res.ok) {
-            const d = await res.json();
+            const d = await readApiJsonSafe(res);
             if (d?.post) {
               setPosts((prev) => (prev.some((p) => p.id === d.post.id) ? prev : [d.post, ...prev]));
               setTimeout(() => {
@@ -700,7 +700,7 @@ export default function CommunityPage() {
       try {
         const res = await fetch("/api/orgs");
         if (!res.ok) return;
-        const d = await res.json();
+        const d = await readApiJsonSafe(res);
         setServicesList(d.services || []);
         setSectorsList(d.sectors || []);
         setClubsList(d.clubs || []);
@@ -719,7 +719,7 @@ export default function CommunityPage() {
     (async () => {
       try {
         const res = await fetch("/api/community/post-image-toggle");
-        const d = await res.json();
+        const d = await readApiJsonSafe(res);
         if (!cancelled && res.ok) {
           setOfficialPostImageEnabled(d.enabled === true);
         }
@@ -750,8 +750,8 @@ export default function CommunityPage() {
           fetch(`/api/community/users/mention-search?q=${encodeURIComponent(q.trim())}`),
           fetch(`/api/community/posts?q=${encodeURIComponent(q.trim())}&limit=5`, { cache: "no-store" }),
         ]);
-        const usersData = usersRes.ok ? await usersRes.json() : { users: [] };
-        const postsData = postsRes.ok ? await postsRes.json() : { posts: [] };
+        const usersData = usersRes.ok ? await readApiJsonSafe(usersRes) : { users: [] };
+        const postsData = postsRes.ok ? await readApiJsonSafe(postsRes) : { posts: [] };
         setSearchResults({ users: usersData.users || [], posts: postsData.posts || [] });
       } catch {
         setSearchResults({ users: [], posts: [] });
@@ -790,7 +790,7 @@ export default function CommunityPage() {
 
         const res = await fetch(`/api/community/posts?${params}`, { cache: "no-store" });
         if (!res.ok) return;
-        const d = await res.json();
+        const d = await readApiJsonSafe(res);
         const newPosts: Post[] = d.posts || [];
 
         if (replace) {
@@ -841,7 +841,7 @@ export default function CommunityPage() {
       try {
         const res = await fetch(`/api/community/posts/${highlightPostId}`, { cache: "no-store" });
         if (!res.ok) return;
-        const d = await res.json();
+        const d = await readApiJsonSafe(res);
         if (cancelled || !d?.post) return;
         setPosts((prev) => (prev.some((p) => p.id === d.post.id) ? prev : [d.post, ...prev]));
       } catch {}
@@ -881,7 +881,7 @@ export default function CommunityPage() {
           images: newPostImages.slice(0, 1),
         }),
       });
-      const d = await res.json();
+      const d = await readApiJsonSafe(res);
       if (!res.ok) {
         setPostError(d.error || "Failed to post");
         return;
@@ -906,7 +906,7 @@ export default function CommunityPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ enabled }),
       });
-      const d = await res.json();
+      const d = await readApiJsonSafe(res);
       if (!res.ok) throw new Error(d.error || "Failed to update setting");
       setOfficialPostImageEnabled(d.enabled === true);
       if (!d.enabled) setNewPostImages([]);
@@ -985,7 +985,7 @@ export default function CommunityPage() {
         body: JSON.stringify({ content }),
       });
       if (res.ok) {
-        const d = await res.json();
+        const d = await readApiJsonSafe(res);
         setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, content: d.post.content } : p)));
       }
     } catch {}
@@ -997,7 +997,7 @@ export default function CommunityPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updates),
     });
-    const d = await res.json();
+    const d = await readApiJsonSafe(res);
     if (!res.ok) throw new Error(d.error || "Failed to save");
     setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, ...updates } : p)));
   };
@@ -1010,7 +1010,7 @@ export default function CommunityPage() {
       body: JSON.stringify({ content, sharedPostId }),
     });
     if (res.ok) {
-      const d = await res.json();
+      const d = await readApiJsonSafe(res);
       setPosts((prev) => [d.post, ...prev]);
     }
   };
@@ -1031,7 +1031,7 @@ export default function CommunityPage() {
     try {
       const res = await fetch(`/api/community/posts/${postId}/react`, { method: "POST" });
       if (res.ok) {
-        const d = await res.json();
+        const d = await readApiJsonSafe(res);
         setPosts((prev) =>
           prev.map((p) =>
             p.id === postId
