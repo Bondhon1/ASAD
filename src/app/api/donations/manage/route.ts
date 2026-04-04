@@ -63,11 +63,7 @@ export async function GET() {
       })
     );
 
-    await createAuditLog(requester.id, 'DONATION_MANAGE_VIEWED', {
-      route: '/api/donations/manage',
-      campaigns: enriched.length,
-      pendingTotal: enriched.reduce((sum, c) => sum + Number(c.pendingCount || 0), 0),
-    });
+    
 
     return NextResponse.json({ campaigns: enriched });
   } catch (err: any) {
