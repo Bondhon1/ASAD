@@ -29,9 +29,19 @@ const nextConfig: NextConfig = {
   // Disable source maps in production builds to save memory
   productionBrowserSourceMaps: false,
   
+  // Optimize output for smaller serverless functions
+  output: "standalone",
+  
   // Explicitly set turbopack root to this project folder to prevent scanning parent directories
   turbopack: {
     root: process.cwd(),
+  },
+  
+  // Optimize package imports to reduce bundle size
+  modularizeImports: {
+    "lucide-react": {
+      transform: "lucide-react/dist/esm/icons/{{kebabCase member}}",
+    },
   },
 };
 
