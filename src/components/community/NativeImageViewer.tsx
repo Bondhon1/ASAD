@@ -89,6 +89,8 @@ export default function NativeImageViewer({
         bottom: 0,
         backgroundColor: '#000',
         zIndex: 99999,
+        paddingTop: Capacitor.isNativePlatform() ? 'env(safe-area-inset-top, 0px)' : 0,
+        paddingBottom: Capacitor.isNativePlatform() ? 'env(safe-area-inset-bottom, 0px)' : 0,
       }}
     >
       {/* Header */}

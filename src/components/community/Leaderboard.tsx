@@ -389,8 +389,8 @@ export default function CommunityLeaderboard({ onMobileOpenChange }: CommunityLe
         <button
           onClick={() => setMobileOpen(true)}
           aria-label="Open leaderboard"
-          className="fixed bottom-6 right-4 z-30 w-13 h-13 flex items-center justify-center bg-[#0b2545] text-white rounded-full shadow-lg hover:bg-[#0d2d5a] active:scale-95 transition-all"
-          style={{ width: 52, height: 52 }}
+          className="fixed bottom-4 sm:bottom-6 right-4 sm:right-6 z-40 w-12 h-12 sm:w-13 sm:h-13 flex items-center justify-center bg-[#0b2545] text-white rounded-full shadow-lg hover:bg-[#0d2d5a] active:scale-95 transition-all"
+          style={{ width: 48, height: 48 }}
         >
           {/* Trophy icon */}
           <svg
@@ -414,7 +414,7 @@ export default function CommunityLeaderboard({ onMobileOpenChange }: CommunityLe
           </svg>
           {/* Notification dot for top 3 excitement */}
           {!loading && entries.length > 0 && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-400 rounded-full border-2 border-white text-[9px] font-bold text-white flex items-center justify-center">
+            <span className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 w-3.5 h-3.5 sm:w-4 sm:h-4 bg-amber-400 rounded-full border-2 border-white text-[8px] sm:text-[9px] font-bold text-white flex items-center justify-center">
               {entries.length}
             </span>
           )}

@@ -3,6 +3,7 @@ import { Inter, Space_Grotesk, Poppins, Playfair_Display, DM_Sans, Nunito } from
 import "./globals.css";
 import SessionProvider from "@/components/providers/SessionProvider";
 import ModalProvider from "@/components/ui/ModalProvider";
+import { NetworkProvider } from "@/components/ui/NetworkProvider";
 import CapacitorOAuthHandler from "@/components/providers/CapacitorOAuthHandler";
 import NativeAppLoader from "@/components/ui/NativeAppLoader";
 import { Analytics } from "@vercel/analytics/next";
@@ -213,12 +214,14 @@ export default function RootLayout({
       </head>
       <body className={`${display.variable} ${body.variable} ${poppins.variable} ${playfair.variable} ${dmSans.variable} ${nunito.variable} bg-white text-ink antialiased`}>
         <NativeAppLoader />
-        <ModalProvider>
-          <SessionProvider>
-            <CapacitorOAuthHandler />
-            {children}
-          </SessionProvider>
-        </ModalProvider>
+        <NetworkProvider>
+          <ModalProvider>
+            <SessionProvider>
+              <CapacitorOAuthHandler />
+              {children}
+            </SessionProvider>
+          </ModalProvider>
+        </NetworkProvider>
         <Analytics />
       </body>
     </html>
