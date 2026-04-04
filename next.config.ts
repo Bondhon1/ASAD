@@ -24,6 +24,37 @@ const nextConfig: NextConfig = {
     // Reduce memory usage during builds
     workerThreads: false,
     cpus: 1,
+    
+    // Exclude heavy files from being traced into serverless functions
+    outputFileTracingExcludes: {
+      '*': [
+        // Exclude sharp binaries from all routes except image upload routes
+        'node_modules/@img/sharp-libvips-linux-x64/**/*',
+        'node_modules/@img/sharp-libvips-linuxmusl-x64/**/*',
+        'node_modules/@swc/core-linux-x64-gnu',
+        'node_modules/@swc/core-linux-x64-musl',
+        'node_modules/@esbuild/linux-x64',
+        '.git/**/*',
+        // Exclude institutes data from all routes except suggestions
+        'src/lib/institutes-data/**/*.json',
+      ],
+    },
+    // Include institutes data ONLY for the suggestions route
+    outputFileTracingIncludes: {
+      '/api/institutes/suggestions': [
+        'src/lib/institutes-data/**/*.json',
+      ],
+      // Include sharp ONLY for image upload routes
+      '/api/user/upload': [
+        'node_modules/@img/sharp-libvips-linux-x64/**/*',
+      ],
+      '/api/community/upload': [
+        'node_modules/@img/sharp-libvips-linux-x64/**/*',
+      ],
+      '/api/community/stories/upload': [
+        'node_modules/@img/sharp-libvips-linux-x64/**/*',
+      ],
+    },
   },
   
   // Disable source maps in production builds to save memory
