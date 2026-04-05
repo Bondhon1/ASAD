@@ -23,7 +23,7 @@ export default function InputModal({ isOpen, title, message, placeholder, defaul
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+        <motion.div className="fixed inset-0 min-h-[100dvh] z-50 flex items-center justify-center bg-black/40 p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ type: 'spring', duration: 0.25 }} className="w-full max-w-md bg-white rounded-lg shadow-lg p-4">
             {title && <h3 className="text-sm font-semibold text-[#0b2140] mb-2">{title}</h3>}
             {message && <p className="text-sm text-[#3b5166] mb-3">{message}</p>}

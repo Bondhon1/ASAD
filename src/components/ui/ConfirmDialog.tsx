@@ -92,7 +92,7 @@ export default function ConfirmDialog({ isOpen, title, message, type = "info", o
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          className="fixed inset-0 min-h-[100dvh] z-50 flex items-center justify-center bg-black/40 p-4"
         >
           <motion.div
             initial={{ opacity: 0, y: -10, scale: 0.98 }}

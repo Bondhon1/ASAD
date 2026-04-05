@@ -821,7 +821,7 @@ export default function DashboardPage() {
 
       {/* APC Payout Request Modal */}
       {showPayoutModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 min-h-[100dvh] bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
             <div className="px-6 py-4 bg-gradient-to-r from-[#0b2545] to-[#0d2d5a] border-b border-[#0b2545]/20">
               <div className="flex items-center justify-between">
@@ -922,7 +922,7 @@ export default function DashboardPage() {
 
       {/* APC Credit Details Modal with Tabs */}
       {showCreditModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 min-h-[100dvh] bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[600px] overflow-hidden flex flex-col">
             <div className="px-6 py-4 bg-gradient-to-r from-[#0b2545] to-[#0d2d5a] border-b border-[#0b2545]/30">
               <div className="flex items-center justify-between">
@@ -1094,7 +1094,7 @@ export default function DashboardPage() {
 
       {/* ── Points History Modal ───────────────────────────────────────── */}
       {showPointsModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 min-h-[100dvh] bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[600px] flex flex-col overflow-hidden">
             {/* Header */}
             <div className="px-6 py-4 bg-gradient-to-r from-[#0b2545] to-[#07223f] flex items-center justify-between flex-shrink-0">

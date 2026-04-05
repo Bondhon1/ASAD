@@ -124,6 +124,7 @@ function LeaderboardList({
           {monthLabel && (
             <p className="text-xs text-slate-400 leading-tight">{monthLabel}</p>
           )}
+          <p className="text-xs text-slate-400 leading-tight">The top volunteer on the leaderboard will receive a bonus of 25 credits on the 27th of every month.</p>
         </div>
       </div>
 

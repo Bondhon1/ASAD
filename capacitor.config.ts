@@ -1,10 +1,11 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 import "dotenv/config";
 
+const useRemoteServer = process.env.CAPACITOR_USE_REMOTE_URL === "true";
 const baseAppUrl =
   process.env.CAPACITOR_APP_URL ||
   process.env.NEXT_PUBLIC_APP_URL ||
-  "https://www.amarsomoyamardesh.org";
+  "https://amarsomoyamardesh.org";
 
 const normalizedBaseAppUrl = baseAppUrl.endsWith("/")
   ? baseAppUrl.slice(0, -1)
@@ -25,12 +26,6 @@ const config: CapacitorConfig = {
   appId: "org.amarsomoyamardesh.app",
   appName: "ASAD",
   webDir: "www",
-  server: {
-    url: appUrl,
-    cleartext: normalizedBaseAppUrl.startsWith("http://"),
-    androidScheme: "https",
-    allowNavigation,
-  },
   android: {
     // Middleware can detect this marker to force app-mode behavior.
     appendUserAgent: "ASAD-Android-App",
@@ -57,5 +52,14 @@ const config: CapacitorConfig = {
     },
   },
 };
+
+if (useRemoteServer) {
+  config.server = {
+    url: appUrl,
+    cleartext: normalizedBaseAppUrl.startsWith("http://"),
+    androidScheme: "https",
+    allowNavigation,
+  };
+}
 
 export default config;
