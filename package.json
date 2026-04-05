@@ -5,8 +5,8 @@
   "scripts": {
     "dev": "cross-env NODE_OPTIONS='--max-old-space-size=4096' next dev --webpack",
     "dev:turbo": "cross-env NODE_OPTIONS='--max-old-space-size=4096' next dev --turbopack",
-    "generate": "prisma generate && prisma generate --schema=prisma/schema.audit.prisma && node scripts/cleanup-prisma-temp-files.js",
-    "generate:audit": "prisma generate --schema=prisma/schema.audit.prisma && node scripts/cleanup-prisma-temp-files.js",
+    "generate": "prisma generate && prisma generate --schema=prisma/schema.audit.prisma && node -e \"const fs=require('fs');const path=require('path');const dirs=['node_modules/.prisma/client','src/generated/prisma-audit'];for(const dir of dirs){if(!fs.existsSync(dir)) continue;for(const entry of fs.readdirSync(dir)){if(!entry.includes('.tmp')) continue;const file=path.join(dir,entry);if(fs.statSync(file).isFile()) fs.unlinkSync(file);}}\"",
+    "generate:audit": "prisma generate --schema=prisma/schema.audit.prisma && node -e \"const fs=require('fs');const path=require('path');const dirs=['node_modules/.prisma/client','src/generated/prisma-audit'];for(const dir of dirs){if(!fs.existsSync(dir)) continue;for(const entry of fs.readdirSync(dir)){if(!entry.includes('.tmp')) continue;const file=path.join(dir,entry);if(fs.statSync(file).isFile()) fs.unlinkSync(file);}}\"",
     "db:push:audit": "prisma db push --schema=prisma/schema.audit.prisma",
     "build": "npm run generate && cross-env NODE_OPTIONS='--max-old-space-size=4096' next build",
     "build:vercel": "npm run generate && next build",
