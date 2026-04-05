@@ -1,7 +1,9 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 import "dotenv/config";
 
-const useRemoteServer = process.env.CAPACITOR_USE_REMOTE_URL === "true";
+// Default to remote URL mode for Android app shells so WebView opens the real app,
+// while still allowing explicit local override with CAPACITOR_USE_REMOTE_URL=false.
+const useRemoteServer = process.env.CAPACITOR_USE_REMOTE_URL !== "false";
 const baseAppUrl =
   process.env.CAPACITOR_APP_URL ||
   process.env.NEXT_PUBLIC_APP_URL ||
