@@ -5,8 +5,8 @@
   "scripts": {
     "dev": "cross-env NODE_OPTIONS='--max-old-space-size=4096' next dev --webpack",
     "dev:turbo": "cross-env NODE_OPTIONS='--max-old-space-size=4096' next dev --turbopack",
-    "generate": "prisma generate && prisma generate --schema=prisma/schema.audit.prisma",
-    "generate:audit": "prisma generate --schema=prisma/schema.audit.prisma",
+    "generate": "prisma generate && prisma generate --schema=prisma/schema.audit.prisma && node scripts/cleanup-prisma-temp-files.js",
+    "generate:audit": "prisma generate --schema=prisma/schema.audit.prisma && node scripts/cleanup-prisma-temp-files.js",
     "db:push:audit": "prisma db push --schema=prisma/schema.audit.prisma",
     "build": "npm run generate && cross-env NODE_OPTIONS='--max-old-space-size=4096' next build",
     "build:vercel": "npm run generate && next build",

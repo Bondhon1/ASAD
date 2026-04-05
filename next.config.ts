@@ -31,6 +31,13 @@ const nextConfig: NextConfig = {
   
   // Optimize output for smaller serverless functions
   output: "standalone",
+
+  outputFileTracingExcludes: {
+    "/*": [
+      "./node_modules/.prisma/client/*.tmp*",
+      "./src/generated/prisma-audit/*.tmp*",
+    ],
+  },
   
   // Externalize these packages to reduce bundle size
   serverExternalPackages: ["sharp"],
